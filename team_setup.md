@@ -7,7 +7,7 @@ This document explains how to set up, collaborate, and contribute to our Student
 # Clone the Repository
 Open VS Code or your terminal and run:
 
-git clone https://github.com/prathkumarrr/Student_Management_System.git
+git clone https://github.com/prathkumarr/Student_Management_System.git
 
 # Branch Naming 
 Always work on your own branch — not directly on main.
