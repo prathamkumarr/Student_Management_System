@@ -73,7 +73,7 @@ PUT /update_student
 
 
 6. RESPONSE STANDARDIZATION
-
+---------------------------
 Always return consistent JSON keys:
 {
   "status": "success" or "error",
