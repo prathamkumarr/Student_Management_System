@@ -1,0 +1,90 @@
+NAMING CONVENTIONS RULES
+------------------------
+
+Purpose:
+To maintain consistent naming across all files, folders, variables, functions, and Git branches in the Student Management System project.
+
+
+1. FOLDER & FILE NAMES
+----------------------
+- Use lowercase letters only.
+- Use underscores (_) for multi-word names.
+  Example:
+    student_dashboard.py
+    attendance_report.csv
+    teacher_profile.html
+
+
+2. VARIABLE NAMES
+-----------------
+- Use snake_case for variables and function names.
+  Example:
+    total_students = 0
+    get_student_data()
+
+- Avoid single-letter variables unless in loops.
+  Example:
+    for i in range(10):
+
+
+3. CLASS NAMES
+--------------
+- Use PascalCase (CamelCase).
+  Example:
+    class StudentRecord:
+    class FeeManager:
+
+
+4. CONSTANTS
+------------
+- Use UPPERCASE with underscores.
+  Example:
+    MAX_STUDENTS = 100
+    DATABASE_URL = "localhost:3306"
+
+
+5. DATABASE TABLES & COLUMNS
+----------------------------
+- Table names: plural and lowercase.
+  Example:
+    students, teachers, subjects
+
+- Column names: lowercase, snake_case.
+  Example:
+    student_id, student_name, admission_date
+
+
+6. GIT BRANCH NAMING
+--------------------
+Use prefixes to define the type of work:
+
+  feat/      : New feature
+  fix/       : Bug fix
+  hotfix/    : Urgent fix
+  refactor/  : Code improvement
+  docs/      : Documentation change
+  test/      : Testing related
+
+Examples:
+  feat/student_dashboard
+  fix/attendance_bug
+  refactor/api_endpoints
+
+
+7. COMMIT MESSAGE STYLE
+-----------------------
+Format: <type>: <short description>
+
+Examples:
+  feat: added student attendance API
+  fix: resolved null reference in login
+  docs: updated team setup instructions
+
+
+8. GENERAL RULES
+----------------
+- No spaces or capital letters in filenames.
+- Be descriptive but concise.
+- Each new feature or major change should be in its own branch.
+- Always commit with clear and meaningful messages.
+
