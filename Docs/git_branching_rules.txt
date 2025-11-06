@@ -1,0 +1,60 @@
+# RULES OF BRANCHING 
+--------------------
+This document explains how every team member should create, name, and manage branches in our repository.
+
+---
+1. Branches
+---
+Branches let us work on multiple features or bug fixes simultaneously without breaking the main (production) code.
+
+Main branch (protected):
+- Contains only stable, tested code.
+- No direct pushes allowed.
+- Everything must go through a Pull Request (PR).
+
+---
+2. HOW TO CREATE A NEW BRANCH
+---
+Before starting any new feature or fix, always:
+- Switch to the latest main branch:
+
+git checkout main
+git pull origin main
+
+- Create a new branch for your feature/fix:
+
+git checkout -b feat/<branch_name>
+
+Example:
+git checkout -b feat/student_dashboard
+
+---
+3. WORKFLOW EXAMPLE
+---
+Example for creating a new student dashboard module:
+
+git checkout main
+git pull origin main
+git checkout -b feat/student_dashboard
+
+-- make your changes
+git add .
+git commit -m "feat: added base layout for student dashboard"
+git push -u origin feat/student_dashboard
+
+- Then create a Pull Request (PR) :- wait for review :- merge to `main`.
+
+---
+
+4. AFTER MERGE
+Once your PR is merged into main:
+- Delete your feature branch from GitHub (recommended) to avoid overstacking of branches.
+- Pull the updated main branch:
+
+git checkout main
+git pull origin main
+
+- Don’t reuse old branches. Always make a new one for every feature.
+
+
+
