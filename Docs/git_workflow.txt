@@ -1,0 +1,145 @@
+GIT WORKFLOW GUIDELINES
+-----------------------
+
+PURPOSE:
+To maintain a clean, collaborative, and conflict-free Git workflow for the Student Management System team project.
+
+
+1. REPOSITORY STRUCTURE
+-----------------------
+Main Branches:
+- main : stable production-ready code
+- dev  : collective testing branch (before merging into main)
+
+All development must happen on **feature branches** (never directly on main).
+
+
+2. BRANCH NAMING CONVENTION
+---------------------------
+Use the format:
+feat/<module_name>         : for new features
+fix/<module_name>          : for bug fixes
+docs/<file_name>           : for documentation updates
+refactor/<module_name>     : for code improvement
+
+Examples:
+feat/student_module
+fix/attendance_api
+docs/git_workflow
+refactor/database_schema
+
+
+3. STANDARD WORKFLOW
+--------------------
+Step-by-Step:
+
+Get latest code before starting any work
+    : git pull origin main
+
+Create a new feature branch from main
+    : git checkout -b feat/student_dashboard
+
+Do your coding work
+    (commit small, logical chunks)
+
+Add and commit changes
+    : git add .
+    : git commit -m "feat: added student dashboard UI"
+
+Push your branch to GitHub
+    : git push -u origin feat/student_dashboard
+
+Create a Pull Request (PR) on GitHub
+    - Target branch: main
+    - Title format: feat: short description
+    - Add a brief summary of what changed
+
+After PR is approved : merge it into main
+
+Pull the latest main branch again
+    : git checkout main
+    : git pull origin main
+
+
+4. COMMIT MESSAGE RULES
+-----------------------
+Follow the **Conventional Commits** format:
+<type>: <short description>
+
+Allowed types:
+- feat : new feature
+- fix : bug fix
+- docs : documentation change
+- style : code style (no logic change)
+- refactor : code improvement
+- test : adding/modifying tests
+- chore : maintenance tasks
+
+Examples:
+feat: added login validation API
+fix: corrected attendance date filter
+docs: updated API structure in docs
+refactor: improved DB connection handling
+
+
+5. PULL REQUEST (PR) RULES
+--------------------------
+- One PR = One logical feature or fix
+- PR title should match commit style (feat/fix/docs)
+- Always write a short PR description (what + why)
+- Don’t merge your own PR (another teammate should review)
+- Delete the feature branch after successful merge
+
+
+6. DAILY TEAM PRACTICES
+-----------------------
+- Always pull latest main branch before starting new work.
+- Never commit directly to main.
+- Always commit with meaningful messages.
+- Make frequent small commits instead of one large dump.
+- Keep your branch short-lived (1 feature = 1 branch).
+
+
+7. HOW TO HANDLE MERGE CONFLICTS
+--------------------------------
+If you see a conflict:
+1. Run : git pull origin main
+2. Git will highlight conflicting files
+3. Open files : fix manually
+4. Run:
+   - git add .
+   - git commit -m "fix: resolved merge conflicts"
+   - git push
+
+
+8. HOW TO UPDATE YOUR BRANCH (AFTER MAIN CHANGES)
+-------------------------------------------------
+If main has been updated and you are still on your branch:
+- git checkout main
+- git pull origin main
+- git checkout feat/your_branch
+- git merge main
+
+
+9. CHECK REMOTE REPO LINK
+-------------------------
+To confirm repo connection anytime
+: git remote -v
+
+Output should show:
+origin  https://github.com/prathkumarrr/Student_Management_System.git
+
+
+10. TEAM MEMBER RESPONSIBILITIES
+--------------------------------
+- Everyone must work on their own branch.
+- Each PR must be reviewed by another member.
+- Project Lead (Pratham) merges approved PRs to main.
+- Code review checklist:
+  - Code runs without errors
+  - Follows naming conventions
+  - Uses proper commit messages
+  - Matches API style and folder structure
+
+
+
