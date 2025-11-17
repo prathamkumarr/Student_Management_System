@@ -5,7 +5,7 @@ import os
 import shutil
 
 # Import backend functions
-from Backend.Students import work_backend
+from Backend.Admin import work_backend
 
 
 class WorkModule:

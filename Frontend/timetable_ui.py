@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from Backend.Students import timetable_backend
+from Backend.Admin import timetable_backend
 from config import connect_db
 
 
