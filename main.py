@@ -8,7 +8,10 @@ class StudentManagementApp:
     def __init__(self, root):
         self.root = root
         self.root.title("🎓 Student Management System")
-        self.root.geometry("1000x600")
+        try:
+            self.root.state("zoomed")      # Windows
+        except:
+            self.root.after(50, lambda: self.root.attributes("-zoomed", True)) #Linux/Mac Fallback
         self.root.configure(bg="#f4f4f4")
 
         # ---------- Title ----------
