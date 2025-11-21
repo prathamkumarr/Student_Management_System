@@ -33,14 +33,19 @@ class StudentFeeCreate(BaseModel):
     class Config:
         from_attributes = True
 
-class StudentFeeResponse(StudentFeeCreate):
+class StudentFeeOut(BaseModel):
     invoice_id: int
-    amount_paid: Decimal = Field(..., ge=0, le=9999999999, description="Fee amount (up to 10 digits, 2 decimals)")
+    student_id: int
+    class_id: int
+    fee_id: int
+    amount_due: float
+    amount_paid: float
+    due_date: date
     status: str
-    created_at: datetime
-    updated_at: Optional[datetime]
+    receipt_path: Optional[str] = None
     class Config:
         from_attributes = True
+
 
 # ----Fee payments (actual transactions)----
 class FeePaymentCreate(BaseModel):

@@ -2,17 +2,16 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import date
 
 from Backends.Shared.connection import get_db
-from Backends.Backend_admin.models.admission_models import StudentAdmission
-from Backends.Backend_admin.schemas.admission_schemas import (
+from Backends.Shared.models.admission_models import StudentAdmission
+from Backends.Shared.schemas.admission_schemas import (
     AdmissionCreate, AdmissionResponse
 )
 from Backends.Shared.models.students_master import StudentMaster
 from Backends.Shared.models.classes_master import ClassMaster
 from Backends.Shared.models.fees_master import FeeMaster
-from Backends.Backend_students.models.fees_models import StudentFee
+from Backends.Shared.models.fees_models import StudentFee
 
 router = APIRouter(
     prefix="/admin/admissions",
@@ -49,17 +48,15 @@ def get_admission(admission_id: int, db: Session = Depends(get_db)):
 # ----- HELPER FUCNTION ------
 def generate_roll_number(db, class_id):
     """Generate next roll number for a given class."""
-    from Backends.Backend_students.models import StudentMaster
 
     last_student = (
         db.query(StudentMaster)
         .filter(StudentMaster.class_id == class_id)
-        .order_by(StudentMaster.roll_number.desc())
+        .order_by(StudentMaster.roll_no.desc())
         .first()
     )
-
-    if last_student and last_student.roll_number:
-        return last_student.roll_number + 1
+    if last_student and last_student.roll_no:
+        return int(last_student.roll_no) + 1
 
     return 1  # start from roll number 1 for new class
 
@@ -76,7 +73,7 @@ def approve_admission(admission_id: int, db: Session = Depends(get_db)):
 
     # Step 2 — Convert class_name → class_id
     class_obj = db.query(ClassMaster).filter(
-        ClassMaster.class_name == entry.class_name
+        ClassMaster.class_id == entry.class_id
     ).first()
 
     if not class_obj:
@@ -84,16 +81,10 @@ def approve_admission(admission_id: int, db: Session = Depends(get_db)):
 
     # Step 3 — Create StudentMaster entry
     new_student = StudentMaster(
-    full_name=entry.full_name,
-    gender=entry.gender,
-    dob=entry.dob,
-    class_id=class_obj.class_id,
-    admission_date=date.today(),
-    roll_number=generate_roll_number(db, class_obj.class_id),
-    address=entry.address,
-    phone=entry.phone,
-    email=entry.email
-    )
+        roll_no=generate_roll_number(db, class_obj.class_id),
+        full_name=entry.full_name,
+        class_id=class_obj.class_id
+        )
 
     db.add(new_student)
     db.commit()

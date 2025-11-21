@@ -1,15 +1,18 @@
-# Backends/Backend_admin/attendance_main.py
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from Backends.Shared.connection import engine
 from Backends.Shared.base import Base
+from Backends.Backend_admin.routers import fees_router
+from Backends.Backend_admin.routers.payment_method_router import router as payment_method_router
+from Backends.Backend_admin.routers import attendance_router
 from Backends.Backend_admin.routers.admission_router import router as admission_router
+from Backends.Backend_admin.routers.tc_router import router as tc_router
 
 app = FastAPI(
-    title="Admin Admission Management API",
-    description="Handles new admissions of student.",
+    title="Admin's Backend",
+    description="Admissions, Fees, Attendance Management area!",
     version="1.0.0"
 )
 
@@ -17,7 +20,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://127.0.0.1:8000",
-        "http://localhost:8000",
+        "http://localhost:8000"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -26,15 +29,21 @@ app.add_middleware(
 
 Base.metadata.create_all(bind=engine)
 
-app.include_router(admission_router)
-
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={"message": f"Internal server error: {str(exc)}"}
     )
+app.include_router(fees_router.router)
+app.include_router(payment_method_router)
+app.include_router(attendance_router.router)
+app.include_router(admission_router)
+app.include_router(tc_router)
 
 @app.get("/")
 def root():
-    return {"message": "Admin Admission API is Live "}
+    return JSONResponse(
+        content={"message": "Admin Management API is live "},
+        status_code=200
+    )

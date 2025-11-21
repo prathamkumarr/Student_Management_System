@@ -1,7 +1,6 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime, Enum, ForeignKey, func, UniqueConstraint
+from sqlalchemy import Integer, String, Date, DateTime, Enum, ForeignKey, func, UniqueConstraint
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from Backends.Shared.base import Base
-from Backends.Shared.models.teachers_master import TeacherMaster
 
 class TeacherAttendance(Base):
     __tablename__ = "teacher_attendance"
@@ -20,4 +19,4 @@ class TeacherAttendance(Base):
     updated_at: Mapped[DateTime] = mapped_column(DateTime, onupdate=func.now())
 
     # relationships
-    teacher: Mapped[list["TeacherMaster"]] = relationship("TeacherMaster", back_populates="teacher_attendance_records")
+    teacher = relationship("TeacherMaster", back_populates="teacher_attendance_records")

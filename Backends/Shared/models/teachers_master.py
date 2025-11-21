@@ -1,6 +1,7 @@
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from Backends.Shared.base import Base
+from Backends.Shared.models.teacher_attendance_models import TeacherAttendance
 
 class TeacherMaster(Base):
     __tablename__ = "teachers_master"
@@ -13,4 +14,4 @@ class TeacherMaster(Base):
 
     # relationships
     student_attendance_records = relationship("AttendanceRecord", back_populates="teacher")
-    teacher_attendance_records = relationship("TeacherAttendance", back_populates="teacher")
+    teacher_attendance_records: Mapped["TeacherAttendance"] = relationship("TeacherAttendance", back_populates="teacher")

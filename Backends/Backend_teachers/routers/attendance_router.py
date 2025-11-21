@@ -5,18 +5,16 @@ from datetime import datetime, date
 from typing import List
 
 from Backends.Shared.connection import get_db
-from Backends.Backend_admin.schemas.attendance_schemas import (
+from Backends.Shared.schemas.attendance_schemas import (
     MarkAttendanceBulk, MarkAttendanceItem, AttendanceFilter,
     UpdateAttendanceItem, AttendanceOut,
     StudentAttendanceResponse, AttendanceSummary,
     TeacherAttendanceCreate, TeacherAttendanceSummary,
     TeacherAttendanceResponse,
 )
-from Backends.Backend_teachers.models.attendance_models import (
-    AttendanceRecord,
-    TeacherAttendance,
-)
+from Backends.Shared.models.teacher_attendance_models import TeacherAttendance
 from Backends.Shared.models.teachers_master import TeacherMaster
+from Backends.Shared.models.attendance_models import AttendanceRecord
 
 router = APIRouter(prefix="/teacher/attendance", tags=["Teacher Attendance Management"])
 

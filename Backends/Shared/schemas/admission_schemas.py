@@ -1,6 +1,6 @@
 # Backends/Backend_admin/schemas/admission_schemas.py
-from pydantic import BaseModel, Field
-from datetime import date
+from pydantic import BaseModel
+from datetime import date, datetime
 from typing import Optional
 
 class AdmissionCreate(BaseModel):
@@ -20,6 +20,6 @@ class AdmissionCreate(BaseModel):
 
 class AdmissionResponse(AdmissionCreate):
     admission_id: int
-    created_at: date
+    created_at: datetime
     class Config:
         from_attributes = True

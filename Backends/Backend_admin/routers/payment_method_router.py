@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from Backends.Shared.connection import get_db
 from Backends.Shared.models.payment_method import PaymentMethod
-from Backends.Backend_admin.schemas.fees_schemas import (
+from Backends.Shared.schemas.fees_schemas import (
     PaymentMethodCreate,
     PaymentMethodUpdate,
     PaymentMethodResponse
@@ -16,7 +16,7 @@ router = APIRouter(
 
 # ----Payment Methods----
 # endpoint to create/add payment methods
-@router.post("/", response_model=PaymentMethodResponse, status_code=201)
+@router.post("/add", response_model=PaymentMethodResponse, status_code=201)
 def create_payment_method(payload: PaymentMethodCreate, db: Session = Depends(get_db)):
     # Check duplicate method name
     exists = db.query(PaymentMethod).filter(
@@ -52,7 +52,7 @@ def get_all_payment_methods(db: Session = Depends(get_db)):
     return db.query(PaymentMethod).order_by(PaymentMethod.method_id).all()
 
 # endpoint to update a payment method
-@router.put("/{method_id}", response_model=PaymentMethodResponse)
+@router.put("/update/{method_id}", response_model=PaymentMethodResponse)
 def update_payment_method(
     method_id: int,
     payload: PaymentMethodUpdate,
@@ -83,7 +83,7 @@ def update_payment_method(
     return method
 
 # endpoint to delete a payment method
-@router.delete("/{method_id}", status_code=204)
+@router.delete("/delete/{method_id}", status_code=200)
 def delete_payment_method(method_id: int, db: Session = Depends(get_db)):
     method = db.query(PaymentMethod).filter(PaymentMethod.method_id == method_id).first()
 
@@ -92,6 +92,6 @@ def delete_payment_method(method_id: int, db: Session = Depends(get_db)):
 
     # Soft delete: just disable
     method.is_active = False
-
     db.commit()
-    return
+    db.refresh(method)
+    return {"message": "Method Deactivated", "method_id": method_id}

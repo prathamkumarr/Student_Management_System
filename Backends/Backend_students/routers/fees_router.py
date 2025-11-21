@@ -2,14 +2,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from Backends.Shared.connection import get_db
-from Backends.Backend_students.models.fees_models import StudentFee, FeePayment, PaymentMethod
+from Backends.Shared.models.fees_models import StudentFee, FeePayment, PaymentMethod
 from Backends.Shared.models.exam_fee_master import ExamFeeMaster
-from Backends.Backend_admin.schemas.fees_schemas import (
+from Backends.Shared.schemas.fees_schemas import (
     PaymentMethodResponse, RazorpayOrderCreate, RazorpayVerify,
     FeePaymentCreate, ExamFeePaymentCreate, 
     FeePaymentResponse,
 )
-from Backends.Backend_students.models.fees_models import ExamFeePayment
+from Backends.Shared.models.fees_models import ExamFeePayment
 from Backends.Shared.razorpay_client import razorpay_client
 from fastapi.responses import FileResponse
 from fpdf import FPDF  # lightweight lib for generating PDFs

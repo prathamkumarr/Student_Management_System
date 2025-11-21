@@ -7,8 +7,8 @@ from sqlalchemy import text
 from datetime import datetime
 
 from Backends.Shared.connection import get_db
-from Backends.Backend_students.models.attendance_models import AttendanceRecord
-from Backends.Backend_admin.schemas.attendance_schemas import (
+from Backends.Shared.models.attendance_models import AttendanceRecord
+from Backends.Shared.schemas.attendance_schemas import (
     AttendanceFilter, AttendanceOut, AttendanceSummary
     )
 

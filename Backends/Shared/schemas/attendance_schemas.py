@@ -72,6 +72,7 @@ class UpdateAttendanceItem(BaseModel):
 
 class StudentAttendanceResponse(StudentAttendanceBase):
     attendance_id: int
+    teacher_id: Optional[int] = None
     student_name: Optional[str] = None
     subject_name: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -120,14 +121,10 @@ class TeacherAttendanceResponse(TeacherAttendanceBase):
 
 # ---------- Filters & Lists (admin/search helpers) ----------
 class AttendanceFilter(BaseModel):
-    on_date: Optional[date] = Field(None, description="Filter by specific date")
-    student_ids: Optional[List[int]] = Field(None, description="Filter by list of student IDs")
-    class_ids: Optional[List[int]] = Field(None, description="Filter by list of class IDs")
-    subject_ids: Optional[List[int]] = Field(None, description="Filter by list of subject IDs")
-    teacher_ids: Optional[List[int]] = Field(None, description="Filter by list of teacher IDs")
-    status: Optional[Literal["Present", "Absent", "Leave"]] = Field(None, description="Filter by status")
-    limit: Optional[int] = Field(100, description="Max records to return")
-    offset: Optional[int] = Field(0, description="Pagination offset")
+    student_id: int
+    date_from: date
+    date_to: date
+    subject_id: Optional[int] = None
     class Config:
         from_attributes = True
 

@@ -1,6 +1,6 @@
 # Backends/Backend_admin/models/admission_models.py
-from sqlalchemy import Integer, String, Date, DateTime, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Integer, String, Date, DateTime, func, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from Backends.Shared.base import Base
 
 class StudentAdmission(Base):
@@ -21,8 +21,14 @@ class StudentAdmission(Base):
     parent_email: Mapped[str] = mapped_column(String(120), nullable=True)
 
     # Academic Details
-    class_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    class_id: Mapped[int] = mapped_column(Integer, ForeignKey("classes_master.class_id"), nullable=False)
     previous_school: Mapped[str] = mapped_column(String(255), nullable=True)
 
     # Meta
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+
+    # relationships
+    class_ref = relationship(
+        "ClassMaster",
+        back_populates="admissions"
+    )

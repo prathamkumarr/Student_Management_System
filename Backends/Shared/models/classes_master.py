@@ -1,9 +1,7 @@
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from Backends.Shared.base import Base
-from Backends.Shared.models.students_master import StudentMaster
-from Backends.Shared.models.fees_master import FeeMaster
-from Backends.Shared.models.exam_fee_master import ExamFeeMaster
+from Backends.Shared.models.admission_models import StudentAdmission
 
 class ClassMaster(Base):
     __tablename__ = "classes_master"
@@ -14,7 +12,14 @@ class ClassMaster(Base):
 
     # Relationships
     attendance_records = relationship("AttendanceRecord", back_populates="class_ref")
-    students: Mapped[list["StudentMaster"]] = relationship("StudentMaster", back_populates="class_ref")
-    fees: Mapped[list["FeeMaster"]] = relationship("FeeMaster", back_populates="class_ref")
-    student_fees = relationship("StudentFee", back_populates="class_Ref")
-    exam_fee: Mapped[list["ExamFeeMaster"]] = relationship("ExamFeeMaster", back_populates="class_ref")
+    students = relationship("StudentMaster", back_populates="class_ref")
+
+    fees = relationship("Backends.Shared.models.fees_master.FeeMaster", back_populates="class_ref")
+    student_fees = relationship("Backends.Shared.models.fees_models.StudentFee", back_populates="class_ref")
+    exam_fee = relationship("ExamFeeMaster", back_populates="class_ref")
+
+    admissions: Mapped[list["StudentAdmission"]] = relationship(
+        "StudentAdmission",
+        back_populates="class_ref"
+    )
+

@@ -30,7 +30,7 @@ class AttendanceRecord(Base):
     subject_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # relationships
-    student: Mapped[list["StudentMaster"]] = relationship("StudentMaster", back_populates="attendance_records")
+    student: Mapped["StudentMaster"] = relationship("StudentMaster", back_populates="attendance_records")
     subject: Mapped[list["SubjectMaster"]] = relationship("SubjectMaster", back_populates="attendance_records")
     class_ref: Mapped[list["ClassMaster"]] = relationship("ClassMaster", back_populates="attendance_records")
     teacher: Mapped[list["TeacherMaster"]] = relationship("TeacherMaster", back_populates="student_attendance_records")

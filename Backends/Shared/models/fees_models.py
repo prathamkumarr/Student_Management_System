@@ -7,11 +7,6 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from Backends.Shared.base import Base
-from Backends.Shared.models.fees_master import FeeMaster
-from Backends.Shared.models.students_master import StudentMaster
-from Backends.Shared.models.classes_master import ClassMaster
-from Backends.Shared.models.payment_method import PaymentMethod
-
 
 # Student Fees – invoice / due records
 class StudentFee(Base):
@@ -32,9 +27,10 @@ class StudentFee(Base):
     receipt_path: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Relationships
-    student_ref: Mapped[list["StudentMaster"]] = relationship("StudentMaster", back_populates="student_fees")
-    class_ref: Mapped[list["ClassMaster"]] = relationship("ClassMaster", back_populates="student_fees")
-    fees_master: Mapped[list["FeeMaster"]] = relationship("FeeMaster", back_populates="student_fees")
+    student_ref = relationship("StudentMaster", back_populates="student_fees")
+
+    class_ref = relationship("ClassMaster", back_populates="student_fees")
+    fees_master = relationship("FeeMaster", back_populates="student_fees")
     payments: Mapped[list["FeePayment"]] = relationship("FeePayment", back_populates="invoice_ref")
     audits: Mapped[list["FeeAudit"]]= relationship("FeeAudit", back_populates="invoice_ref")
 
@@ -54,7 +50,7 @@ class FeePayment(Base):
 
     # relationships
     invoice_ref: Mapped[list["StudentFee"]] = relationship("StudentFee", back_populates="payments")
-    payment_method: Mapped[list["PaymentMethod"]] = relationship("PaymentMethod", back_populates="payments")
+    payment_method = relationship("PaymentMethod", back_populates="payments")
 
 # Fee Audit – changes in invoices or payments
 class FeeAudit(Base):
@@ -82,5 +78,5 @@ class ExamFeePayment(Base):
     status: Mapped[str] = mapped_column(String(20), default="success")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
 
-    payment_method: Mapped[list["PaymentMethod"]] = relationship("PaymentMethod", back_populates="board_exam_fees")
-    student: Mapped[list["StudentMaster"]] = relationship("StudentMaster", back_populates="exam_fees")
+    payment_method = relationship("PaymentMethod", back_populates="board_exam_fees")
+    student = relationship("StudentMaster", back_populates="exam_fees")
