@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# Virtual Environments
+venv/
+env/
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Database junk
+*.sqlite3
+*.db
+
+# Env files
+.env
+.env.*
+
+# Build files
+build/
+dist/
