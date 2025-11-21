@@ -1,7 +1,3 @@
-
-
-
-
 CREATE TABLE IF NOT EXISTS classes (
     class_id INT AUTO_INCREMENT PRIMARY KEY,
     class_name VARCHAR(50) NOT NULL UNIQUE,  -- e.g. "10A", "12B"
@@ -36,4 +32,25 @@ CREATE TABLE IF NOT EXISTS timetable (
         ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+#work-module table
 
+CREATE TABLE work_records (
+    work_id INT AUTO_INCREMENT PRIMARY KEY,
+    class_id INT NOT NULL,
+    subject VARCHAR(100),
+    type ENUM('Classwork', 'Homework', 'Assignment') NOT NULL,
+    title VARCHAR(255),
+    description TEXT,
+    due_date DATE,
+    teacher_id INT,
+    file_path VARCHAR(500),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (class_id) REFERENCES classes(class_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+
+    FOREIGN KEY (teacher_id) REFERENCES teachers(teacher_id)
+        ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB;
