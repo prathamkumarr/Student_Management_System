@@ -1,0 +1,139 @@
+API STRUCTURE GUIDELINES
+------------------------
+
+PURPOSE:
+To ensure all APIs follow a consistent response structure and naming convention across modules (Admin, Student, Teacher, etc.)
+
+
+1. GENERAL RULES
+----------------
+- All endpoints should use lowercase + underscores.
+  Example: /get_students, /add_teacher, /update_attendance
+- Use RESTful conventions:
+  GET     : fetch data
+  POST    : create data
+  PUT     : update data
+  DELETE  : remove data
+
+
+2. REQUEST FORMAT (JSON)
+------------------------
+POST /add_student
+{
+  "student_name": "Rahul Sharma",
+  "email": "rahul@gmail.com",
+  "batch_id": 3,
+  "admission_date": "2025-06-10"
+}
+
+PUT /update_student
+{
+  "student_id": 101,
+  "email": "rahul_updated@gmail.com"
+}
+
+
+3. RESPONSE FORMAT (JSON)
+-------------------------
+- SUCCESS RESPONSE
+{
+  "status": "success",
+  "message": "Student added successfully",
+  "data": {
+    "student_id": 101,
+    "student_name": "Rahul Sharma"
+  }
+}
+
+- ERROR RESPONSE
+{
+  "status": "error",
+  "message": "Student not found or invalid ID",
+  "error_code": 404
+}
+
+
+4. STANDARD STATUS CODES
+------------------------
+200 : OK (Request successful)
+201 : Created (New record created)
+400 : Bad Request (Invalid or missing data)
+401 : Unauthorized (Invalid credentials)
+403 : Forbidden (No permission)
+404 : Not Found
+500 : Internal Server Error
+
+
+5. NAMING RULES FOR API VARIABLES
+---------------------------------
+- Use snake_case for all JSON keys (backend consistency)
+  Example: student_name, course_id, fee_amount
+- Never use spaces or camelCase in keys
+- Use plural for lists → /students, /teachers, /subjects
+
+
+6. RESPONSE STANDARDIZATION
+---------------------------
+Always return consistent JSON keys:
+{
+  "status": "success" or "error",
+  "message": "Readable text message",
+}
+
+
+7. SAMPLE ENDPOINT STRUCTURE
+----------------------------
+GET /students
+: Fetch list of all students
+
+GET /students/<id>
+: Fetch single student details
+
+POST /students
+: Add a new student
+
+PUT /students/<id>
+: Update student info
+
+DELETE /students/<id>
+: Delete a student record
+
+
+8. EXAMPLE MODULE STRUCTURE (Python FastAPI)
+--------------------------------------------
+@app.get("/students")
+def get_students():
+    return {
+        "status": "success",
+        "message": "Fetched all students",
+        "data": students_list
+    }
+
+@app.post("/add_student")
+def add_student(student: StudentModel):
+    return {
+        "status": "success",
+        "message": "Student added successfully",
+        "data": student
+    }
+
+
+9. STANDARD HEADERS
+-------------------
+All APIs should include:
+Content-Type: application/json
+Authorization: Bearer <token> (if authentication enabled)
+
+
+10. COMMON ERROR STRUCTURE
+--------------------------
+{
+  "status": "error",
+  "message": "Something went wrong",
+  "error": {
+    "type": "ValidationError",
+    "details": "Missing field: student_name"
+  }
+}
+
+
