@@ -10,6 +10,10 @@ from Backends.Backend_admin.routers import attendance_router
 from Backends.Backend_admin.routers.admission_router import router as admission_router
 from Backends.Backend_admin.routers.tc_router import router as tc_router
 
+from Backends.Backend_admin.routers.timetable_router import router as timetable_router
+from Backends.Backend_admin.routers.work_router import router as work_router
+
+
 app = FastAPI(
     title="Admin's Backend",
     description="Admissions, Fees, Attendance Management area!",
@@ -40,6 +44,10 @@ app.include_router(payment_method_router)
 app.include_router(attendance_router.router)
 app.include_router(admission_router)
 app.include_router(tc_router)
+
+app.include_router(timetable_router)
+app.include_router(work_router)
+
 
 @app.get("/")
 def root():

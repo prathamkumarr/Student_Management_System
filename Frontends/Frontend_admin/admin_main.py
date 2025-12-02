@@ -73,6 +73,13 @@ class AdminUI:
 
         tc_btn = self.add_btn("Manage TCs")
         self.build_tc_dropdown(tc_btn)
+
+        timetable_btn = self.add_btn("Manage Timetable")
+        self.build_timetable_dropdown(timetable_btn)
+
+        work_btn = self.add_btn("Manage Work")
+        self.build_work_dropdown(work_btn)
+
     
     def clear_content(self):
         for widget in self.content.winfo_children():
@@ -137,12 +144,31 @@ class AdminUI:
         
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
 
+    # =========================================
     def build_tc_dropdown(self, parent_label):
         menu = tk.Menu(self.root, tearoff=0)
 
         menu.add_command(label="Apply TC", command=self.load_issue_tc_screen)
         menu.add_command(label="View TC", command=self.load_view_all_tc_screen)
         menu.add_command(label="Delete TC", command=self.load_approve_tc_screen)
+
+        parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
+
+    # =========================================
+    def build_timetable_dropdown(self, parent_label):
+        menu = tk.Menu(self.root, tearoff=0)
+
+        menu.add_command(label="View Timetable", command=self.load_view_timetable)
+        menu.add_command(label="Add / Edit Timetable", command=self.load_add_timetable)
+
+        parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
+
+    # =========================================
+    def build_work_dropdown(self, parent_label):
+        menu = tk.Menu(self.root, tearoff=0)
+
+        menu.add_command(label="View Work Records", command=self.load_work_records)
+        menu.add_command(label="Add / Edit Work", command=self.load_add_work)
 
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
 
@@ -2056,6 +2082,152 @@ class AdminUI:
                 search_btn.unbind("<Button-1>")
 
         method_id_var.trace_add("write", validate)
+
+    #-------Timetable Screens------
+    def load_view_timetable(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content, text="View Timetable",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1", fg="#2C3E50"
+        ).pack(pady=20)
+
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard)
+
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        columns = ("timetable_id", "class_id", "day", "subject", "teacher_id", "start_time", "end_time")
+
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/timetable")
+            data = res.json() if res.status_code == 200 else []
+        except:
+            data = []
+
+        self.create_scrollable_table(table_frame, columns, data)
+
+    def load_add_timetable(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content, text="Add / Edit Timetable",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1", fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        fields = ["class_id", "day", "subject", "teacher_id", "start_time", "end_time"]
+        vars = {}
+
+        for i, field in enumerate(fields):
+            tk.Label(form, text=f"{field}:", font=("Arial", 14), bg="#ECF0F1")\
+                .grid(row=i, column=0, padx=10, pady=10)
+
+            var = tk.StringVar()
+            entry = tk.Entry(form, textvariable=var, font=("Arial", 14))
+            entry.grid(row=i, column=1, padx=10, pady=10)
+            vars[field] = var
+
+        def submit():
+            payload = {f: v.get().strip() for f, v in vars.items()}
+            import requests
+            res = requests.post("http://127.0.0.1:8000/admin/timetable/add", json=payload)
+
+            if res.status_code == 200:
+                self.change_screen("Timetable Updated", add_callback=self.load_add_timetable)
+            else:
+                self.show_popup("Error", "Failed to save!", "error")
+
+        # Submit button
+        submit_btn = tk.Label(
+            self.content, text="Save Timetable",
+            font=("Arial", 16, "bold"),
+            bg="#000", fg="white",
+            padx=20, pady=10, cursor="hand2"
+        )
+        submit_btn.pack(pady=20)
+        submit_btn.bind("<Button-1>", lambda e: submit())
+
+
+    #-------WORK SCREENS-------
+    def load_work_records(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content, text="Work Records",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1", fg="#2C3E50"
+        ).pack(pady=20)
+
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard)
+
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/work")
+            data = res.json() if res.status_code == 200 else []
+        except:
+            data = []
+
+        columns = ("work_id", "class_id", "teacher_id", "subject", "work_details", "date_assigned")
+
+        self.create_scrollable_table(table_frame, columns, data)
+
+    def load_add_work(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content, text="Add / Edit Work",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1", fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        fields = ["class_id", "teacher_id", "subject", "work_details", "date_assigned"]
+        vars = {}
+
+        for i, field in enumerate(fields):
+            tk.Label(form, text=f"{field}:", font=("Arial", 14), bg="#ECF0F1")\
+                .grid(row=i, column=0, padx=10, pady=10)
+
+            var = tk.StringVar()
+            entry = tk.Entry(form, textvariable=var, font=("Arial", 14))
+            entry.grid(row=i, column=1, padx=10, pady=10)
+            vars[field] = var
+
+        def submit():
+            payload = {f: v.get().strip() for f, v in vars.items()}
+            import requests
+            res = requests.post("http://127.0.0.1:8000/admin/work/add", json=payload)
+
+            if res.status_code == 200:
+                self.change_screen("Work Saved", add_callback=self.load_add_work)
+            else:
+                self.show_popup("Error", "Failed to save work!", "error")
+
+        submit_btn = tk.Label(
+            self.content, text="Save Work",
+            font=("Arial", 16, "bold"),
+            bg="#000", fg="white",
+            padx=20, pady=10, cursor="hand2"
+        )
+        submit_btn.pack(pady=20)
+        submit_btn.bind("<Button-1>", lambda e: submit())
+
+
 
     def fetch_method_details(self, method_id):
         if not method_id.strip():

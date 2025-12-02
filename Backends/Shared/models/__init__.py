@@ -9,3 +9,6 @@ from Backends.Shared.models.subjects_master import SubjectMaster
 from Backends.Shared.models.attendance_models import AttendanceRecord
 from Backends.Shared.models.admission_models import StudentAdmission
 from Backends.Shared.models.tc_models import TransferCertificate
+
+from Backends.Shared.models.timetable_models import Timetable
+from Backends.Shared.models.work_models import WorkRecord
