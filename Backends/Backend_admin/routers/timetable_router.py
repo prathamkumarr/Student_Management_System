@@ -64,9 +64,7 @@ def api_list_timetables(
 #---------------Filter-----
 @router.post("/filter")
 def api_filter_timetable(
-    class_id: Optional[int] = None,
-    teacher_id: Optional[int] = None,
-    subject: Optional[str] = None,
+    payload: TimetableFilter,
     db: Session = Depends(get_db)
 ):
 
@@ -81,21 +79,21 @@ def api_filter_timetable(
         TeacherMaster, Timetable.teacher_id == TeacherMaster.teacher_id, isouter=True
     )
 
-    if class_id:
-        q = q.filter(Timetable.class_id == class_id)
+    if payload.class_id:
+        q = q.filter(Timetable.class_id == payload.class_id)
 
-    if teacher_id:
-        q = q.filter(Timetable.teacher_id == teacher_id)
+    if payload.teacher_id:
+        q = q.filter(Timetable.teacher_id == payload.teacher_id)
 
-    if subject:
-        q = q.filter(Timetable.subject == subject)
+    if payload.subject:
+        q = q.filter(Timetable.subject == payload.subject)
 
     rows = q.order_by(Timetable.day, Timetable.start_time).all()
 
     result = []
     for t, class_name, section, teacher_name in rows:
         result.append({
-            "timetable_id": t.timetable_id,      # ⭐ ADD THIS
+            "timetable_id": t.timetable_id,
             "day": t.day,
             "class_name": f"{class_name} {section}",
             "subject": t.subject,

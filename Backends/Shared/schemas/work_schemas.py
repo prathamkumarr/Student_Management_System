@@ -39,8 +39,23 @@ class WorkOut(WorkBase):
     created_at: datetime
     updated_at: datetime
 
+    # ✅ Add missing fields so FastAPI returns them
     class_name: Optional[str] = None
+    section: Optional[str] = None      # <--- Added
     teacher_name: Optional[str] = None
 
     class Config:
-        from_attributes = True  
+        from_attributes = True
+
+
+class WorkFilter(BaseModel):
+    class_id: Optional[int] = None
+    class_name: Optional[str] = None
+    section: Optional[str] = None
+    teacher_id: Optional[int] = None
+    teacher_name: Optional[str] = None
+    subject: Optional[str] = None
+    work_type: Optional[str] = None
+
+    class Config:
+        from_attributes = True
