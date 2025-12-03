@@ -37,3 +37,9 @@ class TimetableOut(TimetableBase):
     timetable_id: int
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
+
+
+class TimetableFilter(BaseModel):
+    class_id: Optional[int] = None
+    teacher_id: Optional[int] = None
+    subject: Optional[str] = None

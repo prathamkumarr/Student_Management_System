@@ -10,10 +10,10 @@ class WorkBase(BaseModel):
     work_type: str = Field(..., max_length=20)
     title: str = Field(..., max_length=255)
     description: Optional[str] = None
-    due_date: Optional[date] = None
+    due_date: Optional[date] = None  # must be YYYY-MM-DD
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class WorkCreate(WorkBase):
@@ -28,10 +28,9 @@ class WorkUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     due_date: Optional[date] = None
-    file_path: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class WorkOut(WorkBase):
@@ -39,3 +38,9 @@ class WorkOut(WorkBase):
     file_path: str
     created_at: datetime
     updated_at: datetime
+
+    class_name: Optional[str] = None
+    teacher_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True  
