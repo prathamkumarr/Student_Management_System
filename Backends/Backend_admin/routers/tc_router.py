@@ -18,7 +18,7 @@ router = APIRouter(
 @router.post("/issue", response_model=TCResponse)
 def issue_tc(payload: TCCreate, db: Session = Depends(get_db)):
 
-    # Step 1 — Validate student exists
+    # Validate student exists
     student = db.query(StudentMaster).filter(
         StudentMaster.student_id == payload.student_id
     ).first()
@@ -26,7 +26,7 @@ def issue_tc(payload: TCCreate, db: Session = Depends(get_db)):
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    # Step 2 — Check if already has TC issued
+    # Check if already has TC issued
     existing_tc = db.query(TransferCertificate).filter(
         TransferCertificate.student_id == payload.student_id
     ).first()
@@ -34,23 +34,23 @@ def issue_tc(payload: TCCreate, db: Session = Depends(get_db)):
     if existing_tc:
         raise HTTPException(status_code=400, detail="TC already issued for this student")
 
-    # Step 3 — Mark student as inactive
+    # Mark student as inactive
     student.is_active = False
     db.commit()
 
-    # Step 4 — Deactivate attendance records
+    # Deactivate attendance records
     db.query(AttendanceRecord).filter(
         AttendanceRecord.student_id == payload.student_id
     ).update({"is_active": False})
     db.commit()
 
-    # Step 5 — Deactivate fee pending entries
+    # Deactivate fee pending entries
     db.query(StudentFee).filter(
         StudentFee.student_id == payload.student_id
     ).update({"status": "DEACTIVATED"})
     db.commit()
 
-    # Step 6 — Create TC record
+    # Create TC record
     tc_entry = TransferCertificate(
         student_id=payload.student_id,
         reason=payload.reason,
@@ -100,23 +100,23 @@ def approve_tc(tc_id: int, db: Session = Depends(get_db)):
     if not student:
         raise HTTPException(status_code=404, detail="Student record not found")
 
-    # Step 1 — Just deactivate (DO NOT DELETE)
+    # Just deactivate (DO NOT DELETE)
     student.is_active = False   # add this field in model if needed
     db.commit()
 
-    # Step 2 — Remove Fees
+    # Remove Fees
     db.query(StudentFee).filter(
         StudentFee.student_id == tc.student_id
     ).delete()
     db.commit()
 
-    # Step 3 — Remove Attendance
+    # Remove Attendance
     db.query(AttendanceRecord).filter(
         AttendanceRecord.student_id == tc.student_id
     ).delete()
     db.commit()
 
-    # Step 4 — Mark TC as approved
+    # Mark TC as approved
     tc.status = True
     db.commit()
 
