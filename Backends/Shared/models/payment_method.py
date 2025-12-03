@@ -10,5 +10,8 @@ class PaymentMethod(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
 
-    payments = relationship("FeePayment", back_populates="payment_method")
-    board_exam_fees = relationship("ExamFeePayment", back_populates="payment_method")
+    payments = relationship(
+        "FeePayment",
+        back_populates="payment_method_rel",
+        primaryjoin="PaymentMethod.method_id == FeePayment.payment_method_id"
+    )

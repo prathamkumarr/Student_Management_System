@@ -16,7 +16,6 @@ class ClassMaster(Base):
 
     fees = relationship("Backends.Shared.models.fees_master.FeeMaster", back_populates="class_ref")
     student_fees = relationship("Backends.Shared.models.fees_models.StudentFee", back_populates="class_ref")
-    exam_fee = relationship("ExamFeeMaster", back_populates="class_ref")
 
     admissions: Mapped[list["StudentAdmission"]] = relationship(
         "StudentAdmission",

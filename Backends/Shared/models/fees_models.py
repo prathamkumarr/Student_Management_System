@@ -3,8 +3,6 @@ from sqlalchemy import (
     Integer, String, DECIMAL, Date, DateTime,
     Enum, ForeignKey, JSON, func
 )
-from datetime import datetime
-from typing import Optional
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from Backends.Shared.base import Base
 
@@ -20,11 +18,10 @@ class StudentFee(Base):
     amount_due: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
     amount_paid: Mapped[float] = mapped_column(DECIMAL(10, 2), default=0.00)
     due_date: Mapped[Date] = mapped_column(Date, nullable=False)
-    status: Mapped[str] = mapped_column(Enum("pending", "partially_paid", "paid", "cancelled", name="fee_status_enum"), default="pending")
+    status: Mapped[str] = mapped_column(Enum("pending", "partially_paid", "paid", "cancelled", "DEACTIVATED", name="fee_status_enum"), default="pending")
 
     created_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
-    receipt_path: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Relationships
     student_ref = relationship("StudentMaster", back_populates="student_fees")
@@ -50,7 +47,7 @@ class FeePayment(Base):
 
     # relationships
     invoice_ref: Mapped[list["StudentFee"]] = relationship("StudentFee", back_populates="payments")
-    payment_method = relationship("PaymentMethod", back_populates="payments")
+    payment_method_rel = relationship("PaymentMethod", back_populates="payments")
 
 # Fee Audit – changes in invoices or payments
 class FeeAudit(Base):
@@ -66,17 +63,3 @@ class FeeAudit(Base):
 
     # relationships
     invoice_ref: Mapped[list["StudentFee"]]= relationship("StudentFee", back_populates="audits")
-
-class ExamFeePayment(Base):
-    __tablename__ = "exam_fee_payments"
-
-    payment_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    exam_fee_id: Mapped[int] = mapped_column(ForeignKey("exam_fee_master.exam_fee_id"))
-    student_id: Mapped[int] = mapped_column(ForeignKey("students_master.student_id"))
-    amount: Mapped[DECIMAL] = mapped_column(DECIMAL(10,2))
-    payment_method_id: Mapped[int] = mapped_column(ForeignKey("payment_methods.method_id"))
-    status: Mapped[str] = mapped_column(String(20), default="success")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
-
-    payment_method = relationship("PaymentMethod", back_populates="board_exam_fees")
-    student = relationship("StudentMaster", back_populates="exam_fees")

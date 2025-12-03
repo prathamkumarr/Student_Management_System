@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Date, ForeignKey
+from sqlalchemy import Integer, String, Date, ForeignKey, Boolean
 from sqlalchemy.orm import relationship, mapped_column
 from Backends.Shared.base import Base
 
@@ -10,5 +10,6 @@ class TransferCertificate(Base):
     issue_date = mapped_column(Date)
     reason = mapped_column(String(255))
     remarks = mapped_column(String(255))
+    status = mapped_column(Boolean, default=True)
 
     student = relationship("StudentMaster", back_populates="tc_ref")

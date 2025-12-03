@@ -5,6 +5,7 @@ class TCCreate(BaseModel):
     student_id: int
     reason: str
     remarks: str | None = None
+    issue_date: date
     class Config:
         from_attributes = True
 
@@ -14,6 +15,7 @@ class TCResponse(BaseModel):
     issue_date: date
     reason: str
     remarks: str | None
+    status: int
 
     class Config:
         from_attributes = True

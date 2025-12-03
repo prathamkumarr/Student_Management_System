@@ -9,9 +9,12 @@ from Backends.Backend_admin.routers.payment_method_router import router as payme
 from Backends.Backend_admin.routers import attendance_router
 from Backends.Backend_admin.routers.admission_router import router as admission_router
 from Backends.Backend_admin.routers.tc_router import router as tc_router
+from Backends.Backend_students.routers.fees_router import router as fees_router_students
+from Backends.Backend_students.routers.attendance_router import router as attendance_router_students
+from Backends.Backend_teachers.routers.attendance_router import router as attendance_router_teachers
 
 app = FastAPI(
-    title="Admin's Backend",
+    title="ERP's Backend",
     description="Admissions, Fees, Attendance Management area!",
     version="1.0.0"
 )
@@ -40,10 +43,13 @@ app.include_router(payment_method_router)
 app.include_router(attendance_router.router)
 app.include_router(admission_router)
 app.include_router(tc_router)
+app.include_router(fees_router_students)
+app.include_router(attendance_router_students)
+app.include_router(attendance_router_teachers)
 
 @app.get("/")
 def root():
     return JSONResponse(
-        content={"message": "Admin Management API is live "},
+        content={"message": "ERP-API is live "},
         status_code=200
     )
