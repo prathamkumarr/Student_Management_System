@@ -37,14 +37,14 @@ class StudentFeeOut(BaseModel):
     invoice_id: int
     student_id: int
     class_id: int
-    fee_id: int
+    fee_id: Optional[int] = None
     amount_due: float
     amount_paid: float
     due_date: date
     status: str
-    receipt_path: Optional[str] = None
     class Config:
         from_attributes = True
+
 
 
 # ----Fee payments (actual transactions)----
@@ -64,8 +64,9 @@ class FeePaymentResponse(BaseModel):
     invoice_id: int
     student_id: int
     amount: Decimal
-    payment_method_id: int
-    payment_method_name: str
+    method_id: int
+    payment_method: str       
+    payment_method_name: str      
     status: str
     created_at: datetime
     class Config:
@@ -125,64 +126,3 @@ class RazorpayVerify(BaseModel):
     class Config:
         from_attributes = True
 
-# ---exam fee---
-class ExamFeeMasterCreate(BaseModel):
-    class_id: int = Field(..., description="Class ID for which exam fee applies")
-    exam_type: str = Field(..., min_length=2, max_length=50)
-    amount: Annotated[Decimal, Field(max_digits=10, decimal_places=2)]
-    effective_from: date
-    effective_to: date
-
-    class Config:
-        from_attributes = True
-
-
-class ExamFeeMasterResponse(ExamFeeMasterCreate):
-    exam_fee_id: int
-    is_active: bool
-    created_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
-
-class ExamFeePaymentCreate(BaseModel):
-    exam_fee_id: int
-    student_id: int
-    payment_method_id: int = Field(..., gt=0)
-    amount: Annotated[Decimal, Field(max_digits=10, decimal_places=2)]
-
-    class Config:
-        from_attributes = True
-
-
-class ExamFeePaymentResponse(BaseModel):
-    payment_id: int
-    exam_fee_id: int
-    student_id: int
-    amount: Annotated[Decimal, Field(max_digits=10, decimal_places=2)]
-    payment_method_id: int
-    status: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class ExamFeeHistoryItem(BaseModel):
-    exam_fee_id: int
-    exam_type: str
-    amount: Decimal
-    status: str
-    paid_on: datetime
-    payment_method: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-
-
-class ExamFeeHistoryResponse(BaseModel):
-    student_id: int
-    records: list[ExamFeeHistoryItem]
-
-    class Config:
-        from_attributes = True

@@ -154,7 +154,6 @@ class AdminUI:
         menu.add_command(label="Update Fee", command=lambda: self.load_update_fee_screen())
         menu.add_command(label="Delete Fee", command=lambda: self.load_delete_fee_screen())
         menu.add_command(label="Fee History", command=lambda: self.load_fee_history_screen())
-        menu.add_command(label="Upload Receipt", command=lambda: self.load_upload_receipt_screen())
 
         pm = tk.Menu(menu, tearoff=0)
         pm.add_command(label="Add Method", command=lambda: self.load_add_payment_method_screen())
@@ -184,6 +183,7 @@ class AdminUI:
 
         menu.add_command(label="Apply TC", command=self.load_issue_tc_screen)
         menu.add_command(label="View TC", command=self.load_view_all_tc_screen)
+        menu.add_command(label="Approve TC", command=self.load_approve_tc_screen)
         menu.add_command(label="Delete TC", command=self.load_approve_tc_screen)
 
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
@@ -545,20 +545,20 @@ class AdminUI:
         self.vars = {}
 
         for i, text in enumerate(labels):
-    # Label
+            # Label
             tk.Label(
-        form,
-        text=text + ":",
-        bg="#ECF0F1",
-        fg="#2C3E50",
-        font=("Arial", 14)
-    ).grid(row=i, column=0, sticky="e", padx=10, pady=10)
+                form,
+                text=text + ":",
+                bg="#ECF0F1",
+                fg="#2C3E50",
+                font=("Arial", 14)
+                ).grid(row=i, column=0, sticky="e", padx=10, pady=10)
 
-    # StringVar
+                # StringVar
             var = tk.StringVar()
             var.trace_add("write", lambda *args: self.validate_fee_form())
 
-    # ---- SPECIAL CASE FOR DATE FIELDS ----
+            # ---- SPECIAL CASE FOR DATE FIELDS ----
             if text in ("effective_from", "effective_to"):
                 entry = tk.Entry(
             form,
@@ -1661,159 +1661,6 @@ class AdminUI:
 
     # ---- DEFAULT LOAD ----
         update_fee_history_table(self.all_fee_history)
-
-
-    # ===== button to Upload Receipt in DB =====
-    def load_upload_receipt_screen(self):
-        self.clear_content()
-
-        tk.Label(
-        self.content,
-        text="Upload Fee Receipt",
-        font=("Arial", 26, "bold"),
-        bg="#ECF0F1",
-        fg="#2C3E50"
-        ).pack(pady=20)
-
-        form = tk.Frame(self.content, bg="#ECF0F1")
-        form.pack(pady=10)
-
-        # Variables
-        student_var = tk.StringVar()
-        fee_var = tk.StringVar()
-        file_var = tk.StringVar()
-
-        # Form Fields
-        tk.Label(form, text="Student ID:", bg="#ECF0F1", font=("Arial", 14)).grid(row=0, column=0, padx=10, pady=10)
-        student_entry = tk.Entry(form, textvariable=student_var, font=("Arial", 14), width=25)
-        student_entry.grid(row=0, column=1, padx=10)
-
-        tk.Label(form, text="Fee ID:", bg="#ECF0F1", font=("Arial", 14)).grid(row=1, column=0, padx=10, pady=10)
-        fee_entry = tk.Entry(form, textvariable=fee_var, font=("Arial", 14), width=25)
-        fee_entry.grid(row=1, column=1, padx=10)
-
-        tk.Label(form, text="Select File:", bg="#ECF0F1", font=("Arial", 14)).grid(row=2, column=0, padx=10, pady=10)
-
-        file_display = tk.Entry(form, textvariable=file_var, font=("Arial", 12), width=25, state="disabled")
-        file_display.grid(row=2, column=1, padx=10)
- 
-        # Browse button
-        def browse_file():
-            from tkinter import filedialog
-            file_path = filedialog.askopenfilename(
-                title="Select Receipt File",
-                filetypes=[("Image/PDF Files", "*.png *.jpg *.jpeg *.pdf")]
-            )
-            if file_path:
-                file_var.set(file_path)
-                validate_upload_btn()
-
-        browse_btn = tk.Label(
-        form,
-        text="Browse",
-        font=("Arial", 12, "bold"),
-        bg="#95A5A6",
-        fg="white",
-        padx=15,
-        pady=6,
-        cursor="arrow",
-        relief="ridge"
-        )
-        browse_btn.grid(row=2, column=2, padx=10)
-        browse_btn.bind("<Enter>", lambda e: browse_btn.config(bg="#7F8C8D"))
-        browse_btn.bind("<Leave>", lambda e: browse_btn.config(bg="#95A5A6"))
-        browse_btn.bind("<Button-1>", lambda e: browse_file())
-
-        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
-        btn_frame.pack(pady=25)
-
-        # Back Button from global function
-        self.create_back_button(
-        parent=btn_frame,
-        go_back_callback=self.load_dashboard,    
-        form_frame=form                          
-        )
-        self.content.update_idletasks()
-        
-        # Upload Button (Disabled initially)
-        upload_btn = tk.Label(
-        self.content,
-        text="Upload",
-        font=("Arial", 16, "bold"),
-        bg="#D5D8DC",
-        fg="#AEB6BF",
-        padx=25,
-        pady=12,
-        width=12,
-        borderwidth=1,
-        relief="solid",
-        cursor="arrow",
-        )
-        upload_btn.pack(pady=30)
-
-        # ======= VALIDATION (Enable on all filled) =======
-        def validate_upload_btn(*args):
-            if student_var.get().strip() and fee_var.get().strip() and file_var.get().strip():
-                upload_btn.config(bg="#000000", fg="white", cursor="hand2")
-
-                upload_btn.bind("<Enter>", lambda e: upload_btn.config(bg="#222222"))
-                upload_btn.bind("<Leave>", lambda e: upload_btn.config(bg="#000000"))
-                upload_btn.bind("<Button-1>", lambda e: upload_receipt())
-            else:
-                upload_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                upload_btn.unbind("<Enter>")
-                upload_btn.unbind("<Leave>")
-                upload_btn.unbind("<Button-1>")
-
-        # Trace input changes
-        student_var.trace_add("write", validate_upload_btn)
-        fee_var.trace_add("write", validate_upload_btn)
-        file_var.trace_add("write", validate_upload_btn)
-
-        # ====== Upload Function ======
-        def upload_receipt(self, invoice_id):
-            import requests
-            import os
-      
-    # ---- READ ENTRIES ----
-            student_id = student_var["student_id"].get().strip()
-            fee_id = fee_var["fee_id"].get().strip()
-            file_path = file_var["file"].get().strip()
-
-    # ---- VALIDATE STUDENT ID ----
-            if not student_id.isdigit() or int(student_id) <= 0:
-                self.show_popup("Invalid Student ID", "Student ID must be a positive number.", "warning")
-                return
-
-    # ---- VALIDATE FEE ID ----
-            if not fee_id.isdigit() or int(fee_id) <= 0:
-               self.show_popup("Invalid Fee ID", "Fee ID must be a positive number.", "warning")
-               return
-
-    # ---- VALIDATE FILE SELECTION ----
-            if not os.path.exists(file_path):
-                self.show_popup("Invalid File", "Please select a valid receipt file.", "warning")
-                return
-    # ---- EVERYTHING VALID → START UPLOAD ----
-            try:
-                with open(file_path, "rb") as f:
-                    files = {"file": f}
-
-                    res = requests.post(
-                f"http://127.0.0.1:8000/admin/fees/receipt/upload/{invoice_id}",
-                files=files
-            )
-
-                if res.status_code in (200, 201):
-                    self.change_screen(
-                "Receipt Uploaded Successfully!",
-                add_callback=self.load_upload_receipt_screen
-            )
-                else:
-                    self.show_popup("Upload Failed", res.text, "error")
-
-            except Exception as e:
-                self.show_popup("Upload Error", str(e), "error")
 
 
     # ====== Add Payment Methods ======
@@ -5166,6 +5013,7 @@ class AdminUI:
             )
 
             try:
+                res = requests.get(url)     
                 if res.status_code != 200:
                     res = requests.get(url)
                     self.show_popup(
@@ -5352,7 +5200,7 @@ class AdminUI:
 
                 # Fill values
                 fields["Teacher ID"].set(data["teacher_id"])
-                fields["Date"].set(data["on_date"])
+                fields["Date"].set(data["date"])
                 fields["Status"].set(data["status"])
                 fields["Remarks"].set(data.get("remarks", ""))
 
@@ -5422,7 +5270,7 @@ class AdminUI:
 
             payload = {
             "teacher_id": teacher_id,
-            "on_date": date_val,
+            "date": date_val,
             "status": status_val,
             "remarks": remarks_val
             }
@@ -5720,6 +5568,8 @@ class AdminUI:
             except requests.exceptions.ConnectionError:
                 self.show_popup("Server Error", "Server not reachable. Please try later.", "error")
     
+
+    # ============================================================
     # ====== Button to view all admissions ======
     def load_view_all_admissions_screen(self):
         self.clear_content()
@@ -5918,6 +5768,7 @@ class AdminUI:
         update_table(self.all_admissions)
 
 
+    # ==========================================================
     # ===== Button to view admission by id =====
     def load_view_admission_by_id_screen(self):
         self.clear_content()
@@ -5996,7 +5847,7 @@ class AdminUI:
                 width=30,
                 state="disabled",
                 disabledbackground="#F2F3F4",   # Light background (same as your normal)
-                disabledforeground="black"      # <-- TEXT COLOR BLACK
+                disabledforeground="black"      
             ) 
 
             entry.grid(row=i, column=1, padx=10, pady=6)
@@ -6036,6 +5887,7 @@ class AdminUI:
             except:
                 self.show_popup("Error","Error in Fetching Details from Server", "error")
 
+    # ==========================================================
     # ===== Button to approve admissions =====
     def load_approve_admission_screen(self):
         self.clear_content()
@@ -6215,24 +6067,25 @@ class AdminUI:
 
     
     # ==============================================================================
-    # ======== Button Issue Tc ========
+    # ======== TRANSFER CERTIFICATES =========
+    # ======== Button to Issue Tc ========
     def load_issue_tc_screen(self):
         self.clear_content()
 
         tk.Label(
         self.content, text="Issue Transfer Certificate",
         font=("Arial", 26, "bold"), bg="#ECF0F1", fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=20)
 
-    # ---------------- FIELDS ----------------
+        # ------- FIELDS -------
         fields = [
         ("Student ID", "student_id"),
         ("Reason", "reason"),
         ("Issue Date (YYYY-MM-DD)", "issue_date")
-    ]
+        ]
 
         vars = {}
         for i, (label, key) in enumerate(fields):
@@ -6241,7 +6094,7 @@ class AdminUI:
 
             vars[key] = tk.StringVar()
 
-        # calendar for date
+            # calendar for date
             if key == "issue_date":
                 entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=28)
                 entry.grid(row=i, column=1, padx=10)
@@ -6252,28 +6105,48 @@ class AdminUI:
                 font=("Arial", 12),
                 bg="white",
                 relief="flat",
+                cursor="arrow",
                 command=lambda v=vars[key], b=entry: self.open_calendar_popup(b, v)
-            )
+                )
                 cal_btn.grid(row=i, column=2, padx=5)
             else:
-                tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30)\
-                .grid(row=i, column=1, padx=10)
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30)
+                entry.grid(row=i, column=1, padx=10, pady=6)
+        
+        btn_frame = tk.Frame(self.content, bg = "#ECF0F1")
+        btn_frame.pack(pady=25)
 
-    # ---------------- BUTTON ----------------
+        # ------- Back Button --------
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,   
+        form_frame=form                         
+        )
+    
+        self.content.update_idletasks()
+
+        # -------- ISSUE TC BUTTON --------
+        # Submit button inside FORM (grid-based)
         submit = tk.Label(
-        form, text="Issue TC", font=("Arial", 16, "bold"),
-        bg="#D5D8DC", fg="#AEB6BF",
-        padx=20, pady=10, width=15,
-        cursor="arrow"
-    )
-        submit.grid(row=len(fields), columnspan=3, pady=20)
+            form,
+            text="Issue TC",
+            font=("Arial", 16, "bold"),
+            bg="#D5D8DC",
+            fg="#AEB6BF",
+            padx=20,
+            pady=10,
+            width=20,
+            cursor="arrow",
+            relief="ridge"
+        )
+        submit.grid(row=len(fields), column=0, columnspan=3, pady=20)
 
-    # ---------------- VALIDATION ----------------
+        # --------- VALIDATION ----------
         def validate(*args):
             if all(vars[k].get().strip() for k in vars):
-                submit.config(bg="#000", fg="white", cursor="hand2")
-                submit.bind("<Enter>", lambda e: submit.config(bg="#222"))
-                submit.bind("<Leave>", lambda e: submit.config(bg="#000"))
+                submit.config(bg="#000000", fg="white", cursor="hand2")
+                submit.bind("<Enter>", lambda e: submit.config(bg="#222222"))
+                submit.bind("<Leave>", lambda e: submit.config(bg="#000000"))
                 submit.bind("<Button-1>", lambda e: issue_tc())
             else:
                 submit.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
@@ -6284,12 +6157,9 @@ class AdminUI:
         for v in vars.values():
             v.trace_add("write", validate)
 
-    # ---------------- SUBMIT ----------------
+        # -------- SUBMITTING TO BACKEND ---------
         def issue_tc():
             sid = vars["student_id"].get().strip()
-            if not sid.isdigit():
-                self.show_popup("Invalid ID", "Student ID must be numeric!", "warning")
-                return
 
             import re
             date_str = vars["issue_date"].get().strip()
@@ -6297,7 +6167,12 @@ class AdminUI:
                 self.show_popup("Invalid Date", "Date must be YYYY-MM-DD!", "warning")
                 return
 
-            payload = {k: v.get().strip() for k, v in vars.items()}
+            payload = {
+        "student_id": int(sid),
+        "reason": vars["reason"].get().strip(),
+        "remarks": None,
+        "issue_date": date_str
+    }
 
             import requests
             res = requests.post("http://127.0.0.1:8000/admin/tc/issue", json=payload)
@@ -6306,39 +6181,39 @@ class AdminUI:
                 self.show_popup("Success", "TC Issued Successfully!", "info")
                 self.change_screen("TC Issued!", add_callback=self.load_issue_tc_screen)
             else:
-                self.show_popup("Error", "Failed to Issue TC!", "error")
+                self.show_popup("Error", f"Failed to Issue TC! {res.text}", "error")
 
-    # ============================================
+
+    # ===========================================================
+    # ======= Button View all Issued TCs =========
     def load_view_all_tc_screen(self):
         self.clear_content()
-
-    # -------- TITLE --------
+ 
+        # ----- TITLE -----
         tk.Label(
         self.content,
         text="All Transfer Certificates",
         font=("Arial", 26, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
-    # -------- BACK BUTTON --------
+        # -------- BACK BUTTON --------
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
         back_frame.pack(anchor="w", padx=20)
-        self.create_back_button(back_frame, self.load_tc_menu, None)
+        self.create_back_button(back_frame, self.load_dashboard, None)
 
-    # -------- TABLE FRAME --------
+        # -------- TABLE FRAME --------
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-    # ---- TC TABLE COLUMNS ----
+        # ---- TC TABLE COLUMNS ----
         cols = (
         "tc_id", "student_id", "issue_date",
-        "reason", "status"
-    )
+        "reason", "remarks", "status"
+        )
 
-    # ====================================================
-    #     FILTER BAR (Dropdown + Entry + Black Buttons)
-    # ====================================================
+        # ====== FILTER BAR (Dropdown + Entry + Black Buttons) ======
         filter_frame = tk.Frame(self.content, bg="#ECF0F1")
         filter_frame.pack(pady=10)
 
@@ -6348,7 +6223,7 @@ class AdminUI:
         font=("Arial", 12, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=0, padx=5)
 
         filter_var = tk.StringVar()
         filter_dropdown = ttk.Combobox(
@@ -6357,15 +6232,15 @@ class AdminUI:
         values=list(cols),
         state="readonly",
         width=20
-    )
+        )
         filter_dropdown.grid(row=0, column=1, padx=10)
 
         filter_val_var = tk.StringVar()
         filter_val = tk.Entry(filter_frame, textvariable=filter_val_var,
-                          font=("Arial", 12), width=25)
+                            font=("Arial", 12), width=25)
         filter_val.grid(row=0, column=2, padx=10)
 
-    # ---- Button styling ----
+        # ---- Button styling ----
         def style_button(btn):
             btn.config(
             bg="#000000",
@@ -6374,23 +6249,23 @@ class AdminUI:
             pady=5,
             width=10,
             relief="raised",
-            cursor="hand2",
+            cursor="arrow",
             font=("Arial", 12, "bold")
-        )
-            btn.bind("<Enter>", lambda e: btn.config(bg="#222"))
-            btn.bind("<Leave>", lambda e: btn.config(bg="#000"))
-
+            )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+        
+        # ---- Load Button -----
         load_btn = tk.Label(filter_frame, text="Load")
         style_button(load_btn)
         load_btn.grid(row=0, column=3, padx=10)
-
+        
+        # ---- Load all Button -----
         load_all_btn = tk.Label(filter_frame, text="Load All")
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
 
-    # ======================================================
-    #               TABLE + SCROLLBARS
-    # ======================================================
+        # ------ TABLE + SCROLLBARS ------
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
 
@@ -6403,7 +6278,7 @@ class AdminUI:
         show="headings",
         yscrollcommand=y_scroll.set,
         xscrollcommand=x_scroll.set
-    )
+        )
         self.tc_tree.pack(fill="both", expand=True)
 
         y_scroll.config(command=self.tc_tree.yview)
@@ -6413,27 +6288,26 @@ class AdminUI:
             self.tc_tree.heading(col, text=col.replace("_", " ").title())
             self.tc_tree.column(col, width=180, anchor="center")
 
-    # ======================================================
-    #                 BACKEND FETCH
-    # ======================================================
+        # ----- BACKEND FETCH ------
         import requests
         try:
             res = requests.get("http://127.0.0.1:8000/admin/tc/all")
             self.all_tc = res.json() if res.status_code == 200 else []
 
-        # ------- For Validations -------
+            # ------- For Validations -------
             self.tc_column_values = {
             "tc_id": [str(r["tc_id"]) for r in self.all_tc],
             "student_id": [str(r["student_id"]) for r in self.all_tc],
             "issue_date": [r["issue_date"] for r in self.all_tc],
             "reason": [r["reason"] for r in self.all_tc],
-            "status": [r["status"] for r in self.all_tc],
-        }
+            "remarks": [r["remarks"] for r in self.all_tc],
+            "status": [1 if r["status"] else 0 for r in self.all_tc]
+            }
 
         except:
             self.all_tc = []
 
-    # ----------- UPDATE TABLE FUNCTION -----------
+        # ------- UPDATE TABLE FUNCTION -------
         def update_table(data):
             for row in self.tc_tree.get_children():
                 self.tc_tree.delete(row)
@@ -6446,11 +6320,12 @@ class AdminUI:
                     row["student_id"],
                     row["issue_date"],
                     row["reason"],
-                    row["status"]
+                    row["remarks"], 
+                    1 if row["status"] else 0
+                    )
                 )
-            )
 
-    # ----------- FILTER FUNCTION -----------
+        # ------- FILTER FUNCTION -------
         def load_filtered():
             col = filter_var.get().strip()
             val = filter_val.get().strip().lower()
@@ -6466,14 +6341,14 @@ class AdminUI:
                 "Invalid Search Value",
                 f"'{val}' not found in column '{col}'.",
                 "warning"
-            )
+                )
                 filter_val_var.set("")
                 return
 
             filtered = [
             r for r in self.all_tc
             if str(r[col]).lower() == val.lower()
-        ]
+            ]
             update_table(filtered)
 
         def load_all():
@@ -6486,31 +6361,33 @@ class AdminUI:
         update_table(self.all_tc)
 
 
-    # =======================================
+    # ==================================================================
+    # ====== Button to Approve Tc ======
     def load_approve_tc_screen(self):
         self.clear_content()
 
-    # ===== TITLE =====
+        # ----- TITLE -----
         tk.Label(
         self.content,
         text="Approve Transfer Certificate",
         font=("Arial", 26, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=25)
+        ).pack(pady=25)
 
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
 
-    # ---------- TC ID INPUT ----------
+        # ---------- TC ID INPUT ----------
         tk.Label(form, text="TC ID:", font=("Arial", 14), bg="#ECF0F1").grid(
         row=0, column=0, padx=10, pady=10
-    )
+        )
+
         tc_id_var = tk.StringVar()
         tc_id_entry = tk.Entry(form, textvariable=tc_id_var, font=("Arial", 14), width=25)
         tc_id_entry.grid(row=0, column=1, padx=10, pady=10)
 
-    # ---------- LOAD BUTTON ----------
+        # ---------- LOAD BUTTON ----------
         load_btn = tk.Label(
         form,
         text="Load",
@@ -6521,10 +6398,10 @@ class AdminUI:
         width=12,
         relief="ridge",
         cursor="arrow"
-    )
+        )
         load_btn.grid(row=0, column=2, padx=10)
 
-    # Enable/Disable LOAD Button
+        # Enable/Disable LOAD Button
         def validate_load(*args):
             if tc_id_var.get().strip():
                 load_btn.config(bg="#000000", fg="white", cursor="hand2")
@@ -6539,7 +6416,7 @@ class AdminUI:
 
         tc_id_var.trace_add("write", validate_load)
 
-    # ---------- OUTPUT PANEL ----------
+        # ---------- OUTPUT PANEL ----------
         output_frame = tk.Frame(self.content, bg="#ECF0F1")
         output_frame.pack(pady=20)
 
@@ -6552,7 +6429,7 @@ class AdminUI:
             text=f"{label.replace('_',' ').title()}:",
             font=("Arial", 14),
             bg="#ECF0F1"
-        ).grid(row=i, column=0, padx=10, pady=6, sticky="w")
+            ).grid(row=i, column=0, padx=10, pady=6, sticky="w")
 
             var = tk.StringVar()
             entry = tk.Entry(
@@ -6563,22 +6440,21 @@ class AdminUI:
             state="disabled",
             disabledbackground="#F2F3F4",
             disabledforeground="black"
-        )
+            )
             entry.grid(row=i, column=1, padx=10, pady=6)
-
             vars_dict[label] = var
 
-    # ---------- BUTTONS ROW ----------
+        # ---------- BUTTONS ROW ----------
         btn_row = tk.Frame(self.content, bg="#ECF0F1")
         btn_row.pack(pady=30)
 
         self.create_back_button(
         parent=btn_row,
-        go_back_callback=self.load_tc_menu,
+        go_back_callback=self.load_dashboard,
         form_frame=form
-    )
+        )
 
-    # ---------- APPROVE BUTTON ----------
+        # ---------- APPROVE BUTTON ----------
         approve_btn = tk.Label(
         self.content,
         text="Approve TC",
@@ -6590,7 +6466,7 @@ class AdminUI:
         width=18,
         relief="ridge",
         cursor="arrow"
-    )
+        )
         approve_btn.pack(pady=20)
 
         def enable_approve():
@@ -6607,7 +6483,7 @@ class AdminUI:
 
         disable_approve()
 
-    # ---------- LOAD TC DETAILS ----------
+        # ---------- LOAD TC DETAILS ----------
         def load_tc():
             tc_id = tc_id_var.get().strip()
 
@@ -6631,14 +6507,14 @@ class AdminUI:
                 vars_dict["student_id"].set(data["student_id"])
                 vars_dict["issue_date"].set(data["issue_date"])
                 vars_dict["reason"].set(data["reason"])
-                vars_dict["status"].set(data["status"])
+                vars_dict["status"].set("1" if data["status"] else "0")
 
                 enable_approve()
 
             except:
                 self.show_popup("Error", "Server not reachable!", "error")
 
-    # ---------- APPROVE TC ----------
+        # ---------- APPROVE TC ----------
         def approve_tc():
             tc_id = tc_id_var.get().strip()
             import requests
@@ -6684,7 +6560,7 @@ class AdminUI:
         ).pack(padx=40, pady=30)
 
 
-# RUN UI
+# ======== RUN UI ========
 if __name__ == "__main__":
     root = tk.Tk()
     app = AdminUI(root)

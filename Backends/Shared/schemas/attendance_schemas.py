@@ -20,9 +20,12 @@ class MarkAttendanceItem(BaseModel):
         from_attributes = True
 
 class MarkAttendanceBulk(BaseModel):
-    items: List[MarkAttendanceItem]
+    class_id: int
+    subject_id: int
+    lecture_date: date
+    absent_ids: str  # "8,7"
     class Config:
-        from_attributes = True  
+        from_attributes = True
 
 class StudentAttendanceBase(BaseModel):
     student_id: PositiveInt = Field(..., description="Student ID (must exist in students_master)")
@@ -82,12 +85,12 @@ class StudentAttendanceResponse(StudentAttendanceBase):
 
 # ---------- Teacher attendance schemas ----------
 class TeacherAttendanceBase(BaseModel):
-    teacher_id: PositiveInt = Field(..., description="Teacher ID (must exist in teachers_master)")
-    on_date: date = Field(..., description="Attendance date (use `on_date` to avoid shadowing)")
-    check_in: Optional[datetime] = Field(None, description="Time teacher checked in")
-    check_out: Optional[datetime] = Field(None, description="Time teacher checked out")
+    teacher_id: PositiveInt
+    date: date       
+    check_in: Optional[datetime] = None
+    check_out: Optional[datetime] = None
     status: str = Field(default="P", pattern="^(P|A|L)$")
-    remarks: Optional[NoteStr] = Field(None, description="Optional remarks about attendance")
+    remarks: Optional[NoteStr] = None
     class Config:
         from_attributes = True
 
@@ -111,10 +114,17 @@ class TeacherAttendanceSummary(BaseModel):
     class Config:
         from_attributes = True
 
-class TeacherAttendanceResponse(TeacherAttendanceBase):
+class TeacherAttendanceResponse(BaseModel):
     record_id: int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    teacher_id: int
+    date: date
+    check_in: datetime | None
+    check_out: datetime | None
+    status: str
+    remarks: str | None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
     class Config:
         from_attributes = True
 

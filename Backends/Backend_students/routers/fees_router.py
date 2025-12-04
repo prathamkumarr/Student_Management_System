@@ -2,14 +2,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from Backends.Shared.connection import get_db
-from Backends.Shared.models.fees_models import StudentFee, FeePayment, PaymentMethod
-from Backends.Shared.models.exam_fee_master import ExamFeeMaster
+from Backends.Shared.models.fees_models import StudentFee, FeePayment
+from Backends.Shared.models.payment_method import PaymentMethod
 from Backends.Shared.schemas.fees_schemas import (
     PaymentMethodResponse, RazorpayOrderCreate, RazorpayVerify,
-    FeePaymentCreate, ExamFeePaymentCreate, 
+    FeePaymentCreate, 
     FeePaymentResponse,
 )
-from Backends.Shared.models.fees_models import ExamFeePayment
 from Backends.Shared.razorpay_client import razorpay_client
 from fastapi.responses import FileResponse
 from fpdf import FPDF  # lightweight lib for generating PDFs
@@ -143,23 +142,35 @@ def verify_payment(data: RazorpayVerify, db: Session = Depends(get_db)):
 @router.get("/history/{student_id}", response_model=list[FeePaymentResponse])
 def history(student_id: int, db: Session = Depends(get_db)):
 
-    payments = db.query(FeePayment).join(PaymentMethod).filter(
-        FeePayment.student_id == student_id
-    ).order_by(FeePayment.created_at.desc()).all()
+    payments = (
+        db.query(FeePayment)
+        .filter(FeePayment.student_id == student_id)
+        .order_by(FeePayment.created_at.desc())
+        .all()
+    )
 
     return [
-        FeePaymentResponse(
-            payment_id=p.payment_id,
-            invoice_id=p.invoice_id,
-            student_id=p.student_id,
-            amount=p.amount,
-            payment_method_id=p.payment_method_id,
-            payment_method_name=p.payment_method.method_name,
-            status=p.status,
-            created_at=p.created_at
-        )
-        for p in payments
-    ]
+    FeePaymentResponse(
+        payment_id=p.payment_id,
+        invoice_id=p.invoice_id,
+        student_id=p.student_id,
+        amount=p.amount,
+        method_id=p.payment_method_id if p.payment_method_id is not None else 0,
+        payment_method=(
+            p.payment_method_rel.method_name 
+            if p.payment_method_rel else "Unknown"
+        ),
+
+        payment_method_name=(
+            p.payment_method_rel.method_name 
+            if p.payment_method_rel else "Unknown"
+        ),
+
+        status=p.status,
+        created_at=p.created_at
+    )
+    for p in payments
+]
 
 # endpoint for viewing history and downloading receipts
 @router.get("/receipt/{invoice_id}")
@@ -172,10 +183,14 @@ def download_receipt(invoice_id: int, db: Session = Depends(get_db)):
 
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
+
+    font_path = "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"
+    pdf.add_font("ArialUnicode", "", font_path, uni=True)
+    pdf.set_font("ArialUnicode", size=12)
 
     pdf.cell(200, 10, txt="SCHOOL FEE RECEIPT", ln=True, align="C")
     pdf.ln(5)
+
     pdf.cell(200, 10, txt=f"Invoice ID: {invoice.invoice_id}", ln=True)
     pdf.cell(200, 10, txt=f"Student ID: {invoice.student_id}", ln=True)
     pdf.cell(200, 10, txt=f"Class ID: {invoice.class_id}", ln=True)
@@ -183,57 +198,39 @@ def download_receipt(invoice_id: int, db: Session = Depends(get_db)):
     pdf.cell(200, 10, txt=f"Amount Paid: ₹{invoice.amount_paid}", ln=True)
     pdf.cell(200, 10, txt=f"Status: {invoice.status}", ln=True)
     pdf.cell(200, 10, txt=f"Due Date: {invoice.due_date}", ln=True)
+
     pdf.ln(10)
     pdf.cell(200, 10, txt="Payment Records:", ln=True)
+
     for p in payments:
         pdf.cell(
-            200, 10,
-            txt=f"{p.payment_method.method_name} | ₹{p.amount} | {p.status} | {p.created_at.strftime('%Y-%m-%d')}",
-            ln=True
-        )
-
+        200, 10,
+        txt=f"{p.payment_method_name} | ₹{p.amount} | {p.status} | {p.created_at.strftime('%Y-%m-%d')}",
+        ln=True
+    )
+        
     file_path = f"/tmp/receipt_{invoice.invoice_id}.pdf"
     pdf.output(file_path)
     return FileResponse(file_path, media_type='application/pdf', filename=f"receipt_{invoice.invoice_id}.pdf")
 
-# endpoint for exam fee payment
-@router.post("/exam/pay")
-def pay_exam_fee(payload: ExamFeePaymentCreate, db: Session = Depends(get_db)):
-    # check exam fee record exists
-    examfee = db.query(ExamFeeMaster).filter(
-        ExamFeeMaster.exam_fee_id == payload.exam_fee_id,
-        ExamFeeMaster.is_active == True
-    ).first()
+# endpoint to view pending fees by student ID
+@router.get("/pending/{student_id}")
+def get_pending_fee(student_id: int, db: Session = Depends(get_db)):
+    invoices = db.query(StudentFee).filter(StudentFee.student_id == student_id).all()
 
-    if not examfee:
-        raise HTTPException(404, "Exam fee not found")
+    if not invoices:
+        raise HTTPException(404, "No fee records found")
 
-    # check payment method
-    method = db.query(PaymentMethod).filter(
-        PaymentMethod.method_id == payload.payment_method_id,
-        PaymentMethod.is_active == True
-    ).first()
+    pending = [
+        {
+            "invoice_id": i.invoice_id,
+            "class_id": i.class_id,
+            "amount_due": i.amount_due,
+            "amount_paid": i.amount_paid,
+            "status": i.status,
+            "due_date": i.due_date
+        }
+        for i in invoices if i.status != "paid"
+    ]
 
-    if not method:
-        raise HTTPException(400, "Invalid payment method")
-
-    payment = ExamFeePayment(
-        exam_fee_id=payload.exam_fee_id,
-        student_id=payload.student_id,
-        payment_method_id=payload.payment_method_id,
-        amount=examfee.amount
-    )
-
-    db.add(payment)
-    db.commit()
-
-    return {"message": "Exam fee paid successfully"}
-
-# endpoint to view history for exam fees
-@router.get("/exam/history/{student_id}")
-def get_exam_history(student_id: int, db: Session = Depends(get_db)):
-    records = db.query(ExamFeePayment).filter(
-        ExamFeePayment.student_id == student_id
-    ).all()
-
-    return records
+    return pending

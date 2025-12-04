@@ -10,8 +10,7 @@ from Backends.Shared.models.fees_models import StudentFee
 from Backends.Shared.models.fees_master import FeeMaster
 from Backends.Shared.schemas.fees_schemas import (
     FeeMasterCreate, FeeMasterResponse, 
-    StudentFeeCreate, StudentFeeOut,
-    UploadReceiptResponse
+    StudentFeeCreate, StudentFeeOut
 )
 
 router = APIRouter(prefix="/admin/fees", tags=["Admin Fees Management"])
@@ -110,36 +109,4 @@ def get_all_fees(db: Session = Depends(get_db)):
     recs = db.query(StudentFee).all()
     return recs
 
-
-# endpoint to upload fee receipt in database
-@router.post("/receipt/upload/{invoice_id}",response_model=UploadReceiptResponse)
-def upload_receipt(
-    invoice_id: int,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db)
-):
-    invoice = (
-        db.query(StudentFee)
-        .filter(StudentFee.invoice_id == invoice_id)
-        .first()
-    )
-    if not invoice:
-        raise HTTPException(404, "Invoice not found")
-
-    # Save file
-    file_path = f"Assets/receipts/receipt_{invoice_id}.pdf"
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    # Update DB
-    invoice.receipt_path = file_path
-    db.commit()
-    db.refresh(invoice)
-
-    return UploadReceiptResponse(
-        message=f"Receipt uploaded successfully for invoice {invoice_id}",
-        invoice_id=invoice_id,
-        receipt_path=file_path,
-        receipt_url=None  # put actual URL if using S3, Cloud, etc.
-    )
 

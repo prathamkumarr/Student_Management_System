@@ -82,58 +82,62 @@ def mark_attendance(attendance: MarkAttendanceItem, db: Session = Depends(get_db
 # endpoint for marking attendance in bulk 
 @router.post("/student/mark-bulk", status_code=201)
 def mark_bulk(payload: MarkAttendanceBulk, db: Session = Depends(get_db)):
-    if not payload.items:
-        raise HTTPException(status_code=400, detail="No attendance records provided")
 
-    # Extract base info from first item
-    first_item = payload.items[0]
-    class_id = first_item.class_id
-    subject_id = first_item.subject_id
-    lecture_date = first_item.lecture_date
+    # Parse absent IDs safely
+    try:
+        absentees = [
+            int(x.strip()) for x in payload.absent_ids.split(",") if x.strip()
+        ]
+    except:
+        raise HTTPException(
+            status_code=400,
+            detail="Absent IDs must be comma-separated numbers"
+        )
 
-    # Get subject name from master table
+    class_id = payload.class_id
+    subject_id = payload.subject_id
+    lecture_date = payload.lecture_date
+
+    # Fetch subject name
     subject_row = db.execute(
-        text("SELECT subject_name FROM subjects_master WHERE subject_id = :subid"),
-        {"subid": subject_id}
+        text("SELECT subject_name FROM subjects_master WHERE subject_id = :sid"),
+        {"sid": subject_id}
     ).fetchone()
+
     if not subject_row:
-        raise HTTPException(status_code=404, detail=f"Subject ID {subject_id} not found")
+        raise HTTPException(status_code=404, detail="Subject not found")
 
     subject_name = subject_row[0]
 
-    # Get all students in this class (id + name)
+    # Fetch all students of this class 
     student_data = db.execute(
         text("SELECT student_id, full_name FROM students_master WHERE class_id = :cid"),
         {"cid": class_id}
     ).fetchall()
 
     if not student_data:
-        raise HTTPException(status_code=404, detail=f"No students found for class ID {class_id}")
+        raise HTTPException(status_code=404, detail="No students found for this class")
 
-    absentees = [item.student_id for item in payload.items]
     processed = 0
 
     for sid, student_name in student_data:
         status = "A" if sid in absentees else "P"
         remarks = "Absent" if sid in absentees else "Present"
 
-        # Check if record already exists (same class, subject, student, and date)
         existing = db.query(AttendanceRecord).filter(
             AttendanceRecord.student_id == sid,
-            AttendanceRecord.subject_id == subject_id,
             AttendanceRecord.class_id == class_id,
+            AttendanceRecord.subject_id == subject_id,
             AttendanceRecord.lecture_date == lecture_date
         ).one_or_none()
 
         if existing:
-            # Update only if something actually changed
-            if existing.status != status or existing.remarks != remarks:
-                existing.status = status
-                existing.remarks = remarks
-                existing.subject_name = subject_name
-                existing.student_name = student_name
+            existing.status = status
+            existing.remarks = remarks
+            existing.subject_name = subject_name
+            existing.student_name = student_name
+
         else:
-            # Create new attendance record
             db.add(AttendanceRecord(
                 student_id=sid,
                 student_name=student_name,
@@ -144,51 +148,41 @@ def mark_bulk(payload: MarkAttendanceBulk, db: Session = Depends(get_db)):
                 status=status,
                 remarks=remarks
             ))
+
         processed += 1
 
     db.commit()
 
-    return {"message": f"{processed} attendance records processed successfully"}
+    return {"message": f"{processed} attendance records processed"}
 
-# endpoint to update attendance of a student
-@router.put("/student/update", status_code=200)
-def update_attendance(item: UpdateAttendanceItem, db: Session = Depends(get_db)):
-    # Find existing record
-    record = db.query(AttendanceRecord).filter(
-        AttendanceRecord.student_id == item.student_id,
-        AttendanceRecord.subject_id == item.subject_id,
-        AttendanceRecord.class_id == item.class_id,
-        AttendanceRecord.lecture_date == item.lecture_date
-    ).one_or_none()
 
+# endpoint to view attendance of a student using attendance_id
+@router.get("/student/{attendance_id}", response_model=StudentAttendanceResponse)
+def get_student_attendance(attendance_id: int, db: Session = Depends(get_db)):
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.attendance_id == attendance_id).first()
     if not record:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No attendance found for student {item.student_id} on {item.lecture_date}"
-        )
+        raise HTTPException(status_code=404, detail="Student attendance record not found")
+    return record
 
-    # Update allowed fields only
-    record.status = item.status
-    record.remarks = item.remarks
-    record.updated_at = datetime.now() 
+
+# endpoint to update any students attendance using attendance_id 
+@router.put("/student/update/{attendance_id}", response_model=StudentAttendanceResponse)
+def update_student_attendance(attendance_id: int, payload: UpdateAttendanceItem, db: Session = Depends(get_db)):
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.attendance_id == attendance_id).first()
+    
+    if not record:
+        raise HTTPException(status_code=404, detail="Student attendance not found")
+
+    for key, value in payload.model_dump().items():
+        setattr(record, key, value)
 
     db.commit()
     db.refresh(record)
+    return record
 
-    return {
-        "message": "Attendance record updated successfully",
-        "attendance_id": record.attendance_id,
-        "student_id": record.student_id,
-        "subject_id": record.subject_id,
-        "class_id": record.class_id,
-        "lecture_date": record.lecture_date,
-        "status": record.status,
-        "remarks": record.remarks,
-        "updated_at": record.updated_at
-    }
 
 # endpoint to delete any attendance of a student
-@router.delete("/student/{attendance_id}", status_code=204)
+@router.delete("/student/delete/{attendance_id}", status_code=204)
 def delete_attendance(attendance_id: int, db: Session = Depends(get_db)):
     rec = db.query(AttendanceRecord).get(attendance_id)
     if not rec:
@@ -237,7 +231,7 @@ def get_all_student_attendance(db: Session = Depends(get_db)):
     return records
 
 # endpoint to view student's attendance records(using date filters)
-@router.post("/student/by-student", response_model=List[AttendanceOut])
+@router.post("/student/by-date", response_model=List[AttendanceOut])
 def get_by_student(filter: AttendanceFilter, db: Session = Depends(get_db)):
     q = db.query(AttendanceRecord).filter(
         AttendanceRecord.student_id == filter.student_id,
@@ -283,10 +277,23 @@ def summary(student_id: int, date_from: date, date_to: date, db: Session = Depen
     )
 
 # ----SELF RECORDS----
-# endpoint to view all teacher's self attendance records
-@router.get("/teachers", response_model=list[TeacherAttendanceResponse])
-def get_all_teacher_attendance(db: Session = Depends(get_db)):
-    records = db.query(TeacherAttendance).all()
+# ----SELF FILTERED ATTENDANCE (DATE RANGE)----
+@router.get("/self/{teacher_id}", response_model=list[TeacherAttendanceResponse])
+def get_teacher_attendance_filtered(
+    teacher_id: int,
+    date_from: date,
+    date_to: date,
+    db: Session = Depends(get_db)
+    ):
+    records = (
+        db.query(TeacherAttendance)
+        .filter(
+            TeacherAttendance.teacher_id == teacher_id,
+            TeacherAttendance.date.between(date_from, date_to)
+        )
+        .order_by(TeacherAttendance.date.asc())
+        .all()
+    )
     return records
 
 # endpoint to view summary of a teacher's attendance using filters

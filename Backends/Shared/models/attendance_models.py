@@ -1,6 +1,6 @@
 # Backends/models/attendance_models.py
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from sqlalchemy import Integer, String, Enum, Date, DateTime, BigInteger, func, ForeignKey, UniqueConstraint
+from sqlalchemy import Integer, String, Enum, Date, DateTime, BigInteger, func, ForeignKey, UniqueConstraint, Boolean
 from Backends.Shared.base import Base
 from Backends.Shared.models.students_master import StudentMaster
 from Backends.Shared.models.subjects_master import SubjectMaster
@@ -22,6 +22,7 @@ class AttendanceRecord(Base):
     lecture_date: Mapped[Date] = mapped_column(Date)
     status: Mapped[str] = mapped_column(Enum("P", "A", "L"))
     remarks: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active = mapped_column(Boolean, default=True)
 
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(DateTime, onupdate=func.now())
