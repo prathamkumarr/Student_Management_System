@@ -72,6 +72,10 @@ class TeacherUI:
         # Main Buttons
         att_btn = self.add_btn("Manage Attendances")
         self.build_attendance_dropdown(att_btn)
+
+        tt_btn = self.add_btn("View Timetable", self.load_teacher_timetable)
+        wk_btn = self.add_btn("Manage Work", self.load_teacher_work_menu)
+
     
     def clear_content(self):
         for widget in self.content.winfo_children():
@@ -1892,41 +1896,41 @@ class TeacherUI:
 
         # Date From
         tk.Label(
-    form,
-    text="Date From (YYYY-MM-DD):",
-    font=("Arial", 14),
-    bg="#ECF0F1"
-    ).grid(row=1, column=0, padx=10, pady=10, sticky="w")
+            form,
+            text="Date From (YYYY-MM-DD):",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=1, column=0, padx=10, pady=10, sticky="w")
 
         date_from_var = tk.StringVar()
         date_from_entry = tk.Entry(form, textvariable=date_from_var, font=("Arial", 14), width=25)
         date_from_entry.grid(row=1, column=1, padx=10, pady=10)
 
-# Calendar button for Date From
+        # Calendar button for Date From
         tk.Button(
-    form,
-    text="Calendar",
-    command=lambda: self.open_calendar_popup(date_from_entry, date_from_var)
-).grid(row=1, column=2, padx=5)
+            form,
+            text="Calendar",
+            command=lambda: self.open_calendar_popup(date_from_entry, date_from_var)
+            ).grid(row=1, column=2, padx=5)
 
         # Date To
         tk.Label(
-    form,
-    text="Date To (YYYY-MM-DD):",
-    font=("Arial", 14),
-    bg="#ECF0F1"
-).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+            form,
+            text="Date To (YYYY-MM-DD):",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=2, column=0, padx=10, pady=10, sticky="w")
 
         date_to_var = tk.StringVar()
         date_to_entry = tk.Entry(form, textvariable=date_to_var, font=("Arial", 14), width=25)
         date_to_entry.grid(row=2, column=1, padx=10, pady=10)
 
-# Calendar button for Date To
+        # Calendar button for Date To
         tk.Button(
-    form,
-    text="Calendar",
-    command=lambda: self.open_calendar_popup(date_to_entry, date_to_var)
-).grid(row=2, column=2, padx=5)
+            form,
+            text="Calendar",
+            command=lambda: self.open_calendar_popup(date_to_entry, date_to_var)
+            ).grid(row=2, column=2, padx=5)
 
         # ---- BACK BUTTON ----
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -2036,7 +2040,477 @@ class TeacherUI:
 
             except Exception as e:
                 self.show_popup("Backend Error", f"{e}", "error")
-  
+
+
+    #-----Timetable Screen-----
+    def load_teacher_timetable(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content,
+            text="My Timetable",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1",
+            fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ----------------------
+        # FILTER FRAME
+        # ----------------------
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=10)
+
+        # ---- Day Dropdown ----
+        tk.Label(filter_frame, text="Day:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=0, padx=10)
+        self.day_filter = tk.StringVar()
+        day_dropdown = ttk.Combobox(
+            filter_frame,
+            textvariable=self.day_filter,
+            values=["None", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+            state="readonly",
+            width=20
+        )
+        day_dropdown.grid(row=0, column=1, padx=10)
+        day_dropdown.current(0)
+
+        # ---- Subject Dropdown ----
+        tk.Label(filter_frame, text="Subject:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=2, padx=10)
+
+        # (filled after fetching data)
+        self.subject_filter = tk.StringVar()
+        subject_dropdown = ttk.Combobox(
+            filter_frame,
+            textvariable=self.subject_filter,
+            state="readonly",
+            width=20
+        )
+        subject_dropdown.grid(row=0, column=3, padx=10)
+
+        # ---- Class Dropdown ----
+        tk.Label(filter_frame, text="Class:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=4, padx=10)
+
+        self.class_filter = tk.StringVar()
+        class_dropdown = ttk.Combobox(
+            filter_frame,
+            textvariable=self.class_filter,
+            state="readonly",
+            width=20
+        )
+        class_dropdown.grid(row=0, column=5, padx=10)
+
+        # ----------------------
+        # LOAD DATA FROM API
+        # ----------------------
+        import requests
+        try:
+            url = f"http://127.0.0.1:8000/teacher/timetable/{self.teacher_id}"
+            res = requests.get(url)
+
+            if res.status_code != 200:
+                self.show_popup("Error", "Failed to fetch timetable", "error")
+                return
+
+            self.timetable_data = res.json()  # store for filtering
+
+            if not self.timetable_data:
+                self.show_popup("No Timetable", "No schedule found for you.", "info")
+                return
+
+        except Exception as e:
+            self.show_popup("Error", str(e), "error")
+            return
+
+        # Fill SUBJECT dropdown →unique subjects
+        subjects = sorted({d["subject"] for d in self.timetable_data})
+        subject_dropdown["values"] = ["None"] + subjects
+        subject_dropdown.current(0)
+
+        # Fill CLASS dropdown → e.g. "8 (A)"
+        classes = sorted({f"{d['class_name']} ({d['section']})" for d in self.timetable_data})
+        class_dropdown["values"] = ["None"] + classes
+        class_dropdown.current(0)
+
+        # ----------------------
+        # RESET BUTTON
+        # ----------------------
+        reset_btn = tk.Button(
+            filter_frame,
+            text="Reset Filters",
+            bg="#000",
+            fg="white",
+            font=("Arial", 12, "bold"),
+            command=lambda: reset_filters()
+        )
+        reset_btn.grid(row=0, column=6, padx=20)
+
+        # ----------------------
+        # BACK BUTTON
+        # ----------------------
+        top_bar = tk.Frame(self.content, bg="#ECF0F1")
+        top_bar.pack(fill="x", pady=5)
+
+        back_btn = tk.Label(
+            top_bar,
+            text="Back",
+            font=("Arial", 14, "bold"),
+            bg="#000",
+            fg="white",
+            padx=18,
+            pady=8,
+            cursor="hand2"
+        )
+        back_btn.pack(side="left", padx=10)
+        back_btn.bind("<Enter>", lambda e: back_btn.config(bg="#222"))
+        back_btn.bind("<Leave>", lambda e: back_btn.config(bg="#000"))
+        back_btn.bind("<Button-1>", lambda e: self.load_dashboard())
+
+        # ----------------------
+        # TABLE AREA
+        # ----------------------
+        columns = ("day", "subject", "class", "start_time", "end_time", "room_no")
+
+        self.table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        self.table_frame.pack(fill="both", expand=True, pady=10)
+
+        # -------- DISPLAY TABLE --------
+        def load_table(filtered):
+            for wid in self.table_frame.winfo_children():
+                wid.destroy()
+
+            table_data = [
+                (d["day"], d["subject"],
+                f"{d['class_name']} ({d['section']})",
+                d["start_time"], d["end_time"], d["room_no"])
+                for d in filtered
+            ]
+
+            self.create_scrollable_table(self.table_frame, columns, table_data)
+
+        # Initial load
+        load_table(self.timetable_data)
+
+        # ----------------------
+        # FILTERING FUNCTION
+        # ----------------------
+        def apply_filters(*args):
+            f_day = self.day_filter.get()
+            f_subject = self.subject_filter.get()
+            f_class = self.class_filter.get()
+
+            filtered = self.timetable_data
+
+            if f_day != "None":
+                filtered = [d for d in filtered if d["day"] == f_day]
+
+            if f_subject != "None":
+                filtered = [d for d in filtered if d["subject"] == f_subject]
+
+            if f_class != "None":
+                filtered = [
+                    d for d in filtered
+                    if f"{d['class_name']} ({d['section']})" == f_class
+                ]
+
+            load_table(filtered)
+
+        # Bind dropdown changes
+        self.day_filter.trace_add("write", apply_filters)
+        self.subject_filter.trace_add("write", apply_filters)
+        self.class_filter.trace_add("write", apply_filters)
+
+        # ----------------------
+        # RESET FUNCTION
+        # ----------------------
+        def reset_filters():
+            self.day_filter.set("None")
+            self.subject_filter.set("None")
+            self.class_filter.set("None")
+            load_table(self.timetable_data)
+
+
+
+    #----------Work -------------
+
+    def load_teacher_work_menu(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content,
+            text="Teacher Work Module",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1",
+            fg="#2C3E50"
+        ).pack(pady=20)
+
+        menu = tk.Frame(self.content, bg="#ECF0F1")
+        menu.pack(pady=20)
+
+        tk.Button(
+            menu,
+            text="Add Work",
+            font=("Arial", 14),
+            width=20,
+            command=self.load_add_work_screen
+        ).pack(pady=10)
+
+        tk.Button(
+            menu,
+            text="View / Edit / Delete Work",
+            font=("Arial", 14),
+            width=20,
+            command=self.load_view_work_screen
+        ).pack(pady=10)
+
+        self.create_back_button(menu, self.load_dashboard)
+
+
+    def load_add_work_screen(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content,
+            text="Add Work Entry",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        labels = [
+            ("Class ID", "class_id"),
+            ("Subject", "subject"),
+            ("Description", "description"),
+        ]
+
+        self.work_vars = {}
+
+        for i, (lbl, key) in enumerate(labels):
+            tk.Label(form, text=lbl, font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=0, padx=10, pady=8)
+            var = tk.StringVar()
+            tk.Entry(form, textvariable=var, font=("Arial", 14), width=30).grid(row=i, column=1, padx=10, pady=8)
+            self.work_vars[key] = var
+
+        # Back button
+        self.create_back_button(self.content, self.load_teacher_work_menu, form)
+
+        # Submit button
+        submit_btn = tk.Button(
+            self.content,
+            text="Submit",
+            font=("Arial", 16, "bold"),
+            command=lambda: self.submit_work()
+        )
+        submit_btn.pack(pady=20)
+
+
+    def submit_work(self):
+        import requests
+
+        data = {
+            "class_id": int(self.work_vars["class_id"].get()),
+            "teacher_id": self.teacher_id,
+            "subject": self.work_vars["subject"].get(),
+            "description": self.work_vars["description"].get(),
+        }
+
+        try:
+            res = requests.post("http://127.0.0.1:8000/teacher/work/", json=data)
+
+            if res.status_code == 200 or res.status_code == 201:
+                self.show_popup("Success", "Work added successfully", "info")
+                self.change_screen("Work Added Successfully!", add_callback=self.load_add_work_screen)
+            else:
+                self.show_popup("Error", res.text, "error")
+
+        except Exception as e:
+            self.show_popup("Error", str(e), "error")
+
+
+    def load_add_work_screen(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content,
+            text="Add Work Entry",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        labels = [
+            ("Class ID", "class_id"),
+            ("Subject", "subject"),
+            ("Description", "description"),
+        ]
+
+        self.work_vars = {}
+
+        for i, (lbl, key) in enumerate(labels):
+            tk.Label(form, text=lbl, font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=0, padx=10, pady=8)
+            var = tk.StringVar()
+            tk.Entry(form, textvariable=var, font=("Arial", 14), width=30).grid(row=i, column=1, padx=10, pady=8)
+            self.work_vars[key] = var
+
+        # Back button
+        self.create_back_button(self.content, self.load_teacher_work_menu, form)
+
+        # Submit button
+        submit_btn = tk.Button(
+            self.content,
+            text="Submit",
+            font=("Arial", 16, "bold"),
+            command=lambda: self.submit_work()
+        )
+        submit_btn.pack(pady=20)
+
+
+    def submit_work(self):
+        import requests
+
+        data = {
+            "class_id": int(self.work_vars["class_id"].get()),
+            "teacher_id": self.teacher_id,
+            "subject": self.work_vars["subject"].get(),
+            "description": self.work_vars["description"].get(),
+        }
+
+        try:
+            res = requests.post("http://127.0.0.1:8000/teacher/work/", json=data)
+
+            if res.status_code == 200 or res.status_code == 201:
+                self.show_popup("Success", "Work added successfully", "info")
+                self.change_screen("Work Added Successfully!", add_callback=self.load_add_work_screen)
+            else:
+                self.show_popup("Error", res.text, "error")
+
+        except Exception as e:
+            self.show_popup("Error", str(e), "error")
+
+
+    def load_view_work_screen(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content,
+            text="My Work Records",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1"
+        ).pack(pady=20)
+
+        import requests
+        try:
+            url = f"http://127.0.0.1:8000/teacher/work/{self.teacher_id}"
+            res = requests.get(url)
+
+            if res.status_code != 200:
+                self.show_popup("Error", "Failed to load work", "error")
+                return
+
+            data = res.json()
+
+            columns = ("work_id", "class_id", "subject", "description")
+            rows = [(d["work_id"], d["class_id"], d["subject"], d["description"]) for d in data]
+
+            table = self.create_scrollable_table(self.content, columns, rows)
+
+            # double click to edit/delete
+            def on_double_click(event):
+                item = table.selection()
+                if not item:
+                    return
+                
+                work_id = table.item(item)["values"][0]
+                self.load_edit_work_screen(work_id)
+
+            table.bind("<Double-1>", on_double_click)
+
+        except Exception as e:
+            self.show_popup("Error", str(e), "error")
+
+
+    def load_edit_work_screen(self, work_id):
+        self.clear_content()
+
+        import requests
+        url = f"http://127.0.0.1:8000/teacher/work/{work_id}"
+
+        res = requests.get(f"http://127.0.0.1:8000/teacher/work/{self.teacher_id}")
+        work = None
+        for w in res.json():
+            if w["work_id"] == work_id:
+                work = w
+                break
+
+        if not work:
+            self.show_popup("Error", "Work not found", "error")
+            return
+
+        tk.Label(
+            self.content,
+            text="Edit Work",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        vars = {}
+        labels = ["class_id", "subject", "description"]
+
+        for i, key in enumerate(labels):
+            tk.Label(form, text=key.upper(), font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=0, padx=10, pady=10)
+            v = tk.StringVar(value=str(work[key]))
+            tk.Entry(form, textvariable=v, font=("Arial", 14), width=30).grid(row=i, column=1)
+            vars[key] = v
+
+        # Save and delete buttons
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=20)
+
+        tk.Button(btn_frame, text="Save",
+                font=("Arial", 14),
+                command=lambda: self.update_work(work_id, vars)).grid(row=0, column=0, padx=10)
+
+        tk.Button(btn_frame, text="Delete",
+                font=("Arial", 14),
+                fg="white",
+                bg="red",
+                command=lambda: self.delete_work(work_id)).grid(row=0, column=1, padx=10)
+
+        self.create_back_button(btn_frame, self.load_view_work_screen)
+
+
+    def update_work(self, work_id, vars):
+        import requests
+        data = {k: v.get() for k, v in vars.items()}
+        data["class_id"] = int(data["class_id"])
+
+        res = requests.put(f"http://127.0.0.1:8000/teacher/work/{work_id}", json=data)
+
+        if res.status_code == 200:
+            self.show_popup("Success", "Updated!", "info")
+            self.load_view_work_screen()
+        else:
+            self.show_popup("Error", res.text, "error")
+
+
+    def delete_work(self, work_id):
+        import requests
+        res = requests.delete(f"http://127.0.0.1:8000/teacher/work/{work_id}")
+
+        if res.status_code == 200:
+            self.show_popup("Success", "Deleted!", "info")
+            self.load_view_work_screen()
+        else:
+            self.show_popup("Error", res.text, "error")
+
+
+
+
 
     # ==============================================================================
     # ===== DASHBOARD PAGE ======

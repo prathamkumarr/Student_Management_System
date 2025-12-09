@@ -1971,7 +1971,8 @@ class AdminUI:
         self.clear_content()
 
         tk.Label(self.content, text="View Timetable", font=("Arial", 26, "bold"), bg="#ECF0F1").pack(pady=20)
-        #BACK BUTTON
+
+        # BACK BUTTON
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
         back_frame.pack(anchor="w", pady=(0, 10))
 
@@ -1985,13 +1986,14 @@ class AdminUI:
             pady=5,
             command=self.load_dashboard  # or your home screen function
         ).pack()
-        # Fetch dropdown data
+
+        # ---- Fetch dropdown data ----
         classes = fetch_classes()
         teachers = fetch_teachers()
         subjects = fetch_subjects()
 
         # CLASS LIST FOR DISPLAY
-        class_list =["None"] + [f"{c['class_name']} {c['section']}" for c in classes]
+        class_list = ["None"] + [f"{c['class_name']} {c['section']}" for c in classes]
 
         # MAP display → ID
         class_map = {
@@ -2014,25 +2016,49 @@ class AdminUI:
         filter_frame = tk.Frame(self.content, bg="#ECF0F1")
         filter_frame.pack(pady=10)
 
-        # CLASS FILTER
+        # ========== CLASS FILTER ==========
         tk.Label(filter_frame, text="Class:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=0, padx=10)
         class_var = tk.StringVar()
-        class_dd = ttk.Combobox(filter_frame, textvariable=class_var, values=class_list, state="readonly", width=20)
+        class_dd = ttk.Combobox(
+            filter_frame,
+            textvariable=class_var,
+            values=class_list,
+            state="readonly",
+            width=20
+        )
         class_dd.grid(row=0, column=1)
+        class_dd.current(0)          # default "None"
+        class_var.set("None")
 
-        # TEACHER FILTER
+        # ========== TEACHER FILTER ==========
         tk.Label(filter_frame, text="Teacher:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=2, padx=10)
         teacher_var = tk.StringVar()
-        teacher_dd = ttk.Combobox(filter_frame, textvariable=teacher_var, values=teacher_list, state="readonly", width=22)
+        teacher_dd = ttk.Combobox(
+            filter_frame,
+            textvariable=teacher_var,
+            values=teacher_list,
+            state="readonly",
+            width=22
+        )
         teacher_dd.grid(row=0, column=3)
+        teacher_dd.current(0)
+        teacher_var.set("None")
 
-        # SUBJECT FILTER
+        # ========== SUBJECT FILTER ==========
         tk.Label(filter_frame, text="Subject:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=4, padx=10)
         subject_var = tk.StringVar()
-        subject_dd = ttk.Combobox(filter_frame, textvariable=subject_var, values=subject_list, state="readonly", width=18)
+        subject_dd = ttk.Combobox(
+            filter_frame,
+            textvariable=subject_var,
+            values=subject_list,
+            state="readonly",
+            width=18
+        )
         subject_dd.grid(row=0, column=5)
+        subject_dd.current(0)
+        subject_var.set("None")
 
-        # LOAD BUTTON
+        # ========== APPLY FILTER BUTTON (optional now) ==========
         load_btn = tk.Button(
             filter_frame,
             text="Apply Filter",
@@ -2043,7 +2069,7 @@ class AdminUI:
         )
         load_btn.grid(row=0, column=6, padx=15)
 
-        #RESET FILTER BUTTON
+        # ========== RESET FILTER BUTTON ==========
         reset_btn = tk.Button(
             filter_frame,
             text="Reset",
@@ -2080,9 +2106,7 @@ class AdminUI:
                 messagebox.showwarning("Warning", "Please select a record to edit.")
                 return
 
-
             item_id = table.item(selected[0])["text"]   # this is timetable_id
-            # Call your existing function to load the edit screen:
             self.load_edit_timetable(item_id)
 
         def delete_selected():
@@ -2099,8 +2123,7 @@ class AdminUI:
             if not messagebox.askyesno("Confirm Delete", f"Delete timetable entry:\n{class_name}, {day}, {subject}?"):
                 return
 
-            # --- CALL API TO DELETE ---
-            timetable_id = table.item(selected[0])["text"] 
+            timetable_id = table.item(selected[0])["text"]
 
             res = requests.delete(f"http://127.0.0.1:8000/admin/timetable/{timetable_id}")
 
@@ -2110,14 +2133,13 @@ class AdminUI:
             else:
                 messagebox.showerror("Error", "Unable to delete record.")
 
-                # APPLY FILTER FUNCTION
+        # ========= FILTER FUNCTION =========
         def load_filtered_timetable():
             payload = {
                 "class_id": class_map.get(class_var.get()) if class_var.get() not in [None, "", "None"] else None,
                 "teacher_id": teacher_map.get(teacher_var.get()) if teacher_var.get() not in [None, "", "None"] else None,
                 "subject": subject_var.get() if subject_var.get() not in [None, "", "None"] else None
             }
-
 
             print("FILTER PAYLOAD:", payload)
 
@@ -2130,21 +2152,29 @@ class AdminUI:
 
             # Insert rows
             for item in data:
-                table.insert("", "end", text = item["timetable_id"], values=(
+                table.insert("", "end", text=item["timetable_id"], values=(
                     item["day"],
-                    item["class_name"],    
+                    item["class_name"],
                     item["subject"],
-                    item["teacher_name"],   
+                    item["teacher_name"],
                     item["start_time"],
                     item["end_time"]
                 ))
+
+        # initial load (no filters)
         load_filtered_timetable()
-        
+
+        # ========= RESET FUNCTION =========
         def reset_filters():
             class_var.set("None")
             teacher_var.set("None")
             subject_var.set("None")
-            load_filtered_timetable()   # reload all rows
+            load_filtered_timetable()
+
+        # ========= NEW: AUTO-APPLY FILTER ON DROPDOWN CHANGE =========
+        class_dd.bind("<<ComboboxSelected>>", lambda e: load_filtered_timetable())
+        teacher_dd.bind("<<ComboboxSelected>>", lambda e: load_filtered_timetable())
+        subject_dd.bind("<<ComboboxSelected>>", lambda e: load_filtered_timetable())
 
 
     def load_add_timetable(self):

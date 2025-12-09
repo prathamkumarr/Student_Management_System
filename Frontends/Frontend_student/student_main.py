@@ -5,7 +5,7 @@ import datetime
 
 # =============
 class StudentUI:
-    def __init__(self, root, student_id = 7, roll_no = 7, full_name = "Rajat Singh", class_id = 7):
+    def __init__(self, root, student_id = 7, roll_no = 7, full_name = "Rajat Singh", class_id = 4):
         self.root = root
 
         # Student Logged-In Details (Dummy OR Fetched From Login)
@@ -73,6 +73,13 @@ class StudentUI:
         fee_btn = self.add_btn("Pay and View Fees")
         self.build_fees_dropdown(fee_btn)
     
+        # === New: Timetable Button ===
+        tt_btn = self.add_btn("View Timetable", self.load_view_timetable_screen)
+
+        # === New: Work Button ===
+        work_btn = self.add_btn("View Works", self.load_view_work_screen)
+
+
     def clear_content(self):
         for widget in self.content.winfo_children():
             widget.destroy()
@@ -931,7 +938,155 @@ class StudentUI:
 
 # Click action
         pay_selected_btn.bind("<Button-1>", lambda e: pay_selected())
-    
+
+# View Timetable Screen
+    def load_view_timetable_screen(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content,
+            text="My Class Timetable",
+            font=("Arial", 24, "bold"),
+            bg="#ECF0F1",
+            fg="#2C3E50"
+        ).pack(pady=20)
+
+        # === Back Button ===
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard)
+
+        # === Fetch Timetable Data ===
+        import requests
+        try:
+            url = f"http://127.0.0.1:8000/student/timetable/{self.student_id}"
+            res = requests.get(url)
+            data = res.json() if res.status_code == 200 else []
+
+        except Exception as e:
+            self.show_popup("Backend Error", str(e), "error")
+            data = []
+
+        # === Build Table ===
+        cols = ("day", "subject", "teacher_id", "start_time", "end_time", "room_no")
+        rows = [
+            (
+                r.get("day", ""),
+                r.get("subject", ""),
+                r.get("teacher_id", ""),
+                r.get("start_time", ""),
+                r.get("end_time", ""),
+                r.get("room_no", "")
+            )
+            for r in data
+        ]
+
+        self.create_scrollable_table(self.content, cols, rows)
+
+
+    def load_view_work_screen(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content,
+            text="My Homework / Class Work",
+            font=("Arial", 24, "bold"),
+            bg="#ECF0F1",
+            fg="#2C3E50"
+        ).pack(pady=20)
+
+        # === Back Button ===
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard)
+
+        import requests
+        try:
+            url = f"http://127.0.0.1:8000/student/work/{self.student_id}"
+            res = requests.get(url)
+            data = res.json() if res.status_code == 200 else []
+        except Exception as e:
+            self.show_popup("Backend Error", str(e), "error")
+            data = []
+
+        # === Table Columns ===
+        cols = ("title", "subject_name", "assigned_date", "due_date", "download")
+
+        table = ttk.Treeview(
+            self.content,
+            columns=cols,
+            show="headings",
+            height=18
+        )
+        table.pack(fill="both", expand=True, padx=20, pady=20)
+
+        for col in cols:
+            table.heading(col, text=col.replace("_", " ").title())
+            table.column(col, width=180, anchor="center")
+
+        # === Insert Rows ===
+        for r in data:
+            table.insert(
+                "",
+                "end",
+                values=(
+                    r.get("title", ""),
+                    r.get("subject_name", ""),
+                    r.get("assigned_date", ""),
+                    r.get("due_date", ""),
+                    "Download"
+                )
+            )
+
+        # === PDF Download handler ===
+        def on_row_click(event):
+            selected = table.focus()
+            if not selected:
+                return
+            
+            row = table.item(selected, "values")
+            work_title = row[0]
+
+            # find corresponding record from backend result
+            for item in data:
+                if item.get("title") == work_title:
+                    work_id = item.get("work_id")
+                    break
+            else:
+                return
+
+            # Now download
+            try:
+                pdf_url = f"http://127.0.0.1:8000/student/work/download/{work_id}"
+                res = requests.get(pdf_url)
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "PDF not available!", "error")
+                    return
+
+                filename = f"{work_title}.pdf".replace(" ", "_")
+
+                from tkinter import filedialog
+                save_path = filedialog.asksaveasfilename(
+                    defaultextension=".pdf",
+                    filetypes=[("PDF files", "*.pdf")],
+                    initialfile=filename
+                )
+
+                if save_path:
+                    with open(save_path, "wb") as f:
+                        f.write(res.content)
+
+                    self.show_mini_notification(f"Downloaded {filename}")
+
+            except Exception as e:
+                self.show_popup("Download Error", str(e), "error")
+
+        table.bind("<Double-1>", on_row_click)
+
+
+
+
     # ============================================================================
     # ===== Button to Pay Fees ======
     def load_pay_fee_screen(self, invoice_id, amount_due):

@@ -9,12 +9,19 @@ from Backends.Backend_admin.routers.payment_method_router import router as payme
 from Backends.Backend_admin.routers import attendance_router
 from Backends.Backend_admin.routers.admission_router import router as admission_router
 from Backends.Backend_admin.routers.tc_router import router as tc_router
+
 from Backends.Backend_students.routers.fees_router import router as fees_router_students
 from Backends.Backend_students.routers.attendance_router import router as attendance_router_students
 from Backends.Backend_teachers.routers.attendance_router import router as attendance_router_teachers
 
-from Backends.Backend_admin.routers.timetable_router import router as timetable_router
-from Backends.Backend_admin.routers.work_router import router as work_router
+from Backends.Backend_admin.routers.timetable_router import router as admin_timetable_router
+from Backends.Backend_admin.routers.work_router import router as admin_work_router
+
+from Backends.Backend_students.routers.timetable_router import router as student_timetable_router
+from Backends.Backend_students.routers.work_router import router as student_work_router
+
+from Backends.Backend_teachers.routers.timetable_router import router as teacher_timetable_router
+from Backends.Backend_teachers.routers.work_router import router as teacher_work_router
 
 
 app = FastAPI(
@@ -51,8 +58,14 @@ app.include_router(fees_router_students)
 app.include_router(attendance_router_students)
 app.include_router(attendance_router_teachers)
 
-app.include_router(timetable_router)
-app.include_router(work_router)
+app.include_router(admin_timetable_router)
+app.include_router(admin_work_router)
+
+app.include_router(student_timetable_router)
+app.include_router(student_work_router)
+
+app.include_router(teacher_timetable_router)
+app.include_router(teacher_work_router)
 
 @app.get("/")
 def root():
