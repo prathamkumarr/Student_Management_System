@@ -19,16 +19,13 @@ router = APIRouter(
 @router.get("/{student_id}")
 def get_work_for_student(
     student_id: int,
-    subject_id: Optional[int] = Query(None, description="Optional subject filter"),
     db: Session = Depends(get_db)
 ):
     """
-    Read-only work list for a student.
-    - Uses student_id -> class_id
-    - Returns all work for that class
-    - Optional ?subject_id= filter
+    Student Work Viewer:
+    - Finds student → class_id
+    - Returns work for that class
     """
-
     student = (
         db.query(StudentMaster)
         .filter(StudentMaster.student_id == student_id)
@@ -38,38 +35,28 @@ def get_work_for_student(
     if not student:
         raise HTTPException(404, detail="Student not found")
 
-    q = db.query(WorkRecord).filter(WorkRecord.class_id == student.class_id)
+    recs = (
+        db.query(WorkRecord)
+        .filter(WorkRecord.class_id == student.class_id)
+        .all()
+    )
 
-    if subject_id:
-        # only apply if WorkRecord has subject_id; if not, remove this filter
-        q = q.filter(WorkRecord.subject_id == subject_id)
+    result = []
 
-    recs = q.all()
-
-    result: List[dict] = []
     for r in recs:
-        # Try to join subject name if relationship exists; wrapped in try to be safe
-        subject_name = None
-        try:
-            if hasattr(r, "subject_rel") and r.subject_rel:
-                subject_name = r.subject_rel.subject_name
-        except Exception:
-            subject_name = None
-
         result.append({
-            # adjust field names to your WorkRecord model
-            "work_id": getattr(r, "work_id", None),
+            "work_id": r.work_id,
             "class_id": r.class_id,
-            "teacher_id": getattr(r, "teacher_id", None),
-            "subject_id": getattr(r, "subject_id", None),
-            "subject_name": subject_name,
-            "title": getattr(r, "title", None),
-            "description": getattr(r, "description", None),
-            "assigned_date": getattr(r, "assigned_date", None),
-            "due_date": getattr(r, "due_date", None),
-            "pdf_available": bool(
-                getattr(r, "pdf_path", None) or getattr(r, "file_path", None)
-            ),
+            "teacher_id": r.teacher_id,
+
+            "subject": r.subject,
+
+            "title": r.title,
+            "description": r.description,
+            "due_date": r.due_date,
+
+
+            "pdf_available": bool(r.file_path),
         })
 
     return result

@@ -24,6 +24,10 @@ from Backends.Backend_teachers.routers.timetable_router import router as teacher
 from Backends.Backend_teachers.routers.work_router import router as teacher_work_router
 
 
+from Backends.Backend_admin.routers.teacher_router import router as teacher_details_router
+
+
+
 app = FastAPI(
     title="ERP's Backend",
     description="Admissions, Fees, Attendance Management area!",
@@ -66,6 +70,9 @@ app.include_router(student_work_router)
 
 app.include_router(teacher_timetable_router)
 app.include_router(teacher_work_router)
+
+app.include_router(teacher_details_router)
+
 
 @app.get("/")
 def root():

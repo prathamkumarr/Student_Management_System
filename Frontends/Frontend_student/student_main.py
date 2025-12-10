@@ -1010,7 +1010,7 @@ class StudentUI:
             data = []
 
         # === Table Columns ===
-        cols = ("title", "subject_name", "assigned_date", "due_date", "download")
+        cols = ("title", "subject", "due_date", "download")
 
         table = ttk.Treeview(
             self.content,
@@ -1031,8 +1031,7 @@ class StudentUI:
                 "end",
                 values=(
                     r.get("title", ""),
-                    r.get("subject_name", ""),
-                    r.get("assigned_date", ""),
+                    r.get("subject", ""),
                     r.get("due_date", ""),
                     "Download"
                 )

@@ -1,10 +1,11 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 from tkinter import messagebox
 from tkcalendar import Calendar
 import datetime
 import os
 import requests
+import tempfile
 
 # -----------------------------
 # API Helper Functions
@@ -2384,12 +2385,8 @@ class AdminUI:
 
     #-------WORK SCREENS-------
     def load_work_records(self):
-        import requests
-        from tkinter import ttk
-
         self.clear_content()
 
-        # ====================================================
         # TITLE
         # ====================================================
         tk.Label(
@@ -2399,8 +2396,7 @@ class AdminUI:
             bg="#ECF0F1"
         ).pack(pady=20)
 
-        # ====================================================
-        # BACK BUTTON (match timetable: black button)
+        # BACK BUTTON
         # ====================================================
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
         back_frame.pack(anchor="w", pady=(0, 10), padx=20)
@@ -2413,11 +2409,10 @@ class AdminUI:
             fg="white",
             padx=20,
             pady=5,
-            command=self.load_dashboard
+            command=self.load_dashboard,
         ).pack()
 
-        # ====================================================
-        # FETCH WORK RECORDS
+        # FETCH ALL WORK RECORDS
         # ====================================================
         try:
             res = requests.get("http://127.0.0.1:8000/admin/work/")
@@ -2425,8 +2420,7 @@ class AdminUI:
         except:
             all_records = []
 
-        # ====================================================
-        # FILTER BAR
+        # FILTER FRAME
         # ====================================================
         filter_frame = tk.Frame(self.content, bg="#ECF0F1")
         filter_frame.pack(pady=10)
@@ -2436,67 +2430,81 @@ class AdminUI:
         subject_var = tk.StringVar(value="None")
         type_var = tk.StringVar(value="None")
 
-        # Safe dropdown lists
+        # Dropdown lists built from API
         class_list = ["None"] + sorted({
             f'{(r.get("class_name") or "")} {(r.get("section") or "")}'.strip()
             for r in all_records if r.get("class_name")
         })
 
         teacher_list = ["None"] + sorted({
-            (r.get("teacher_name") or "")
+            r.get("teacher_name", "")
             for r in all_records if r.get("teacher_name")
         })
 
         subject_list = ["None"] + sorted({
-            (r.get("subject") or "")
+            r.get("subject", "")
             for r in all_records if r.get("subject")
         })
 
         type_list = ["None", "Classwork", "Homework", "Assignment"]
 
-        # -------------------- DROPDOWNS --------------------
-        tk.Label(filter_frame, text="Class:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=0, padx=10)
-        ttk.Combobox(filter_frame, textvariable=class_var,
-                    values=class_list, state="readonly", width=20).grid(row=0, column=1)
-
-        tk.Label(filter_frame, text="Teacher:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=2, padx=10)
-        ttk.Combobox(filter_frame, textvariable=teacher_var,
-                    values=teacher_list, state="readonly", width=22).grid(row=0, column=3)
-
-        tk.Label(filter_frame, text="Subject:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=4, padx=10)
-        ttk.Combobox(filter_frame, textvariable=subject_var,
-                    values=subject_list, state="readonly", width=18).grid(row=0, column=5)
-
-        tk.Label(filter_frame, text="Type:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=6, padx=10)
-        ttk.Combobox(filter_frame, textvariable=type_var,
-                    values=type_list, state="readonly", width=18).grid(row=0, column=7)
-
+        # AUTO FILTER FUNCTION
         # ====================================================
-        # FILTER BUTTONS (exact timetable style)
-        # ====================================================
-        def apply_filter():
+        def auto_filter(*args):
             payload = {}
 
             if class_var.get() != "None":
                 payload["class_name"] = class_var.get()
+
             if teacher_var.get() != "None":
                 payload["teacher_name"] = teacher_var.get()
+
             if subject_var.get() != "None":
                 payload["subject"] = subject_var.get()
+
             if type_var.get() != "None":
                 payload["work_type"] = type_var.get()
 
-            try:
-                filtered = requests.post(
-                    "http://127.0.0.1:8000/admin/work/filter",
-                    json=payload
-                ).json()
-            except:
-                filtered = []
+            if payload:
+                try:
+                    filtered = requests.post(
+                        "http://127.0.0.1:8000/admin/work/filter",
+                        json=payload
+                    ).json()
+                except:
+                    filtered = []
+                render_table(filtered)
+            else:
+                render_table(all_records)
 
-            render_table(filtered)
+        # FILTER DROPDOWNS 
+        # ====================================================
+        tk.Label(filter_frame, text="Class:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=0, padx=10)
+        cb_class = ttk.Combobox(filter_frame, textvariable=class_var,
+                                values=class_list, state="readonly", width=20)
+        cb_class.grid(row=0, column=1)
+        cb_class.bind("<<ComboboxSelected>>", auto_filter)
 
-        def reset_filter():
+        tk.Label(filter_frame, text="Teacher:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=2, padx=10)
+        cb_teacher = ttk.Combobox(filter_frame, textvariable=teacher_var,
+                                values=teacher_list, state="readonly", width=22)
+        cb_teacher.grid(row=0, column=3)
+        cb_teacher.bind("<<ComboboxSelected>>", auto_filter)
+
+        tk.Label(filter_frame, text="Subject:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=4, padx=10)
+        cb_subject = ttk.Combobox(filter_frame, textvariable=subject_var,
+                                values=subject_list, state="readonly", width=18)
+        cb_subject.grid(row=0, column=5)
+        cb_subject.bind("<<ComboboxSelected>>", auto_filter)
+
+        tk.Label(filter_frame, text="Type:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=6, padx=10)
+        cb_type = ttk.Combobox(filter_frame, textvariable=type_var,
+                            values=type_list, state="readonly", width=18)
+        cb_type.grid(row=0, column=7)
+        cb_type.bind("<<ComboboxSelected>>", auto_filter)
+
+        # RESET BUTTON (like timetable)
+        def reset_filters():
             class_var.set("None")
             teacher_var.set("None")
             subject_var.set("None")
@@ -2505,23 +2513,13 @@ class AdminUI:
 
         tk.Button(
             filter_frame,
-            text="Apply Filter",
-            font=("Arial", 12, "bold"),
-            bg="black",
-            fg="white",
-            command=apply_filter
-        ).grid(row=0, column=8, padx=15)
-
-        tk.Button(
-            filter_frame,
             text="Reset",
             font=("Arial", 12, "bold"),
             bg="#7F8C8D",
             fg="white",
-            command=reset_filter
-        ).grid(row=0, column=9, padx=10)
+            command=reset_filters
+        ).grid(row=0, column=8, padx=10)
 
-        # ====================================================
         # TABLE
         # ====================================================
         table_frame = tk.Frame(self.content, bg="white")
@@ -2531,6 +2529,7 @@ class AdminUI:
         work_table = ttk.Treeview(table_frame, columns=columns, show="headings")
         work_table.pack(fill="both", expand=True, side="left")
 
+        # Scrollbar
         scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=work_table.yview)
         scrollbar.pack(side="right", fill="y")
         work_table.configure(yscrollcommand=scrollbar.set)
@@ -2539,7 +2538,6 @@ class AdminUI:
             work_table.heading(col, text=col)
             work_table.column(col, width=150, anchor="center")
 
-        # ====================================================
         # RENDER TABLE
         # ====================================================
         def render_table(data):
@@ -2547,6 +2545,7 @@ class AdminUI:
 
             for r in data:
                 cls = f'{r.get("class_name", "")} {r.get("section", "")}'.strip()
+
                 work_table.insert(
                     "",
                     "end",
@@ -2563,19 +2562,12 @@ class AdminUI:
 
         render_table(all_records)
 
-        # ====================================================
         # RIGHT CLICK MENU
         # ====================================================
         menu = tk.Menu(work_table, tearoff=0)
-
-        menu.add_command(label="Preview PDF",
-                        command=lambda: self._work_preview_selected(work_table))
-
-        menu.add_command(label="Edit",
-                        command=lambda: self._work_edit_selected(work_table))
-
-        menu.add_command(label="Delete",
-                        command=lambda: self._work_delete_selected(work_table))
+        menu.add_command(label="Preview PDF", command=lambda: self._work_preview_selected(work_table))
+        menu.add_command(label="Edit", command=lambda: self._work_edit_selected(work_table))
+        menu.add_command(label="Delete", command=lambda: self._work_delete_selected(work_table))
 
         def show_menu(event):
             row = work_table.identify_row(event.y)
@@ -2587,8 +2579,6 @@ class AdminUI:
 
 
     def _work_preview_selected(self, table):
-        import requests, os, tempfile
-
         selected = table.selection()
         if not selected:
             return
@@ -2626,9 +2616,7 @@ class AdminUI:
         self.load_edit_work(work_id)
 
 
-
     def _work_delete_selected(self, table):
-        import requests
 
         selected = table.selection()
         if not selected:
@@ -2661,9 +2649,6 @@ class AdminUI:
 
 
     def load_add_work(self):
-        import requests
-        from tkinter import ttk, filedialog
-
         self.clear_content()
 
         tk.Label(
@@ -2674,18 +2659,26 @@ class AdminUI:
             fg="#2C3E50"
         ).pack(pady=20)
 
-        # ----- Fetch classes & teachers -----
+        # ---------- FETCH CLASSES ----------
         try:
             class_res = requests.get("http://127.0.0.1:8000/admin/timetable/classes")
             classes = class_res.json()
         except:
             classes = []
 
+        # ---------- FETCH TEACHERS ----------
         try:
             teacher_res = requests.get("http://127.0.0.1:8000/admin/timetable/teachers")
             teachers = teacher_res.json()
         except:
             teachers = []
+
+        # ---------- FETCH SUBJECTS ----------
+        try:
+            subject_res = requests.get("http://127.0.0.1:8000/admin/timetable/subjects")
+            subjects = subject_res.json() if isinstance(subject_res.json(), list) else []
+        except:
+            subjects = []
 
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
@@ -2693,54 +2686,85 @@ class AdminUI:
         vars = {
             "class": tk.StringVar(),
             "teacher": tk.StringVar(),
+            "subject": tk.StringVar(),
             "work_type": tk.StringVar(),
             "title": tk.StringVar(),
-            "subject": tk.StringVar(),
             "description": tk.StringVar(),
             "due_date": tk.StringVar(),
         }
 
-        # -------- Class --------
-        tk.Label(form, text="Class:", bg="#ECF0F1", font=("Arial", 14)).grid(row=0, column=0, sticky="w", pady=6)
+        # ------------------ CLASS ------------------
+        tk.Label(form, text="Class:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=0, column=0, sticky="w", pady=6)
+
         class_display = [f'{c["class_name"]} {c["section"]}' for c in classes]
 
         ttk.Combobox(
             form, textvariable=vars["class"], values=class_display,
             state="readonly", width=30
-        ).grid(row=0, column=1, pady=6, padx=10)
+        ).grid(row=0, column=1, padx=10, pady=6)
 
-        # -------- Teacher --------
-        tk.Label(form, text="Teacher:", bg="#ECF0F1", font=("Arial", 14)).grid(row=1, column=0, sticky="w", pady=6)
+        # ------------------ TEACHER ------------------
+        tk.Label(form, text="Teacher:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=1, column=0, sticky="w", pady=6)
+
         teacher_display = [t["full_name"] for t in teachers]
 
         ttk.Combobox(
             form, textvariable=vars["teacher"], values=teacher_display,
             state="readonly", width=30
-        ).grid(row=1, column=1, pady=6, padx=10)
+        ).grid(row=1, column=1, padx=10, pady=6)
 
-        # -------- Work Type --------
-        tk.Label(form, text="Work Type:", bg="#ECF0F1", font=("Arial", 14)).grid(row=2, column=0, sticky="w", pady=6)
+        # ------------------ SUBJECT (NEW) ------------------
+        tk.Label(form, text="Subject:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=2, column=0, sticky="w", pady=6)
+
+        ttk.Combobox(
+            form,
+            textvariable=vars["subject"],
+            values=subjects,
+            state="readonly",
+            width=30
+        ).grid(row=2, column=1, padx=10, pady=6)
+
+        # ------------------ WORK TYPE ------------------
+        tk.Label(form, text="Work Type:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=3, column=0, sticky="w", pady=6)
+
         ttk.Combobox(
             form, textvariable=vars["work_type"],
             values=["Classwork", "Homework", "Assignment"],
             state="readonly", width=30
-        ).grid(row=2, column=1, pady=6, padx=10)
+        ).grid(row=3, column=1, padx=10, pady=6)
 
-        # -------- Other Text Fields --------
-        fields = [
-            ("Title", "title"),
-            ("Subject", "subject"),
-            ("Description", "description"),
-            ("Due Date (YYYY-MM-DD)", "due_date"),
-        ]
+        # ------------------ TITLE ------------------
+        tk.Label(form, text="Title:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=4, column=0, pady=6, sticky="w")
 
-        for i, (label, key) in enumerate(fields, start=3):
-            tk.Label(form, text=label + ":", font=("Arial", 14), bg="#ECF0F1") \
-                .grid(row=i, column=0, sticky="w", pady=6)
-            tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30) \
-                .grid(row=i, column=1, padx=10, pady=6)
+        tk.Entry(form, textvariable=vars["title"], font=("Arial", 14), width=30) \
+            .grid(row=4, column=1, padx=10, pady=6)
 
-        # -------- PDF Selector --------
+        # ------------------ DESCRIPTION ------------------
+        tk.Label(form, text="Description:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=5, column=0, pady=6, sticky="w")
+
+        tk.Entry(form, textvariable=vars["description"], font=("Arial", 14), width=30) \
+            .grid(row=5, column=1, padx=10, pady=6)
+
+        # ------------------ DUE DATE + CALENDAR ------------------
+        tk.Label(form, text="Due Date:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=6, column=0, pady=6, sticky="w")
+
+        due_entry = tk.Entry(form, textvariable=vars["due_date"], font=("Arial", 14), width=30)
+        due_entry.grid(row=6, column=1, padx=10, pady=6)
+
+        tk.Button(
+            form,
+            text="Calendar",
+            command=lambda: self.open_calendar_popup(due_entry, vars["due_date"])
+        ).grid(row=6, column=2, padx=5)
+
+        # ------------------ PDF SELECTOR ------------------
         pdf_frame = tk.Frame(self.content, bg="#ECF0F1")
         pdf_frame.pack(pady=10)
 
@@ -2757,7 +2781,7 @@ class AdminUI:
 
         tk.Button(pdf_frame, text="Choose PDF", command=choose_pdf).pack(side="left")
 
-        # -------- Buttons --------
+        # ------------------ BUTTONS ------------------
         btn_frame = tk.Frame(self.content, bg="#ECF0F1")
         btn_frame.pack(pady=20)
 
@@ -2767,13 +2791,13 @@ class AdminUI:
         save_btn = tk.Button(btn_frame, text="Save Work")
         save_btn.pack(side="left", padx=10)
 
-        # -------- Save Handler --------
         def save():
-            # Convert class text to class_id
+            # Class → ID
             class_text = vars["class"].get()
             class_id = next((c["class_id"] for c in classes
                             if f'{c["class_name"]} {c["section"]}' == class_text), None)
 
+            # Teacher → ID
             teacher_text = vars["teacher"].get()
             teacher_id = next((t["teacher_id"] for t in teachers
                             if t["full_name"] == teacher_text), None)
@@ -2789,7 +2813,7 @@ class AdminUI:
             }
 
             if not selected_file["path"]:
-                self.show_popup("Missing PDF", "Please choose a PDF file", "warning")
+                self.show_popup("Missing PDF", "Please choose a PDF", "warning")
                 return
 
             with open(selected_file["path"], "rb") as f:
@@ -2805,17 +2829,9 @@ class AdminUI:
         save_btn.config(command=save)
 
 
-
     def load_edit_work(self, work_id):
-        import requests
-        from tkinter import ttk
-        from tkinter import filedialog
-
         self.clear_content()
 
-        # -----------------------------------------------------
-        # TITLE
-        # -----------------------------------------------------
         tk.Label(
             self.content,
             text="Edit Work",
@@ -2824,66 +2840,63 @@ class AdminUI:
             fg="#2C3E50"
         ).pack(pady=20)
 
-        # -----------------------------------------------------
-        # FETCH WORK
-        # -----------------------------------------------------
+        # ---------- FETCH EXISTING WORK ----------
         try:
-            res = requests.get(f"http://127.0.0.1:8000/admin/work/{work_id}", timeout=6)
+            res = requests.get(f"http://127.0.0.1:8000/admin/work/{work_id}")
             if res.status_code != 200:
-                self.show_popup("Error", "Work not found", "error")
+                self.show_popup("Error", "Work not found")
                 return
             work = res.json()
         except Exception as e:
-            self.show_popup("Error", str(e), "error")
+            self.show_popup("Error", str(e))
             return
 
-        # -----------------------------------------------------
-        # FETCH CLASSES & TEACHERS
-        # -----------------------------------------------------
+        # ---------- FETCH CLASSES ----------
         try:
-            class_res = requests.get("http://127.0.0.1:8000/admin/timetable/classes")
-            classes = class_res.json()
+            classes = requests.get("http://127.0.0.1:8000/admin/timetable/classes").json()
         except:
             classes = []
 
+        # ---------- FETCH TEACHERS ----------
         try:
-            teacher_res = requests.get("http://127.0.0.1:8000/admin/timetable/teachers")
-            teachers = teacher_res.json()
+            teachers = requests.get("http://127.0.0.1:8000/admin/timetable/teachers").json()
         except:
             teachers = []
 
-        # -----------------------------------------------------
-        # FORM
-        # -----------------------------------------------------
+        # ---------- FETCH SUBJECTS ----------
+        try:
+            subject_res = requests.get("http://127.0.0.1:8000/admin/timetable/subjects")
+            subjects = subject_res.json() if isinstance(subject_res.json(), list) else []
+        except:
+            subjects = []
+
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
 
         vars = {
             "class": tk.StringVar(value=f'{work.get("class_name","")} {work.get("section","")}'.strip()),
-            "teacher": tk.StringVar(value=work.get("teacher_name") or ""),
+            "teacher": tk.StringVar(value=work.get("teacher_name", "")),
+            "subject": tk.StringVar(value=work.get("subject", "")),
             "work_type": tk.StringVar(value=work.get("work_type", "")),
             "title": tk.StringVar(value=work.get("title", "")),
-            "subject": tk.StringVar(value=work.get("subject", "")),
             "description": tk.StringVar(value=work.get("description", "")),
-            "due_date": tk.StringVar(value=str(work.get("due_date", "")))
+            "due_date": tk.StringVar(value=str(work.get("due_date", ""))),
         }
 
-        # -----------------------------------------------------
-        # CLASS DROPDOWN
-        # -----------------------------------------------------
-        tk.Label(form, text="Class:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=0, sticky="w", pady=6)
+        # ------------------ CLASS ------------------
+        tk.Label(form, text="Class:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=0, column=0, pady=6, sticky="w")
 
-        class_display = [f'{c["class_name"]} {c["section"]}'.strip() for c in classes]
+        class_display = [f'{c["class_name"]} {c["section"]}' for c in classes]
 
         ttk.Combobox(
             form, textvariable=vars["class"], values=class_display,
             state="readonly", width=30
         ).grid(row=0, column=1, padx=10, pady=6)
 
-        # -----------------------------------------------------
-        # TEACHER DROPDOWN
-        # -----------------------------------------------------
-        tk.Label(form, text="Teacher:", font=("Arial", 14), bg="#ECF0F1").grid(row=1, column=0, sticky="w", pady=6)
+        # ------------------ TEACHER ------------------
+        tk.Label(form, text="Teacher:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=1, column=0, pady=6, sticky="w")
 
         teacher_display = [t["full_name"] for t in teachers]
 
@@ -2892,37 +2905,54 @@ class AdminUI:
             state="readonly", width=30
         ).grid(row=1, column=1, padx=10, pady=6)
 
-        # -----------------------------------------------------
-        # WORK TYPE
-        # -----------------------------------------------------
-        tk.Label(form, text="Work Type:", font=("Arial", 14), bg="#ECF0F1").grid(row=2, column=0, sticky="w", pady=6)
+        # ------------------ SUBJECT (NEW) ------------------
+        tk.Label(form, text="Subject:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=2, column=0, pady=6, sticky="w")
+
+        ttk.Combobox(
+            form, textvariable=vars["subject"],
+            values=subjects,
+            state="readonly",
+            width=30
+        ).grid(row=2, column=1, padx=10, pady=6)
+
+        # ------------------ WORK TYPE ------------------
+        tk.Label(form, text="Work Type:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=3, column=0, pady=6, sticky="w")
 
         ttk.Combobox(
             form, textvariable=vars["work_type"],
             values=["Classwork", "Homework", "Assignment"],
             state="readonly", width=30
-        ).grid(row=2, column=1, padx=10, pady=6)
+        ).grid(row=3, column=1, padx=10, pady=6)
 
-        # -----------------------------------------------------
-        # OTHER FIELDS
-        # -----------------------------------------------------
-        fields = [
-            ("Title", "title"),
-            ("Subject", "subject"),
-            ("Description", "description"),
-            ("Due Date (YYYY-MM-DD)", "due_date"),
-        ]
+        # ------------------ TITLE ------------------
+        tk.Label(form, text="Title:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=4, column=0, pady=6, sticky="w")
 
-        for i, (label, key) in enumerate(fields, start=3):
-            tk.Label(form, text=label + ":", font=("Arial", 14), bg="#ECF0F1") \
-                .grid(row=i, column=0, sticky="w", pady=6)
+        tk.Entry(form, textvariable=vars["title"], font=("Arial", 14), width=30) \
+            .grid(row=4, column=1, padx=10, pady=6)
 
-            tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30) \
-                .grid(row=i, column=1, padx=10, pady=6)
+        # ------------------ DESCRIPTION ------------------
+        tk.Label(form, text="Description:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=5, column=0, pady=6, sticky="w")
 
-        # -----------------------------------------------------
-        # BUTTONS FRAME (PACK ONLY)
-        # -----------------------------------------------------
+        tk.Entry(form, textvariable=vars["description"], font=("Arial", 14), width=30) \
+            .grid(row=5, column=1, padx=10, pady=6)
+
+        # ------------------ DUE DATE + CALENDAR ------------------
+        tk.Label(form, text="Due Date:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=6, column=0, pady=6, sticky="w")
+
+        due_entry = tk.Entry(form, textvariable=vars["due_date"], font=("Arial", 14), width=30)
+        due_entry.grid(row=6, column=1, padx=10, pady=6)
+
+        tk.Button(
+            form, text="Calendar",
+            command=lambda: self.open_calendar_popup(due_entry, vars["due_date"])
+        ).grid(row=6, column=2, padx=5)
+
+        # ------------------ BUTTONS ------------------
         btn_frame = tk.Frame(self.content, bg="#ECF0F1")
         btn_frame.pack(pady=20)
 
@@ -2932,26 +2962,19 @@ class AdminUI:
         save_btn = tk.Button(btn_frame, text="Save Changes")
         save_btn.pack(side="left", padx=10)
 
-        # -----------------------------------------------------
-        # SAVE HANDLER
-        # -----------------------------------------------------
+        # ------------------ SAVE HANDLER ------------------
         def save():
-            class_text = vars["class"].get().strip()
-            teacher_text = vars["teacher"].get().strip()
+            class_id = next(
+                (c["class_id"] for c in classes
+                if f'{c["class_name"]} {c["section"]}' == vars["class"].get()),
+                None
+            )
 
-            # Resolve class_id
-            class_id = None
-            for c in classes:
-                if f'{c["class_name"]} {c["section"]}'.strip() == class_text:
-                    class_id = c["class_id"]
-                    break
-
-            # Resolve teacher_id
-            teacher_id = None
-            for t in teachers:
-                if t["full_name"] == teacher_text:
-                    teacher_id = t["teacher_id"]
-                    break
+            teacher_id = next(
+                (t["teacher_id"] for t in teachers
+                if t["full_name"] == vars["teacher"].get()),
+                None
+            )
 
             payload = {
                 "class_id": class_id,
@@ -2964,22 +2987,16 @@ class AdminUI:
             }
 
             try:
-                r = requests.put(
-                    f"http://127.0.0.1:8000/admin/work/{work_id}",
-                    json=payload,
-                    timeout=6
-                )
+                r = requests.put(f"http://127.0.0.1:8000/admin/work/{work_id}", json=payload)
                 if r.status_code == 200:
-                    self.show_popup("Success", "Work Updated", "info")
+                    self.show_popup("Success", "Work Updated")
                     self.load_work_records()
                 else:
-                    self.show_popup("Error", r.text, "error")
-
+                    self.show_popup("Error", r.text)
             except Exception as e:
-                self.show_popup("Error", str(e), "error")
+                self.show_popup("Error", str(e))
 
         save_btn.config(command=save)
-
 
 
 
