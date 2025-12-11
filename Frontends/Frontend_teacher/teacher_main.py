@@ -3,6 +3,7 @@ from tkinter import ttk, filedialog
 from tkcalendar import Calendar
 import datetime
 import requests
+import re
 import os
 import tempfile
 from tkcalendar import Calendar
@@ -1804,7 +1805,6 @@ class TeacherUI:
 
         # ---------- VALIDATION ----------
         def validate(*args):
-            import re
             r = r"^\d{4}-\d{2}-\d{2}$"
             d1 = date_from_var.get().strip()
             d2 = date_to_var.get().strip()
@@ -1841,7 +1841,6 @@ class TeacherUI:
             d1 = date_from_var.get()
             d2 = date_to_var.get()
 
-            import requests
             try:
                 url = f"http://127.0.0.1:8000/teacher/attendance/self/{tid}?date_from={d1}&date_to={d2}"
                 res = requests.get(url)
@@ -1873,9 +1872,6 @@ class TeacherUI:
     # ===== Button to View Teacher Attendance Summary =====
     def load_teacher_attendance_summary_screen(self):
         self.clear_content()
-
-        import requests
-        import re
 
         # ---- TITLE ----
         tk.Label(
@@ -2119,7 +2115,6 @@ class TeacherUI:
         # ----------------------
         # LOAD DATA FROM API
         # ----------------------
-        import requests
         try:
             url = f"http://127.0.0.1:8000/teacher/timetable/{self.teacher_id}"
             res = requests.get(url)
