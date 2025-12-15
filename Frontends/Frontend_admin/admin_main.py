@@ -185,7 +185,6 @@ class AdminUI:
         menu.add_command(label="Apply TC", command=self.load_issue_tc_screen)
         menu.add_command(label="View TC", command=self.load_view_all_tc_screen)
         menu.add_command(label="Approve TC", command=self.load_approve_tc_screen)
-        menu.add_command(label="Delete TC", command=self.load_approve_tc_screen)
 
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
 
@@ -1967,6 +1966,62 @@ class AdminUI:
 
         method_id_var.trace_add("write", validate)
 
+    #---------------
+
+    def fetch_method_details(self, method_id):
+        if not method_id.strip():
+            self.show_popup("Missing Input", "Method ID cannot be empty!", "warning")
+            return
+        if not method_id.isdigit() or int(method_id) <= 0:
+            self.show_popup("Invalid Method ID", "Method ID must be a positive number!", "warning")
+            return 
+        import requests
+        try:
+            res = requests.get(f"http://127.0.0.1:8000/admin/payment-methods/{method_id}")
+
+            if res.status_code != 200:
+                self.show_popup(
+                "Not Found",
+                f"No payment method found with ID {method_id}.",
+                "error"
+            )
+                return
+
+            data = res.json()
+            self.show_method_details(data)
+
+        except Exception as e:
+            self.show_popup("Backend Error", str(e), "error")
+            return
+
+        def show_method_details(self, data):
+            self.clear_content()
+            tk.Label(
+                self.content,
+                text="Payment Method Details",
+                font=("Arial", 26, "bold"),
+                bg="#ECF0F1",
+                fg="#2C3E50"
+                ).pack(pady=20)
+
+            info = tk.Frame(self.content, bg="#ECF0F1")
+            info.pack(pady=20)
+
+            for i, (key, value) in enumerate(data.items()):
+                tk.Label(info, text=f"{key}:", font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=0, padx=10, pady=8)
+                tk.Label(info, text=str(value), font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=1, padx=10, pady=8)
+
+            # Back button
+            btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+            btn_frame.pack(pady=20)
+        
+            self.create_back_button(
+            parent=btn_frame,
+            go_back_callback=self.load_dashboard,
+            form_frame=None     # table screen : no form entries
+            )
+
+
     #-------Timetable Screens------
     def load_view_timetable(self):
         self.clear_content()
@@ -2998,63 +3053,6 @@ class AdminUI:
 
         save_btn.config(command=save)
 
-
-
-
-    #---------------
-
-    def fetch_method_details(self, method_id):
-        if not method_id.strip():
-            self.show_popup("Missing Input", "Method ID cannot be empty!", "warning")
-            return
-        if not method_id.isdigit() or int(method_id) <= 0:
-            self.show_popup("Invalid Method ID", "Method ID must be a positive number!", "warning")
-            return 
-        import requests
-        try:
-            res = requests.get(f"http://127.0.0.1:8000/admin/payment-methods/{method_id}")
-
-            if res.status_code != 200:
-                self.show_popup(
-                "Not Found",
-                f"No payment method found with ID {method_id}.",
-                "error"
-            )
-                return
-
-            data = res.json()
-            self.show_method_details(data)
-
-        except Exception as e:
-            self.show_popup("Backend Error", str(e), "error")
-            return
-
-        def show_method_details(self, data):
-            self.clear_content()
-            tk.Label(
-                self.content,
-                text="Payment Method Details",
-                font=("Arial", 26, "bold"),
-                bg="#ECF0F1",
-                fg="#2C3E50"
-                ).pack(pady=20)
-
-            info = tk.Frame(self.content, bg="#ECF0F1")
-            info.pack(pady=20)
-
-            for i, (key, value) in enumerate(data.items()):
-                tk.Label(info, text=f"{key}:", font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=0, padx=10, pady=8)
-                tk.Label(info, text=str(value), font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=1, padx=10, pady=8)
-
-            # Back button
-            btn_frame = tk.Frame(self.content, bg="#ECF0F1")
-            btn_frame.pack(pady=20)
-        
-            self.create_back_button(
-            parent=btn_frame,
-            go_back_callback=self.load_dashboard,
-            form_frame=None     # table screen : no form entries
-            )
 
     # ===== Button to Update Payment Method =====
     def load_update_method_screen(self):
