@@ -21,3 +21,25 @@ def get_teacher_details(teacher_id: int, db: Session = Depends(get_db)):
         "subject_id": teacher.subject_id,
         "subject_name": subject.subject_name if subject else None
     }
+
+
+@router.get("/")
+def get_all_teachers(db: Session = Depends(get_db)):
+    teachers = (
+        db.query(TeacherMaster, SubjectMaster)
+        .outerjoin(
+            SubjectMaster,
+            TeacherMaster.subject_id == SubjectMaster.subject_id
+        )
+        .all()
+    )
+
+    return [
+        {
+            "teacher_id": t.teacher_id,
+            "full_name": t.full_name,
+            "subject_id": t.subject_id,
+            "subject_name": s.subject_name if s else None
+        }
+        for t, s in teachers
+    ]
