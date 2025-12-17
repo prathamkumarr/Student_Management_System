@@ -83,6 +83,7 @@ def get_tc(tc_id: int, db: Session = Depends(get_db)):
     return tc
 
 # endpoint to approve TC
+# endpoint to approve TC
 @router.post("/approve/{tc_id}")
 def approve_tc(tc_id: int, db: Session = Depends(get_db)):
 
@@ -100,20 +101,8 @@ def approve_tc(tc_id: int, db: Session = Depends(get_db)):
     if not student:
         raise HTTPException(status_code=404, detail="Student record not found")
 
-    # Just deactivate (DO NOT DELETE)
-    student.is_active = False   # add this field in model if needed
-    db.commit()
-
-    # Remove Fees
-    db.query(StudentFee).filter(
-        StudentFee.student_id == tc.student_id
-    ).delete()
-    db.commit()
-
-    # Remove Attendance
-    db.query(AttendanceRecord).filter(
-        AttendanceRecord.student_id == tc.student_id
-    ).delete()
+    # Disable student globally
+    student.is_active = False
     db.commit()
 
     # Mark TC as approved
@@ -124,4 +113,3 @@ def approve_tc(tc_id: int, db: Session = Depends(get_db)):
         "message": "TC Approved Successfully!",
         "student_id": tc.student_id
     }
-

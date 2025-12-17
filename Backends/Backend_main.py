@@ -34,6 +34,22 @@ from Backends.Backend_admin.routers.students_router import router as students_de
 from Backends.Backend_admin.routers.activity_router import router as admin_activity_router
 
 
+from Backends.Backend_admin.routers.teacher_onboarding_router import router as teacher_onboarding_router
+from Backends.Backend_admin.routers.staff_onboarding_router import router as staff_onboarding_router
+
+from Backends.Backend_admin.routers.teacher_separation_router import router as teacher_separation_router
+from Backends.Backend_admin.routers.teacher_transfer_router import router as teacher_transfer_router
+
+from Backends.Backend_admin.routers.staff_separation_router import router as staff_separation_router
+from Backends.Backend_admin.routers.staff_transfer_router import router as staff_transfer_router
+from Backends.Backend_staff.routers.attendance_router import router as staff_attendance_router
+
+from Backends.Backend_teachers.routers.marks_router import router as marks_router
+from Backends.Backend_admin.routers.exam_router import router as admin_exam_router
+from Backends.Backend_admin.routers.result_generation_router import router as result_generation_router
+
+from Backends.Backend_students.routers.result_router import router as result_router
+from Backends.Backend_admin.routers.master_router import router as master_router
 
 app = FastAPI(
     title="ERP's Backend",
@@ -70,6 +86,18 @@ app.include_router(tc_router)
 app.include_router(fees_router_students)
 app.include_router(attendance_router_students)
 app.include_router(attendance_router_teachers)
+app.include_router(teacher_onboarding_router)
+app.include_router(staff_onboarding_router)
+app.include_router(teacher_separation_router)
+app.include_router(teacher_transfer_router)
+app.include_router(staff_separation_router)
+app.include_router(staff_transfer_router)
+app.include_router(staff_attendance_router)
+app.include_router(marks_router)
+app.include_router(admin_exam_router)
+app.include_router(result_generation_router)
+app.include_router(result_router)
+app.include_router(master_router)
 
 app.include_router(admin_timetable_router)
 app.include_router(admin_work_router)

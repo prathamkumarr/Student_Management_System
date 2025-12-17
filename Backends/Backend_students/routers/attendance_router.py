@@ -1,5 +1,5 @@
 # Backends/Backend_students/routers/attendance_router.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import date

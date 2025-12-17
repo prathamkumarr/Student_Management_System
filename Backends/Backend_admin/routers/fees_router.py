@@ -2,8 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from sqlalchemy.orm import Session
-import shutil
-from fastapi import UploadFile, File
+from Backends.Shared.models.students_master import StudentMaster
 
 from Backends.Shared.connection import get_db
 from Backends.Shared.models.fees_models import StudentFee
@@ -35,6 +34,25 @@ def create_fee(payload: FeeMasterCreate, db: Session = Depends(get_db)):
 # endpoint to assign fees to a student 
 @router.post("/assign", response_model=StudentFeeOut, status_code=status.HTTP_201_CREATED)
 def assign_fee(payload: StudentFeeCreate, db: Session = Depends(get_db)):
+
+    # 1) Check if student exists + active status
+    student = db.query(StudentMaster).filter(
+        StudentMaster.student_id == payload.student_id
+    ).first()
+
+    if not student:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Student ID {payload.student_id} not found"
+        )
+
+    if student.is_active is False:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot assign fee — Student {payload.student_id} has been issued a TC"
+        )
+
+    # 2) Check duplicate / pending fee
     existing = db.query(StudentFee).filter(
         StudentFee.student_id == payload.student_id,
         StudentFee.class_id == payload.class_id,
@@ -43,8 +61,12 @@ def assign_fee(payload: StudentFeeCreate, db: Session = Depends(get_db)):
     ).first()
 
     if existing:
-        raise HTTPException(status_code=400, detail="Fee already assigned and pending payment")
+        raise HTTPException(
+            status_code=400, 
+            detail="Fee already assigned and pending payment"
+        )
 
+    # 3) Assign new fee
     new_invoice = StudentFee(
         student_id=payload.student_id,
         class_id=payload.class_id,
@@ -52,9 +74,11 @@ def assign_fee(payload: StudentFeeCreate, db: Session = Depends(get_db)):
         amount_due=payload.amount_due,
         due_date=payload.due_date,
     )
+
     db.add(new_invoice)
     db.commit()
     db.refresh(new_invoice)
+
     return new_invoice
 
 # endpoint to view all fees

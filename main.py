@@ -9,7 +9,8 @@ BACKEND_FILE = "Backends.Backend_main:app"
 FRONTENDS = {
     "admin": "Frontends/Frontend_admin/admin_main.py",
     "teacher": "Frontends/Frontend_teacher/teacher_main.py",
-    "student": "Frontends/Frontend_student/student_main.py"
+    "student": "Frontends/Frontend_student/student_main.py",
+    "staff": "Frontends/Frontend_staff/staff_main.py"
 }
 
 # ---- START BACKEND ----
@@ -48,7 +49,7 @@ if __name__ == "__main__":
         p.start()
 
     print("\nALL SYSTEMS LIVE!")
-    print("Admin / Teacher / Student dashboards are now running.\n")
+    print("Admin / Teacher / Student / Staff dashboards are now running.\n")
 
     # KEEP RUNNING
     backend_proc.join()

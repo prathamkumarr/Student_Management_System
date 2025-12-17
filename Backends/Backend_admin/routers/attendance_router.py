@@ -8,11 +8,13 @@ from Backends.Shared.schemas.attendance_schemas import (
     StudentAttendanceCreate, AttendanceSummary, AttendanceOut,
     StudentAttendanceResponse, AttendanceFilter,
     TeacherAttendanceCreate, TeacherAttendanceSummary,
-    TeacherAttendanceResponse,
+    TeacherAttendanceResponse, StaffAttendanceResponse,
+    StaffAttendanceSummary, StaffAttendanceCreate
 )
 # Models
 from Backends.Shared.models.teacher_attendance_models import TeacherAttendance
 from Backends.Shared.models.attendance_models import AttendanceRecord
+from Backends.Shared.models.staff_attendance_models import StaffAttendance
 
 router = APIRouter(prefix="/admin/attendance", tags=["Admin Attendance"])
 
@@ -181,3 +183,69 @@ def delete_teacher_attendance(record_id: int, db: Session = Depends(get_db)):
     db.delete(record)
     db.commit()
     return {"message": "Teacher attendance deleted"}
+
+
+# ----- STAFF ATTENDANCE ----- 
+# endpoint to view staff's attendance
+@router.get("/staff", response_model=list[StaffAttendanceResponse])
+def get_all_staff_attendance(db: Session = Depends(get_db)):
+    return db.query(StaffAttendance).all()
+
+# endpoint to view staff's attendance using record_id
+@router.get("/staff/{record_id}", response_model=StaffAttendanceResponse)
+def get_staff_attendance(record_id: int, db: Session = Depends(get_db)):
+    record = db.query(StaffAttendance).filter(StaffAttendance.record_id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Staff attendance not found")
+    return record
+
+# endpoint to view summary of a staff's attendance using filters
+@router.get("/staff/summary/{staff_id}", response_model=StaffAttendanceSummary)
+def staff_summary(staff_id: int, date_from: date, date_to: date, db: Session = Depends(get_db)):
+    q = db.query(StaffAttendance).filter(
+        StaffAttendance.staff_id == staff_id,
+        StaffAttendance.date.between(date_from, date_to)
+    )
+
+    total = q.count()
+    present = q.filter(StaffAttendance.status == "P").count()
+    absent = q.filter(StaffAttendance.status == "A").count()
+    leave = q.filter(StaffAttendance.status == "L").count()
+
+    percentage = round((present / total) * 100, 2) if total else 0.0
+
+    return StaffAttendanceSummary(
+        staff_id=staff_id,
+        total_days=total,
+        present=present,
+        absent=absent,
+        leave=leave,
+        percentage=percentage
+    )
+
+# endpoint to update attendance of any staff member
+@router.put("/staff/update/{record_id}", response_model=StaffAttendanceResponse)
+def update_staff_attendance(record_id: int, payload: StaffAttendanceCreate, db: Session = Depends(get_db)):
+    record = db.query(StaffAttendance).filter(StaffAttendance.record_id == record_id).first()
+
+    if not record:
+        raise HTTPException(status_code=404, detail="Staff member attendance not found")
+
+    for key, value in payload.model_dump().items():
+        setattr(record, key, value)
+
+    db.commit()
+    db.refresh(record)
+    return record
+
+# endpoint to delete attendance record of any staff member using record_id
+@router.delete("/staff/delete/{record_id}")
+def delete_staff_attendance(record_id: int, db: Session = Depends(get_db)):
+    record = db.query(StaffAttendance).filter(StaffAttendance.record_id == record_id).first()
+
+    if not record:
+        raise HTTPException(status_code=404, detail="Staff member attendance not found")
+
+    db.delete(record)
+    db.commit()
+    return {"message": "Staff's attendance deleted"}
