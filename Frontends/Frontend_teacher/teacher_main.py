@@ -1,7 +1,14 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 from tkcalendar import Calendar
 import datetime
+import requests
+import re
+import os
+import tempfile
+from tkcalendar import Calendar
+import datetime
+from tkcalendar import DateEntry
 
 # =============
 class TeacherUI:
@@ -10,6 +17,7 @@ class TeacherUI:
 
         # teacher Logged-In Details (Dummy OR Fetched From Login)
         self.teacher_id = teacher_id
+
 
         self.root.title("School ERP - Teacher Panel")
         self.root.geometry("1200x700")
@@ -71,6 +79,11 @@ class TeacherUI:
 
         result_btn = self.add_btn("View and Generate Results")
         self.build_result_dropdown(result_btn)
+        tt_btn = self.add_btn("View Timetable", self.load_teacher_timetable)
+
+        work_btn = self.add_btn("Manage Work")
+        self.build_work_dropdown(work_btn)
+
     
     def clear_content(self):
         for widget in self.content.winfo_children():
@@ -110,6 +123,16 @@ class TeacherUI:
         
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
         
+
+    def build_work_dropdown(self, parent_label):
+        menu = tk.Menu(self.root, tearoff=0)
+
+        menu.add_command(label="View Work", command=self.load_teacher_work_records)
+        menu.add_command(label="Add Work", command=self.load_teacher_add_work)
+
+        parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
+
+
     # ===== CHANGE SCREEN VIEW =====
     def change_screen(self, message, back_callback=None, add_callback=None):
         self.clear_content()
@@ -1842,7 +1865,6 @@ class TeacherUI:
 
         # ---------- VALIDATION ----------
         def validate(*args):
-            import re
             r = r"^\d{4}-\d{2}-\d{2}$"
             d1 = date_from_var.get().strip()
             d2 = date_to_var.get().strip()
@@ -1879,7 +1901,6 @@ class TeacherUI:
             d1 = date_from_var.get()
             d2 = date_to_var.get()
 
-            import requests
             try:
                 url = f"http://127.0.0.1:8000/teacher/attendance/self/{tid}?date_from={d1}&date_to={d2}"
                 res = requests.get(url)
@@ -1911,9 +1932,6 @@ class TeacherUI:
     # ===== Button to View Teacher Attendance Summary =====
     def load_teacher_attendance_summary_screen(self):
         self.clear_content()
-
-        import requests
-        import re
 
         # ---- TITLE ----
         tk.Label(
@@ -1952,41 +1970,41 @@ class TeacherUI:
 
         # Date From
         tk.Label(
-    form,
-    text="Date From (YYYY-MM-DD):",
-    font=("Arial", 14),
-    bg="#ECF0F1"
-    ).grid(row=1, column=0, padx=10, pady=10, sticky="w")
+            form,
+            text="Date From (YYYY-MM-DD):",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=1, column=0, padx=10, pady=10, sticky="w")
 
         date_from_var = tk.StringVar()
         date_from_entry = tk.Entry(form, textvariable=date_from_var, font=("Arial", 14), width=25)
         date_from_entry.grid(row=1, column=1, padx=10, pady=10)
 
-# Calendar button for Date From
+        # Calendar button for Date From
         tk.Button(
-    form,
-    text="Calendar",
-    command=lambda: self.open_calendar_popup(date_from_entry, date_from_var)
-).grid(row=1, column=2, padx=5)
+            form,
+            text="Calendar",
+            command=lambda: self.open_calendar_popup(date_from_entry, date_from_var)
+            ).grid(row=1, column=2, padx=5)
 
         # Date To
         tk.Label(
-    form,
-    text="Date To (YYYY-MM-DD):",
-    font=("Arial", 14),
-    bg="#ECF0F1"
-).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+            form,
+            text="Date To (YYYY-MM-DD):",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=2, column=0, padx=10, pady=10, sticky="w")
 
         date_to_var = tk.StringVar()
         date_to_entry = tk.Entry(form, textvariable=date_to_var, font=("Arial", 14), width=25)
         date_to_entry.grid(row=2, column=1, padx=10, pady=10)
 
-# Calendar button for Date To
+        # Calendar button for Date To
         tk.Button(
-    form,
-    text="Calendar",
-    command=lambda: self.open_calendar_popup(date_to_entry, date_to_var)
-).grid(row=2, column=2, padx=5)
+            form,
+            text="Calendar",
+            command=lambda: self.open_calendar_popup(date_to_entry, date_to_var)
+            ).grid(row=2, column=2, padx=5)
 
         # ---- BACK BUTTON ----
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -3069,6 +3087,704 @@ class TeacherUI:
             except Exception as e:
                 self.show_popup("Error", str(e), "error")
                 
+
+
+    #-----Timetable Screen-----
+    def load_teacher_timetable(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content,
+            text="My Timetable",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1",
+            fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ----------------------
+        # FILTER FRAME
+        # ----------------------
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=10)
+
+        # ---- Day Dropdown ----
+        tk.Label(filter_frame, text="Day:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=0, padx=10)
+        self.day_filter = tk.StringVar()
+        day_dropdown = ttk.Combobox(
+            filter_frame,
+            textvariable=self.day_filter,
+            values=["None", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+            state="readonly",
+            width=20
+        )
+        day_dropdown.grid(row=0, column=1, padx=10)
+        day_dropdown.current(0)
+
+        # ---- Subject Dropdown ----
+        tk.Label(filter_frame, text="Subject:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=2, padx=10)
+
+        # (filled after fetching data)
+        self.subject_filter = tk.StringVar()
+        subject_dropdown = ttk.Combobox(
+            filter_frame,
+            textvariable=self.subject_filter,
+            state="readonly",
+            width=20
+        )
+        subject_dropdown.grid(row=0, column=3, padx=10)
+
+        # ---- Class Dropdown ----
+        tk.Label(filter_frame, text="Class:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=4, padx=10)
+
+        self.class_filter = tk.StringVar()
+        class_dropdown = ttk.Combobox(
+            filter_frame,
+            textvariable=self.class_filter,
+            state="readonly",
+            width=20
+        )
+        class_dropdown.grid(row=0, column=5, padx=10)
+
+        # ----------------------
+        # LOAD DATA FROM API
+        # ----------------------
+        try:
+            url = f"http://127.0.0.1:8000/teacher/timetable/{self.teacher_id}"
+            res = requests.get(url)
+
+            if res.status_code != 200:
+                self.show_popup("Error", "Failed to fetch timetable", "error")
+                return
+
+            self.timetable_data = res.json()  # store for filtering
+
+            if not self.timetable_data:
+                self.show_popup("No Timetable", "No schedule found for you.", "info")
+                return
+
+        except Exception as e:
+            self.show_popup("Error", str(e), "error")
+            return
+
+        # Fill SUBJECT dropdown →unique subjects
+        subjects = sorted({d["subject"] for d in self.timetable_data})
+        subject_dropdown["values"] = ["None"] + subjects
+        subject_dropdown.current(0)
+
+        # Fill CLASS dropdown → e.g. "8 (A)"
+        classes = sorted({f"{d['class_name']} ({d['section']})" for d in self.timetable_data})
+        class_dropdown["values"] = ["None"] + classes
+        class_dropdown.current(0)
+
+        # ----------------------
+        # RESET BUTTON
+        # ----------------------
+        reset_btn = tk.Button(
+            filter_frame,
+            text="Reset Filters",
+            bg="#000",
+            fg="white",
+            font=("Arial", 12, "bold"),
+            command=lambda: reset_filters()
+        )
+        reset_btn.grid(row=0, column=6, padx=20)
+
+        # ----------------------
+        # BACK BUTTON
+        # ----------------------
+        top_bar = tk.Frame(self.content, bg="#ECF0F1")
+        top_bar.pack(fill="x", pady=5)
+
+        back_btn = tk.Label(
+            top_bar,
+            text="Back",
+            font=("Arial", 14, "bold"),
+            bg="#000",
+            fg="white",
+            padx=18,
+            pady=8,
+            cursor="hand2"
+        )
+        back_btn.pack(side="left", padx=10)
+        back_btn.bind("<Enter>", lambda e: back_btn.config(bg="#222"))
+        back_btn.bind("<Leave>", lambda e: back_btn.config(bg="#000"))
+        back_btn.bind("<Button-1>", lambda e: self.load_dashboard())
+
+        # ----------------------
+        # TABLE AREA
+        # ----------------------
+        columns = ("day", "subject", "class", "start_time", "end_time", "room_no")
+
+        self.table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        self.table_frame.pack(fill="both", expand=True, pady=10)
+
+        # -------- DISPLAY TABLE --------
+        def load_table(filtered):
+            for wid in self.table_frame.winfo_children():
+                wid.destroy()
+
+            table_data = [
+                (d["day"], d["subject"],
+                f"{d['class_name']} ({d['section']})",
+                d["start_time"], d["end_time"], d["room_no"])
+                for d in filtered
+            ]
+
+            self.create_scrollable_table(self.table_frame, columns, table_data)
+
+        # Initial load
+        load_table(self.timetable_data)
+
+        # ----------------------
+        # FILTERING FUNCTION
+        # ----------------------
+        def apply_filters(*args):
+            f_day = self.day_filter.get()
+            f_subject = self.subject_filter.get()
+            f_class = self.class_filter.get()
+
+            filtered = self.timetable_data
+
+            if f_day != "None":
+                filtered = [d for d in filtered if d["day"] == f_day]
+
+            if f_subject != "None":
+                filtered = [d for d in filtered if d["subject"] == f_subject]
+
+            if f_class != "None":
+                filtered = [
+                    d for d in filtered
+                    if f"{d['class_name']} ({d['section']})" == f_class
+                ]
+
+            load_table(filtered)
+
+        # Bind dropdown changes
+        self.day_filter.trace_add("write", apply_filters)
+        self.subject_filter.trace_add("write", apply_filters)
+        self.class_filter.trace_add("write", apply_filters)
+
+        # ----------------------
+        # RESET FUNCTION
+        # ----------------------
+        def reset_filters():
+            self.day_filter.set("None")
+            self.subject_filter.set("None")
+            self.class_filter.set("None")
+            load_table(self.timetable_data)
+
+    #----------Work -------------
+    def load_teacher_work_records(self):
+        self.clear_content()
+
+        # TITLE
+        tk.Label(
+            self.content,
+            text="My Work",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1"
+        ).pack(pady=20)
+
+        # BACK BUTTON
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", pady=(0, 10), padx=20)
+
+        tk.Button(
+            back_frame,
+            text="Back",
+            font=("Arial", 12, "bold"),
+            bg="black",
+            fg="white",
+            padx=20,
+            pady=5,
+            command=self.load_dashboard
+        ).pack()
+
+        # FETCH TEACHER WORK
+        try:
+            url = f"http://127.0.0.1:8000/teacher/work/{self.teacher_id}"
+            res = requests.get(url)
+            all_records = res.json() if res.status_code == 200 else []
+        except:
+            all_records = []
+
+        # FILTER BAR
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=10)
+
+        subject_var = tk.StringVar(value="None")
+        type_var = tk.StringVar(value="None")
+        class_var = tk.StringVar(value="None")
+
+        # Safe dropdown lists
+        subject_list = ["None"] + sorted({
+            r.get("subject", "")
+            for r in all_records if r.get("subject")
+        })
+
+        type_list = ["None", "Classwork", "Homework", "Assignment"]
+
+        class_list = ["None"] + sorted({
+            f'{r.get("class_name", "")} {r.get("section", "")}'.strip()
+            for r in all_records
+        })
+
+        # Subject
+        tk.Label(filter_frame, text="Subject:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=0, column=0, padx=10)
+        ttk.Combobox(filter_frame, textvariable=subject_var,
+                    values=subject_list, state="readonly", width=18)\
+            .grid(row=0, column=1)
+
+        # Class
+        tk.Label(filter_frame, text="Class:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=0, column=2, padx=10)
+        ttk.Combobox(filter_frame, textvariable=class_var,
+                    values=class_list, state="readonly", width=18)\
+            .grid(row=0, column=3)
+
+        # Type
+        tk.Label(filter_frame, text="Type:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=0, column=4, padx=10)
+        ttk.Combobox(filter_frame, textvariable=type_var,
+                    values=type_list, state="readonly", width=18)\
+            .grid(row=0, column=5)
+
+        # RESET BUTTON
+        tk.Button(
+            filter_frame,
+            text="Reset",
+            font=("Arial", 12, "bold"),
+            bg="#7F8C8D",
+            fg="white",
+            command=lambda: reset_filter()
+        ).grid(row=0, column=6, padx=15)
+
+        # TABLE
+        table_frame = tk.Frame(self.content, bg="white")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        columns = ("Class", "Subject", "Type", "Title", "Due Date", "PDF")
+        work_table = ttk.Treeview(table_frame, columns=columns, show="headings")
+        work_table.pack(fill="both", expand=True, side="left")
+
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=work_table.yview)
+        scrollbar.pack(side="right", fill="y")
+        work_table.configure(yscrollcommand=scrollbar.set)
+
+        for col in columns:
+            work_table.heading(col, text=col)
+            work_table.column(col, width=150, anchor="center")
+
+        # INSERT DATA
+        def render_table(data):
+            work_table.delete(*work_table.get_children())
+
+            for r in data:
+                cls = f'{r.get("class_name", "")} {r.get("section", "")}'.strip()
+                work_table.insert(
+                    "",
+                    "end",
+                    iid=r["work_id"],
+                    values=(
+                        cls,
+                        r.get("subject", ""),
+                        r.get("work_type", ""),
+                        r.get("title", ""),
+                        r.get("due_date", ""),
+                        "Preview PDF"
+                    )
+                )
+
+        render_table(all_records)
+
+        # AUTO FILTER FUNCTION
+        def apply_filter(*args):
+            filtered = all_records
+
+            if subject_var.get() != "None":
+                filtered = [r for r in filtered if r.get("subject") == subject_var.get()]
+
+            if class_var.get() != "None":
+                cls_text = class_var.get()
+                filtered = [
+                    r for r in filtered if
+                    f'{r.get("class_name","")} {r.get("section","")}'.strip() == cls_text
+                ]
+
+            if type_var.get() != "None":
+                filtered = [r for r in filtered if r.get("work_type") == type_var.get()]
+
+            render_table(filtered)
+
+        subject_var.trace("w", apply_filter)
+        type_var.trace("w", apply_filter)
+        class_var.trace("w", apply_filter)
+
+        def reset_filter():
+            subject_var.set("None")
+            class_var.set("None")
+            type_var.set("None")
+            render_table(all_records)
+
+        # ----- RIGHT-CLICK MENU -----
+        menu = tk.Menu(work_table, tearoff=0)
+
+        menu.add_command(
+            label="Preview PDF",
+            command=lambda: self._teacher_preview_selected(work_table)
+        )
+
+        menu.add_command(
+            label="Edit Work",
+            command=lambda: self._teacher_work_edit_selected(work_table)
+        )
+
+        menu.add_command(
+            label="Delete Work",
+            command=lambda: self._teacher_work_delete_selected(work_table)
+        )
+
+        def show_menu(event):
+            row = work_table.identify_row(event.y)
+            if row:
+                work_table.selection_set(row)
+                menu.post(event.x_root, event.y_root)
+
+        work_table.bind("<Button-3>", show_menu)   # Right-click
+
+        # DOUBLE CLICK PREVIEW
+        work_table.bind("<Double-1>", lambda e: self._teacher_preview_selected(work_table))
+
+
+    def load_teacher_add_work(self):
+        self.clear_content()
+
+        tk.Label(
+            self.content,
+            text="Add Work",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1",
+            fg="#2C3E50"
+        ).pack(pady=20)
+
+        # BACK BUTTON
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", pady=(0, 10), padx=20)
+
+        tk.Button(
+            back_frame,
+            text="Back",
+            font=("Arial", 12, "bold"),
+            bg="black",
+            fg="white",
+            padx=20,
+            pady=5,
+            command=self.load_teacher_work_records
+        ).pack()
+
+        # FETCH CLASSES
+        try:
+            classes = requests.get("http://127.0.0.1:8000/admin/timetable/classes").json()
+        except:
+            classes = []
+
+        # FETCH SUBJECT NAME (since teacher is fixed)
+        try:
+            t = requests.get(f"http://127.0.0.1:8000/admin/teachers/{self.teacher_id}").json()
+            subject_name = t["subject_name"]
+        except:
+            subject_name = ""
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        vars = {
+            "class": tk.StringVar(),
+            "subject": tk.StringVar(value=subject_name),
+            "work_type": tk.StringVar(),
+            "title": tk.StringVar(),
+            "description": tk.StringVar(),
+        }
+
+        # CLASS DROPDOWN
+        tk.Label(form, text="Class:", bg="#ECF0F1", font=("Arial", 14)).grid(row=0, column=0, sticky="w", pady=6)
+        class_display = [f'{c["class_name"]} {c["section"]}' for c in classes]
+
+        ttk.Combobox(
+            form,
+            textvariable=vars["class"],
+            values=class_display,
+            state="readonly",
+            width=30
+        ).grid(row=0, column=1, pady=6, padx=10)
+
+        # SUBJECT (LOCKED)
+        tk.Label(form, text="Subject:", bg="#ECF0F1", font=("Arial", 14)).grid(row=1, column=0, sticky="w", pady=6)
+        tk.Entry(form, textvariable=vars["subject"], width=32, font=("Arial", 14), state="readonly")\
+            .grid(row=1, column=1, padx=10, pady=6)
+
+        # WORK TYPE
+        tk.Label(form, text="Work Type:", bg="#ECF0F1", font=("Arial", 14)).grid(row=2, column=0, sticky="w", pady=6)
+        ttk.Combobox(
+            form,
+            textvariable=vars["work_type"],
+            values=["Classwork", "Homework", "Assignment"],
+            state="readonly",
+            width=30
+        ).grid(row=2, column=1, pady=6, padx=10)
+
+        # TITLE
+        tk.Label(form, text="Title:", bg="#ECF0F1", font=("Arial", 14)).grid(row=3, column=0, sticky="w", pady=6)
+        tk.Entry(form, textvariable=vars["title"], width=32, font=("Arial", 14))\
+            .grid(row=3, column=1, padx=10, pady=6)
+
+        # DESCRIPTION
+        tk.Label(form, text="Description:", bg="#ECF0F1", font=("Arial", 14)).grid(row=4, column=0, sticky="w", pady=6)
+        tk.Entry(form, textvariable=vars["description"], width=32, font=("Arial", 14))\
+            .grid(row=4, column=1, padx=10, pady=6)
+
+        # DUE DATE
+        tk.Label(form, text="Due Date:", bg="#ECF0F1", font=("Arial", 14))\
+            .grid(row=5, column=0, sticky="w", pady=6)
+        due_date = DateEntry(form, width=28, date_pattern='yyyy-mm-dd')
+        due_date.grid(row=5, column=1, padx=10, pady=6)
+
+        # PDF SELECT
+        pdf_frame = tk.Frame(self.content, bg="#ECF0F1")
+        pdf_frame.pack(pady=10)
+
+        pdf_label = tk.StringVar(value="No File Selected")
+        tk.Label(pdf_frame, textvariable=pdf_label, bg="#ECF0F1").pack(side="left", padx=10)
+
+        selected_file = {"path": None}
+
+        def choose_pdf():
+            path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
+            if path:
+                selected_file["path"] = path
+                pdf_label.set(os.path.basename(path))
+
+        tk.Button(pdf_frame, text="Choose PDF", command=choose_pdf).pack(side="left")
+
+        # SAVE BUTTON
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=20)
+
+        save_btn = tk.Button(btn_frame, text="Save Work")
+        save_btn.pack()
+
+        # SAVE HANDLER
+        def save():
+            class_text = vars["class"].get()
+            class_id = next((c["class_id"] for c in classes
+                            if f'{c["class_name"]} {c["section"]}' == class_text), None)
+
+            payload = {
+                "class_id": class_id,
+                "teacher_id": self.teacher_id,
+                "subject": vars["subject"].get(),
+                "work_type": vars["work_type"].get(),
+                "title": vars["title"].get(),
+                "description": vars["description"].get(),
+                "due_date": due_date.get_date().isoformat(),
+            }
+
+            if not selected_file["path"]:
+                self.show_popup("Missing PDF", "Please choose a PDF file", "warning")
+                return
+
+            with open(selected_file["path"], "rb") as f:
+                files = {"file": (os.path.basename(selected_file["path"]), f, "application/pdf")}
+                r = requests.post("http://127.0.0.1:8000/teacher/work/add", data=payload, files=files)
+
+            if r.status_code in (200, 201):
+                self.show_popup("Success", "Work Added")
+                self.load_teacher_work_records()
+            else:
+                self.show_popup("Error", r.text, "error")
+
+        save_btn.config(command=save)
+
+
+    def load_teacher_edit_work(self, work_id: int):
+        self.clear_content()
+
+        tk.Label(
+            self.content,
+            text="Edit My Work",
+            font=("Arial", 26, "bold"),
+            bg="#ECF0F1",
+            fg="#2C3E50"
+        ).pack(pady=20)
+
+        # FETCH WORK (from teacher side)
+        try:
+            res = requests.get(f"http://127.0.0.1:8000/admin/work/{work_id}")
+            if res.status_code != 200:
+                self.show_popup("Error", "Work not found", "error")
+                return
+            work = res.json()
+        except:
+            self.show_popup("Error", "Server error", "error")
+            return
+
+        # SECURITY: teacher can edit only their own work
+        if work["teacher_name"] != self.teacher_full_name:
+            self.show_popup("Not Allowed", "You can edit only your own work.", "warning")
+            return
+
+        # FETCH CLASSES
+        try:
+            classes = requests.get("http://127.0.0.1:8000/admin/timetable/classes").json()
+        except:
+            classes = []
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        vars = {
+            "class": tk.StringVar(value=f'{work.get("class_name","")} {work.get("section","")}'.strip()),
+            "subject": tk.StringVar(value=work.get("subject")),
+            "title": tk.StringVar(value=work.get("title")),
+            "work_type": tk.StringVar(value=work.get("work_type")),
+            "description": tk.StringVar(value=work.get("description")),
+        }
+
+        # CLASS
+        tk.Label(form, text="Class:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=0, column=0, sticky="w", pady=6)
+        class_display = [f'{c["class_name"]} {c["section"]}' for c in classes]
+        ttk.Combobox(
+            form, textvariable=vars["class"], values=class_display,
+            state="readonly", width=30
+        ).grid(row=0, column=1, pady=6, padx=10)
+
+        # SUBJECT
+        tk.Label(form, text="Subject:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=1, column=0, sticky="w", pady=6)
+        tk.Entry(form, textvariable=vars["subject"], font=("Arial", 14),
+                width=30, state="readonly").grid(row=1, column=1, padx=10)
+
+        # WORK TYPE
+        tk.Label(form, text="Work Type:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=2, column=0, sticky="w", pady=6)
+        ttk.Combobox(
+            form,
+            textvariable=vars["work_type"],
+            values=["Classwork", "Homework", "Assignment"],
+            state="readonly",
+            width=30
+        ).grid(row=2, column=1, padx=10, pady=6)
+
+        # TITLE
+        tk.Label(form, text="Title:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=3, column=0, sticky="w", pady=6)
+        tk.Entry(form, textvariable=vars["title"], width=32, font=("Arial", 14))\
+            .grid(row=3, column=1, padx=10, pady=6)
+
+        # DESCRIPTION
+        tk.Label(form, text="Description:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=4, column=0, sticky="w", pady=6)
+        tk.Entry(form, textvariable=vars["description"], width=32, font=("Arial", 14))\
+            .grid(row=4, column=1, padx=10, pady=6)
+
+        # DUE DATE
+        tk.Label(form, text="Due Date:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=5, column=0, sticky="w", pady=6)
+        due_entry = DateEntry(form, width=28, date_pattern='yyyy-mm-dd')
+        due_entry.set_date(work["due_date"])
+        due_entry.grid(row=5, column=1, padx=10, pady=6)
+
+        # BUTTONS
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=20)
+
+        tk.Button(btn_frame, text="Back", command=self.load_teacher_work_records)\
+            .pack(side="left", padx=10)
+        tk.Button(btn_frame, text="Cancel", command=self.load_teacher_work_records)\
+            .pack(side="left", padx=10)
+
+        save_btn = tk.Button(btn_frame, text="Save Changes")
+        save_btn.pack(side="left", padx=10)
+
+        def save():
+            class_text = vars["class"].get()
+            class_id = next(
+                (c["class_id"] for c in classes
+                if f'{c["class_name"]} {c["section"]}' == class_text),
+                None
+            )
+
+            payload = {
+                "class_id": class_id,
+                "teacher_id": self.teacher_id,
+                "subject": vars["subject"].get(),
+                "title": vars["title"].get(),
+                "description": vars["description"].get(),
+                "work_type": vars["work_type"].get(),
+                "due_date": due_entry.get_date().isoformat(),
+            }
+
+            r = requests.put(f"http://127.0.0.1:8000/teacher/work/{work_id}", json=payload)
+
+            if r.status_code == 200:
+                self.show_popup("Success", "Work Updated", "info")
+                self.load_teacher_work_records()
+            else:
+                self.show_popup("Error", r.text, "error")
+
+        save_btn.config(command=save)
+
+
+    #-------HELPER FUNCTIONS FOR RIGHT-CLICK MENU--------
+    def _teacher_preview_selected(self, table):
+
+        selected = table.selection()
+        if not selected:
+            return
+
+        work_id = selected[0]
+        url = f"http://127.0.0.1:8000/teacher/work/download/{work_id}"
+
+        r = requests.get(url)
+        if r.status_code != 200:
+            self.show_popup("Error", "Could not download PDF", "error")
+            return
+
+        temp_path = os.path.join(tempfile.gettempdir(), f"work_{work_id}.pdf")
+        with open(temp_path, "wb") as f:
+            f.write(r.content)
+
+        os.startfile(temp_path)
+
+
+    def _teacher_work_edit_selected(self, table):
+        selected = table.selection()
+        if not selected:
+            return
+        work_id = int(selected[0])
+        self.load_teacher_edit_work(work_id)
+
+
+    def _teacher_work_delete_selected(self, table):
+        selected = table.selection()
+        if not selected:
+            return
+        work_id = int(selected[0])
+
+        # Confirm delete
+        if not self.show_popup("Confirm Delete", "Delete this work?", "confirm"):
+            return
+
+        r = requests.delete(f"http://127.0.0.1:8000/teacher/work/{work_id}")
+
+        if r.status_code in (200, 204):
+            self.show_popup("Success", "Work deleted", "info")
+            self.load_teacher_work_records()
+        else:
+            self.show_popup("Error", r.text, "error")
+
 
     # ==============================================================================
     # ===== DASHBOARD PAGE ======

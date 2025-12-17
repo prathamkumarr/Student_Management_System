@@ -29,3 +29,4 @@ from Backends.Shared.models.employee_salary_models import EmployeeSalary
 from Backends.Shared.models.exam_master import ExamMaster
 from Backends.Shared.models.result_models import ResultMaster
 from Backends.Shared.models.student_marks_models import StudentMarks
+from Backends.Shared.models.activity_models import ExtraCurricularActivity

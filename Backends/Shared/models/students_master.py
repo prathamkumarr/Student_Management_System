@@ -35,3 +35,4 @@ class StudentMaster(Base):
     student_fees = relationship("StudentFee", back_populates="student_ref")
     class_ref =relationship("Backends.Shared.models.classes_master.ClassMaster", back_populates="students")
     tc_ref = relationship("TransferCertificate", back_populates="student")
+    activities = relationship("ActivityStudentMap", backref="student", cascade="all, delete")

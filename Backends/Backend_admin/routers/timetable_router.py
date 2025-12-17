@@ -4,43 +4,11 @@ from sqlalchemy.orm import Session
 
 from Backends.Shared.connection import get_db
 from Backends.Shared.models.timetable_models import Timetable
-from Backends.Shared.schemas.timetable_schemas import ( TimetableCreate, TimetableUpdate, TimetableOut,)
 from Backends.Shared.models.classes_master import ClassMaster
 from Backends.Shared.models.teachers_master import TeacherMaster
 from Backends.Shared.schemas.timetable_schemas import ( TimetableCreate, TimetableUpdate, TimetableOut, TimetableFilter)
 
 router = APIRouter(prefix="/admin/timetable", tags=["Admin Timetable"])
-
-
-@router.get("/subjects")
-def api_get_subjects(db: Session = Depends(get_db)):
-    rows = db.query(Timetable.subject).distinct().all()
-    return [r[0] for r in rows]
-
-
-@router.get("/classes")
-def api_get_classes(db: Session = Depends(get_db)):
-    rows = db.query(ClassMaster).all()
-    return [
-        {
-            "class_id": r.class_id,
-            "class_name": r.class_name,
-            "section": r.section
-        }
-        for r in rows
-    ]
-
-@router.get("/teachers")
-def api_get_teachers(db: Session = Depends(get_db)):
-    rows = db.query(TeacherMaster).all()
-    return [
-        {
-            "teacher_id": r.teacher_id,
-            "full_name": r.full_name
-        }
-        for r in rows
-    ]
-
 
 # ------------------------ LIST ------------------------
 @router.get("/", response_model=List[TimetableOut])
