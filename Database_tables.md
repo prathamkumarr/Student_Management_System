@@ -21,14 +21,14 @@
 - full_name
 - class_id
 - roll_no
-- relationships (with other tables) : ClassMaster, AttendanceRecord, StudentFee, PaymentMethod, ExamFeePayment
+- relationships (with other tables) : ClassMaster, AttendanceRecord, StudentFee, PaymentMethod
 
 
 ## ClassMaster (table name: classes_master)
 - class_id
 - class_name
 - section
-- relationships : AttendanceRecord, FeeMaster, StudentFee, ExamFeeMaster
+- relationships : AttendanceRecord, FeeMaster, StudentFee
 
 
 ## SubjectMaster (table names: subjects_master)
@@ -52,16 +52,6 @@
 - relationships : StudentFee
 
 
-## ExamFeeMaster (table name: exam_fee_master)
-- exam_fee_id
-- class_id
-- exam type
-- amount
-- effective_from
-- effective_to
-- is_active
-
-
 ## TeacherMaster (table name: teachers_master)
 - teacher_id
 - full_name
@@ -76,7 +66,7 @@
 - method_name
 - active
 - created_at
-- relationships : FeePayment, ExamFeePayment
+- relationships : FeePayment
 
 
 ## StudentFee (table name: student_fees)
@@ -113,15 +103,6 @@
 - after_change
 - ts (timestamp)
 
-
-## ExamFeePayment (table name: exam_fee_payments)
-- payment_id
-- exam_fee_id
-- student_id
-- amount
-- payment_method_id
-- status
-- created_at
 
 
 ## AttendanceRecord (table name: attendance_records)

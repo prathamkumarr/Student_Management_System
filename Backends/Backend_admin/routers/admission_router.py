@@ -83,6 +83,14 @@ def approve_admission(admission_id: int, db: Session = Depends(get_db)):
     new_student = StudentMaster(
         roll_no=generate_roll_number(db, class_obj.class_id),
         full_name=entry.full_name,
+        date_of_birth=entry.date_of_birth,
+        gender=entry.gender,
+        address=entry.address,
+        previous_school=entry.previous_school,
+        father_name=entry.father_name,
+        mother_name=entry.mother_name,
+        parent_phone=entry.parent_phone,
+        parent_email=entry.parent_email,
         class_id=class_obj.class_id
         )
 

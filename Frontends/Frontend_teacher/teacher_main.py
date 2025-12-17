@@ -5,15 +5,11 @@ import datetime
 
 # =============
 class TeacherUI:
-    def __init__(self, root, teacher_id = 4, full_name = "Ritu Pandey", subject_id = 4, email = "ritu.computer@sms.com", phone = "9876100004"):
+    def __init__(self, root, teacher_id = 4):
         self.root = root
 
         # teacher Logged-In Details (Dummy OR Fetched From Login)
         self.teacher_id = teacher_id
-        self.teacher_full_name = full_name
-        self.teacher_subject_id = subject_id
-        self.teacher_email = email
-        self.teacher_phone = phone
 
         self.root.title("School ERP - Teacher Panel")
         self.root.geometry("1200x700")
@@ -42,7 +38,7 @@ class TeacherUI:
             padx=20,
             pady=12,
             anchor="w",
-            width=20,
+            width=30,
             cursor="arrow"
         )
         btn.pack(pady=5, fill="x")
@@ -72,6 +68,9 @@ class TeacherUI:
         # Main Buttons
         att_btn = self.add_btn("Manage Attendances")
         self.build_attendance_dropdown(att_btn)
+
+        result_btn = self.add_btn("View and Generate Results")
+        self.build_result_dropdown(result_btn)
     
     def clear_content(self):
         for widget in self.content.winfo_children():
@@ -100,7 +99,17 @@ class TeacherUI:
         menu.add_cascade(label="self Attendance", menu=teacher)
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
     
-
+    # ===========================================
+    def build_result_dropdown(self, parent_label):
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(label="Generate and Download Result of a Student", command=lambda: self.load_generate_and_download_result_of_student())
+        menu.add_command(label="Generate and Download Final Result of a Student", command=lambda: self.load_generate_and_download_final_result_of_student())
+        menu.add_command(label="View all Result for an Exam", command=lambda: self.load_view_all_results_for_exam())
+        menu.add_command(label="Generate and Download all students Results for a class", command=lambda: self.load_view_and_download_all_students_results_for_a_class())
+        menu.add_command(label="Generate and Download all Final Results for a Class", command=lambda: self.load_generate_and_download_all_final_results_for_a_class())
+        
+        parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
+        
     # ===== CHANGE SCREEN VIEW =====
     def change_screen(self, message, back_callback=None, add_callback=None):
         self.clear_content()
@@ -407,6 +416,19 @@ class TeacherUI:
 
         return inner
     
+    def show_mini_notification(self, message):
+        toast = tk.Label(
+        self.root,
+        text=message,
+        bg="#323232",
+        fg="white",
+        font=("Arial", 12),
+        padx=15,
+        pady=8
+    )
+        toast.place(relx=0.98, rely=0.98, anchor="se")
+
+        toast.after(3000, toast.destroy)
 
     # ========================================================================
     # ----- STUDENT ATTENDANCE ------
@@ -474,7 +496,9 @@ class TeacherUI:
         go_back_callback=self.load_dashboard,
         form_frame=form
         )
-
+        
+        self.content.update_idletasks()
+        
         # ===== SUBMIT BUTTON =====
         submit_btn = tk.Label(
         self.content,
@@ -572,9 +596,24 @@ class TeacherUI:
                     "Attendance Marked Successfully!",
                     add_callback=self.load_mark_student_attendance_screen
                     )
-                else:
+                    return
+                try:
                     msg = res.json().get("detail", "Unknown error")
+                except:
+                    msg = "Unknown error"
+
+                if "issued a TC" in msg:
+                    self.show_popup("Rejected", msg, "warning")
+                elif "already marked" in msg:
+                    self.show_popup("Duplicate Entry", msg, "warning")
+                elif "not found" in msg:
+                    self.show_popup("Invalid ID", msg, "warning")
+                else:
                     self.show_popup("Failed", msg, "error")
+                self.change_screen(
+                    "Failed to Mark Attendance for this Student ID try Again with a Valid ID",
+                    add_callback=self.load_mark_student_attendance_screen
+                    )
 
             except Exception as e:
                 self.show_popup("Server Error", str(e), "error")
@@ -734,8 +773,29 @@ class TeacherUI:
                     msg = res.json().get("message", "Marked successfully!")
                     self.show_popup("Success", msg, "info")
                     self.change_screen("Bulk Attendance Marked", add_callback=self.load_mark_bulk_attendance_screen)
+                    return
+                
+                try:
+                    detail = res.json().get("detail", "Unknown Error")
+                except:
+                    detail = "Unknown Error"
+
+                # Make popup messages friendly
+                if "comma-separated" in detail:
+                    self.show_popup("Invalid Format", "Absent IDs must be comma-separated numbers.", "warning")
+
+                elif "not found" in detail:
+                    self.show_popup("Invalid Input", detail, "warning")
+
+                elif "No students found" in detail:
+                    self.show_popup("No Students", detail, "warning")
+
+                elif "Student" in detail and "inactive" in detail:
+                # Just in case backend sends inactive student warnings
+                    self.show_popup("Skipped Students", detail, "info")
+
                 else:
-                    self.show_popup("Failed", res.json().get("detail", "Unknown Error"), "error")
+                    self.show_popup("Failed", detail, "error") 
 
             except Exception as e:
                 self.show_popup("Error", f"Server error: {e}", "error")
@@ -2037,6 +2097,978 @@ class TeacherUI:
             except Exception as e:
                 self.show_popup("Backend Error", f"{e}", "error")
   
+    
+    # ==============================================================================
+    # ----- Button to Generate and Download Result of a Student with Some Exam ID -----
+    def load_generate_and_download_result_of_student(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Generate & Download Result of a Student",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        # ===== FORM FRAME =====
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # -------- Inputs --------
+        tk.Label(form, text="Student ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        sid_var = tk.StringVar()
+        tk.Entry(form, textvariable=sid_var, width=25, font=("Arial", 14))\
+        .grid(row=0, column=1, padx=10, pady=10)
+
+        tk.Label(form, text="Exam ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        exam_var = tk.StringVar()
+        tk.Entry(form, textvariable=exam_var, width=25, font=("Arial", 14))\
+        .grid(row=1, column=1, padx=10, pady=10)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(pady=10)
+        self.create_back_button(back_frame, self.load_dashboard, form)
+
+        # ====== RESULT SUMMARY CARD FRAME ======
+        summary_frame = tk.Frame(self.content, bg="#ECF0F1")
+        summary_frame.pack(pady=20)
+
+        summary_vars = {
+        "Total Marks": tk.StringVar(),
+        "Percentage": tk.StringVar(),
+        "Grade": tk.StringVar()
+    }
+
+        # Create output card labels (disabled entries)
+        for i, (label, var) in enumerate(summary_vars.items()):
+            tk.Label(summary_frame, text=f"{label}:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=i, column=0, padx=10, pady=6, sticky="e")
+
+            tk.Entry(
+            summary_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+        ).grid(row=i, column=1, padx=10, pady=6)
+
+        # ====== FETCH BUTTON ======
+        fetch_btn = tk.Label(
+        self.content,
+        text="Generate Result",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20, pady=12,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+    )
+        fetch_btn.pack(pady=10)
+
+        # ====== DOWNLOAD BUTTON ======
+        download_btn = tk.Label(
+        self.content,
+        text="Download Result",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20, pady=12,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+    )
+        download_btn.pack(pady=10)
+
+        # Disable download button initially
+        def disable_download():
+            download_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            download_btn.unbind("<Enter>")
+            download_btn.unbind("<Leave>")
+            download_btn.unbind("<Button-1>")
+
+        disable_download()
+
+        # ====== ENABLE / DISABLE FETCH BUTTON ======
+        def enable_fetch():
+            fetch_btn.config(bg="#000000", fg="white", cursor="arrow")
+            fetch_btn.bind("<Enter>", lambda e: fetch_btn.config(bg="#222222"))
+            fetch_btn.bind("<Leave>", lambda e: fetch_btn.config(bg="#000000"))
+            fetch_btn.bind("<Button-1>", lambda e: fetch_result())
+
+        def disable_fetch():
+            fetch_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            fetch_btn.unbind("<Enter>")
+            fetch_btn.unbind("<Leave>")
+            fetch_btn.unbind("<Button-1>")
+
+        disable_fetch()
+
+        # Validation
+        def validate(*args):
+            sid = sid_var.get().strip()
+            eid = exam_var.get().strip()
+
+            if sid.isdigit() and eid.isdigit():
+                enable_fetch()
+            else:
+                disable_fetch()
+
+        sid_var.trace_add("write", validate)
+        exam_var.trace_add("write", validate)
+
+        # ====== FETCH RESULT FUNCTION ======
+        def fetch_result():
+            sid = int(sid_var.get().strip())
+            eid = int(exam_var.get().strip())
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/student/{sid}/{eid}"
+                res = requests.get(url)
+ 
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "Result not found!", "warning")
+                    return
+
+                data = res.json()
+
+                summary_vars["Total Marks"].set(data["total_marks"])
+                summary_vars["Percentage"].set(data["percentage"])
+                summary_vars["Grade"].set(data["grade"])
+
+                # Enable download button
+                enable_download()
+
+            except Exception as e:
+                self.show_popup("Server Error", str(e), "error")
+
+        # ====== ENABLE DOWNLOAD BUTTON ======
+        def enable_download():
+            download_btn.config(bg="#000000", fg="white", cursor="arrow")
+            download_btn.bind("<Enter>", lambda e: download_btn.config(bg="#222222"))
+            download_btn.bind("<Leave>", lambda e: download_btn.config(bg="#000000"))
+            download_btn.bind("<Button-1>", lambda e: download_pdf())
+
+        # ====== DOWNLOAD FUNCTION ======
+        def download_pdf():
+            sid = sid_var.get().strip()
+            eid = exam_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/student/{sid}/{eid}/download"
+                res = requests.get(url)
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "Cannot download result!", "error")
+                    return
+
+                # Extract filename
+                fname = f"result_{sid}_{eid}.pdf"
+                if "content-disposition" in res.headers:
+                    import re
+                    cd = res.headers["content-disposition"]
+                    match = re.findall('filename="?(.+)"?', cd)
+                    if match:
+                        fname = match[0]
+
+                # Ask where to save
+                from tkinter import filedialog
+                save_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf",
+                initialfile=fname,
+                filetypes=[("PDF Files", "*.pdf")]
+            )
+
+                if not save_path:
+                    return
+
+                with open(save_path, "wb") as f:
+                    f.write(res.content)
+
+                self.show_mini_notification(f"Downloaded: {fname}")
+                self.change_screen("Student's Result Downloaded Successfully!",
+                                   add_callback=self.load_generate_and_download_result_of_student)
+            except Exception as e:
+                self.show_popup("Backend Error", str(e), "error")
+
+
+    # ==============================================================================
+    # ----- Button to View and Download Final Result of a Student -----
+    def load_generate_and_download_final_result_of_student(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Generate & Download Final Result of a Student",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        # ===== FORM FRAME =====
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # -------- Student ID Input --------
+        tk.Label(
+        form,
+        text="Student ID:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+    ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+
+        sid_var = tk.StringVar()
+        tk.Entry(
+        form,
+        textvariable=sid_var,
+        width=25,
+        font=("Arial", 14)
+    ).grid(row=0, column=1, padx=10, pady=10)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(pady=5)
+        self.create_back_button(back_frame, self.load_dashboard, form)
+
+        # ===== SUMMARY FRAME (Output) =====
+        summary_frame = tk.Frame(self.content, bg="#ECF0F1")
+        summary_frame.pack(pady=20)
+
+        summary_vars = {
+        "Exam Count": tk.StringVar(),
+        "Total Marks": tk.StringVar(),
+        "Max Marks": tk.StringVar(),
+        "Percentage": tk.StringVar(),
+        "Final Grade": tk.StringVar()
+    }
+
+        # Create summary card layout
+        for i, (label, var) in enumerate(summary_vars.items()):
+            tk.Label(
+            summary_frame,
+            text=f"{label}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+        ).grid(row=i, column=0, padx=10, pady=6, sticky="e")
+
+            tk.Entry(
+            summary_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+        ).grid(row=i, column=1, padx=10, pady=6)
+
+        # ---- Exam-wise result area ----
+        tk.Label(
+        summary_frame,
+        text="Exam-wise Details:",
+        font=("Arial", 14, "bold"),
+        bg="#ECF0F1"
+    ).grid(row=len(summary_vars), column=0, columnspan=2, pady=10)
+
+        exam_list_box = tk.Text(
+        summary_frame,
+        width=60,
+        height=10,
+        font=("Arial", 12),
+        state="disabled",
+        bg="#F2F3F4"
+    )
+        exam_list_box.grid(row=len(summary_vars) + 1, column=0, columnspan=2, padx=10, pady=5)
+
+        # ====== FETCH BUTTON ======
+        fetch_btn = tk.Label(
+        self.content,
+        text="Generate Final Result",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=12,
+        width=20,
+        relief="ridge",
+        cursor="arrow"
+    )
+        fetch_btn.pack(pady=5)
+
+        # ====== DOWNLOAD BUTTON ======
+        download_btn = tk.Label(
+        self.content,
+        text="Download Final Result",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=12,
+        width=20,
+        relief="ridge",
+        cursor="arrow"
+    )
+        download_btn.pack(pady=5)
+
+        # disable until generated
+        def disable_download():
+            download_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            download_btn.unbind("<Enter>")
+            download_btn.unbind("<Leave>")
+            download_btn.unbind("<Button-1>")
+
+        disable_download()
+
+        # ====== ENABLE FETCH BUTTON ======
+        def enable_fetch():
+            fetch_btn.config(bg="#000000", fg="white", cursor="arrow")
+            fetch_btn.bind("<Enter>", lambda e: fetch_btn.config(bg="#222222"))
+            fetch_btn.bind("<Leave>", lambda e: fetch_btn.config(bg="#000000"))
+            fetch_btn.bind("<Button-1>", lambda e: fetch_result())
+
+        def disable_fetch():
+            fetch_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            fetch_btn.unbind("<Enter>")
+            fetch_btn.unbind("<Leave>")
+            fetch_btn.unbind("<Button-1>")
+
+        disable_fetch()
+
+        # ====== VALIDATION ======
+        def validate(*args):
+            sid = sid_var.get().strip()
+
+            if sid.isdigit() and int(sid) > 0:
+                enable_fetch()
+            else:
+                disable_fetch()
+
+        sid_var.trace_add("write", validate)
+
+        # ====== FETCH RESULT FUNCTION ======
+        def fetch_result():
+            sid = sid_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/final/{sid}"
+                res = requests.get(url)
+
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "No results found for this student!", "warning")
+                    return
+
+                data = res.json()
+
+                # Fill summary card
+                summary_vars["Exam Count"].set(data["exam_count"])
+                summary_vars["Total Marks"].set(data["total_marks"])
+                summary_vars["Max Marks"].set(data["max_marks"])
+                summary_vars["Percentage"].set(data["percentage"])
+                summary_vars["Final Grade"].set(data["final_grade"])
+
+                # Fill exam-wise details
+                exam_list_box.config(state="normal")
+                exam_list_box.delete("1.0", tk.END)
+                for e in data["exam_wise_details"]:
+                    exam_list_box.insert(
+                        tk.END,
+                        f"Exam {e['exam_id']} : Marks: {e['obtained_marks']} / {e['max_marks']} | Grade: {e['grade']}\n"
+                    )
+
+                exam_list_box.config(state="disabled")
+
+                # enable download
+                enable_download()
+
+            except Exception as e:
+                self.show_popup("Server Error", str(e), "error")
+
+        # ====== ENABLE DOWNLOAD BUTTON ======
+        def enable_download():
+            download_btn.config(bg="#000", fg="white", cursor="hand2")
+            download_btn.bind("<Enter>", lambda e: download_btn.config(bg="#222"))
+            download_btn.bind("<Leave>", lambda e: download_btn.config(bg="#000"))
+            download_btn.bind("<Button-1>", lambda e: download_pdf())
+
+        # ====== DOWNLOAD FUNCTION ======
+        def download_pdf():
+            sid = sid_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/final/download/{sid}"
+                res = requests.get(url)
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "Cannot download final result!", "error")
+                    return
+
+                # Extract filename
+                fname = f"student_{sid}_final_result.pdf"
+                if "content-disposition" in res.headers:
+                    import re
+                    cd = res.headers["content-disposition"]
+                    match = re.findall(r'filename="?(.+)"?', cd)
+                    if match:
+                        fname = match[0]
+
+                # Ask save location
+                from tkinter import filedialog
+                save_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf",
+                initialfile=fname,
+                filetypes=[("PDF Files", "*.pdf")]
+            )
+
+                if not save_path:
+                    return
+
+                with open(save_path, "wb") as f:
+                    f.write(res.content)
+
+                self.show_mini_notification(f"Downloaded: {fname}")
+                self.change_screen(f"PDF of Final Result of Student ID {sid} Downloaded Successfully!",
+                                   add_callback=self.load_generate_and_download_final_result_of_student)
+
+            except Exception as e:
+                self.show_popup("Backend Error", str(e), "error")
+
+    
+    # ==============================================================================
+    # ----- Button to View all Results for an Exam -----
+    def load_view_all_results_for_exam(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="View All Results for an Exam",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        # ===== FORM FRAME =====
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        tk.Label(
+        form,
+        text="Exam ID:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+    ).grid(row=0, column=0, padx=10, pady=10)
+
+        exam_var = tk.StringVar()
+ 
+        tk.Entry(
+        form,
+        textvariable=exam_var,
+        font=("Arial", 14),
+        width=25
+    ).grid(row=0, column=1, padx=10, pady=10)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, form)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = ("result_id", "student_id", "exam_id", "total_marks", "percentage", "grade")
+
+        # Scrollbars
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.result_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.result_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.result_tree.yview)
+        x_scroll.config(command=self.result_tree.xview)
+
+        # Configure headings
+        for col in cols:
+            self.result_tree.heading(col, text=col.replace("_", " ").title())
+            self.result_tree.column(col, width=180, anchor="center")
+
+        # ===== LOAD BUTTON =====
+        load_btn = tk.Label(
+        self.content,
+        text="Load Results",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=12,
+        width=16,
+        relief="ridge",
+        cursor="arrow"
+    )
+        load_btn.pack(pady=10)
+
+        def enable_load():
+            load_btn.config(bg="#000000", fg="white", cursor="arrow")
+            load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+            load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+            load_btn.bind("<Button-1>", lambda e: load_results())
+
+        def disable_load():
+            load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            load_btn.unbind("<Enter>")
+            load_btn.unbind("<Leave>")
+            load_btn.unbind("<Button-1>")
+
+        disable_load()
+
+        # ===== VALIDATION =====
+        def validate(*args):
+            if exam_var.get().strip().isdigit():
+                enable_load()
+            else:
+                disable_load()
+
+        exam_var.trace_add("write", validate)
+
+        # ===== LOAD RESULTS FUNCTION =====
+        def load_results():
+            exam_id = exam_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/exam/{exam_id}"
+                res = requests.get(url)
+  
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "No results found for this Exam ID!", "warning")
+                    return
+
+                data = res.json()
+
+                # insert into table
+                for row in self.result_tree.get_children():
+                    self.result_tree.delete(row)
+
+                for r in data:
+                    self.result_tree.insert(
+                    "",
+                    "end",
+                    values=(
+                        r["result_id"],
+                        r["student_id"],
+                        r["exam_id"],
+                        r["total_marks"],
+                        r["percentage"],
+                        r["grade"]
+                    )
+                )
+
+            except Exception as e:
+                self.show_popup("Server Error", str(e), "error")
+
+
+    # ==============================================================================
+    # ----- Button to Generate and Download Results of all Students of a class with Some Exam ID ------
+    def load_view_and_download_all_students_results_for_a_class(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="View & Download All Students' Results for a Class",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        # ===== FORM =====
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        tk.Label(form, text="Class ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=8, sticky="e")
+        tk.Label(form, text="Exam ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=1, column=0, padx=10, pady=8, sticky="e")
+
+        class_var = tk.StringVar()
+        exam_var = tk.StringVar()
+
+        tk.Entry(form, textvariable=class_var, font=("Arial", 14), width=25)\
+        .grid(row=0, column=1, padx=10, pady=8)
+        tk.Entry(form, textvariable=exam_var, font=("Arial", 14), width=25)\
+        .grid(row=1, column=1, padx=10, pady=8)
+
+        # BACK BUTTON
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, form)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=15)
+
+        cols = ("student_id", "full_name", "exam_id", "total_marks", "percentage", "grade")
+
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.class_results_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.class_results_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.class_results_tree.yview)
+        x_scroll.config(command=self.class_results_tree.xview)
+
+        # Setup columns
+        for col in cols:
+            self.class_results_tree.heading(col, text=col.replace("_", " ").title())
+            self.class_results_tree.column(col, width=170, anchor="center")
+
+        # ===== BUTTONS =====
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=20)
+
+        load_btn = tk.Label(
+        btn_frame, text="Load Results",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC", fg="#AEB6BF",
+        padx=20, pady=10, width=15,
+        relief="ridge", cursor="arrow"
+    )
+        load_btn.grid(row=0, column=0, padx=15)
+
+        download_btn = tk.Label(
+        btn_frame, text="Download All (ZIP)",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC", fg="#AEB6BF",
+        padx=20, pady=10, width=18,
+        relief="ridge", cursor="arrow"
+    )
+        download_btn.grid(row=0, column=1, padx=15)
+
+        # ===== BUTTON ENABLE/DISABLE =====
+        def enable(btn):
+            btn.config(bg="#000", fg="white", cursor="hand2")
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000"))
+
+        def disable(btn):
+            btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            btn.unbind("<Enter>"); btn.unbind("<Leave>")
+
+        disable(load_btn)
+        disable(download_btn)
+
+        # ===== VALIDATION =====
+        def validate(*args):
+            if class_var.get().strip().isdigit() and exam_var.get().strip().isdigit():
+                enable(load_btn)
+                enable(download_btn)
+                load_btn.bind("<Button-1>", lambda e: load_results())
+                download_btn.bind("<Button-1>", lambda e: download_zip())
+            else:
+                disable(load_btn)
+                disable(download_btn)
+
+        class_var.trace_add("write", validate)
+        exam_var.trace_add("write", validate)
+
+        # ===== LOAD RESULTS FUNCTION =====
+        def load_results():
+            class_id = class_var.get().strip()
+            exam_id = exam_var.get().strip()
+
+            # Clear table
+            for item in self.class_results_tree.get_children():
+                self.class_results_tree.delete(item)
+
+            import requests
+            url = f"http://127.0.0.1:8000/admin/results/exam/{exam_id}"
+
+            try:
+                res = requests.get(url)
+                if res.status_code != 200:
+                    self.show_popup("Error", "No results found for this exam!", "error")
+                    return
+    
+                all_results = res.json()
+
+                # filter only this class
+                for r in all_results:
+                    # Fetching student info
+                    stu = requests.get(f"http://127.0.0.1:8000/admin/results/students/{r['student_id']}")
+                    if stu.status_code != 200:
+                        continue
+
+                    stu_data = stu.json()
+                    if stu_data["class_id"] != int(class_id):
+                        continue
+
+                    self.class_results_tree.insert(
+                    "", "end",
+                    values=(
+                        r["student_id"],
+                        stu_data["full_name"],
+                        r["exam_id"],
+                        r["total_marks"],
+                        r["percentage"],
+                        r["grade"]
+                    )
+                )
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+
+        # ===== DOWNLOAD ZIP FUNCTION =====
+        def download_zip():
+            class_id = class_var.get().strip()
+            exam_id = exam_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/download/class/{class_id}/{exam_id}"
+                res = requests.get(url)
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "No results available to download!", "error")
+                    return
+
+                # Ask save location
+                from tkinter import filedialog
+                file_path = filedialog.asksaveasfilename(
+                defaultextension=".zip",
+                filetypes=[("ZIP Files", "*.zip")],
+                initialfile=f"class_{class_id}_exam_{exam_id}_results.zip"
+            )
+
+                if not file_path:
+                    return
+
+                with open(file_path, "wb") as f:
+                    f.write(res.content)
+
+                self.show_mini_notification("ZIP Downloaded Successfully!")
+                self.change_screen(f"Downloaded Results of all Students for Class ID {class_id} Based on Exam ID {exam_id}",
+                                   add_callback=self.load_view_and_download_all_students_results_for_a_class)
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+
+
+    # ==============================================================================
+    # ----- Button to Generate and Download Final Results of a class -----
+    def load_generate_and_download_all_final_results_for_a_class(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Generate & Download Final Results for a Class",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        # ===== FORM =====
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        tk.Label(form, text="Class ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=8, sticky="e")
+
+        class_var = tk.StringVar()
+
+        tk.Entry(form, textvariable=class_var, font=("Arial", 14), width=25)\
+        .grid(row=0, column=1, padx=10, pady=8)
+
+        # BACK BUTTON
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, form)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=15)
+
+        cols = ("student_id", "full_name", "total_marks", "max_marks", "percentage", "final_grade")
+
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.final_results_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.final_results_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.final_results_tree.yview)
+        x_scroll.config(command=self.final_results_tree.xview)
+
+        for col in cols:
+            self.final_results_tree.heading(col, text=col.replace("_", " ").title())
+            self.final_results_tree.column(col, width=160, anchor="center")
+
+        # ===== BUTTONS =====
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=20)
+
+        load_btn = tk.Label(
+        btn_frame, text="Generate Final Results",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC", fg="#AEB6BF",
+        padx=20, pady=10, width=20,
+        relief="ridge", cursor="arrow"
+    )
+        load_btn.grid(row=0, column=0, padx=20)
+
+        download_btn = tk.Label(
+        btn_frame, text="Download All (ZIP)",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC", fg="#AEB6BF",
+        padx=20, pady=10, width=18,
+        relief="ridge", cursor="arrow"
+    )
+        download_btn.grid(row=0, column=1, padx=20)
+
+        # ===== ENABLE / DISABLE BUTTONS =====
+        def enable(btn):
+            btn.config(bg="#000000", fg="white", cursor="arrow")
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        def disable(btn):
+            btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            btn.unbind("<Enter>"); btn.unbind("<Leave>")
+
+        disable(load_btn)
+        disable(download_btn)
+
+        # ===== VALIDATION =====
+        def validate(*args):
+            if class_var.get().strip().isdigit():
+                enable(load_btn)
+                enable(download_btn)
+                load_btn.bind("<Button-1>", lambda e: load_results())
+                download_btn.bind("<Button-1>", lambda e: download_zip())
+            else:
+                disable(load_btn)
+                disable(download_btn)
+
+        class_var.trace_add("write", validate)
+
+        # ===== LOAD FINAL RESULTS (TABLE VIEW) =====
+        def load_results():
+            class_id = class_var.get().strip()
+
+            # Clear table
+            for item in self.final_results_tree.get_children():
+                self.final_results_tree.delete(item)
+
+            import requests
+
+            try:
+                # Step 1: get all students of the class
+                stu_res = requests.get(f"http://127.0.0.1:8000/admin/master/students/class/{class_id}")
+                if stu_res.status_code != 200:
+                    self.show_popup("Error", "No active students in this class!", "error")
+                    return
+
+                students = stu_res.json()
+
+                # Step 2: For each student fetch FINAL RESULT
+                for stu in students:
+                    sid = stu["student_id"]
+                    res = requests.get(f"http://127.0.0.1:8000/admin/results/final/{sid}")
+
+                    if res.status_code != 200:
+                        continue  # skip students with no results
+
+                    r = res.json()
+
+                    self.final_results_tree.insert(
+                    "", "end",
+                    values=(
+                        r["student_id"],
+                        stu["full_name"],
+                        r["total_marks"],
+                        r["max_marks"],
+                        r["percentage"],
+                        r["final_grade"]
+                    )
+                )
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+
+        # ===== DOWNLOAD FINAL RESULTS ZIP =====
+        def download_zip():
+            class_id = class_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/final/download/class/{class_id}"
+                res = requests.get(url)
+ 
+                if res.status_code != 200:
+                    self.show_popup("Error", "Unable to generate ZIP!", "error")
+                    return
+
+                # File dialog
+                from tkinter import filedialog
+                file_path = filedialog.asksaveasfilename(
+                defaultextension=".zip",
+                filetypes=[("ZIP Files", "*.zip")],
+                initialfile=f"class_{class_id}_final_results.zip"
+            )
+
+                if not file_path:
+                    return
+
+                with open(file_path, "wb") as f:
+                    f.write(res.content)
+
+                self.show_mini_notification("Final Results ZIP Downloaded!")
+                self.change_screen(f"Successfully Downloaded all Final Results for Class ID {class_id}",
+                                   add_callback=self.load_generate_and_download_all_final_results_for_a_class)
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+                
 
     # ==============================================================================
     # ===== DASHBOARD PAGE ======

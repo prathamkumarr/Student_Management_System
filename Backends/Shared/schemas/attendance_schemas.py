@@ -144,3 +144,49 @@ class AttendanceListResponse(BaseModel):
     total: int
     class Config:
         from_attributes = True
+
+
+# ---------- Staff attendance schemas ----------
+class StaffAttendanceBase(BaseModel):
+    staff_id: PositiveInt
+    date: date       
+    check_in: Optional[datetime] = None
+    check_out: Optional[datetime] = None
+    status: str = Field(default="P", pattern="^(P|A|L)$")
+    remarks: Optional[NoteStr] = None
+    class Config:
+        from_attributes = True
+
+class StaffAttendanceCreate(StaffAttendanceBase):
+    pass
+
+class StaffAttendanceUpdate(BaseModel):
+    check_out: Optional[datetime] = None
+    status: Optional[Literal["P", "A", "L"]] = None
+    remarks: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+class StaffAttendanceSummary(BaseModel):
+    staff_id: int
+    total_days: int
+    present: int
+    absent: int
+    leave: int
+    percentage: float
+    class Config:
+        from_attributes = True
+
+class StaffAttendanceResponse(BaseModel):
+    record_id: int
+    staff_id: int
+    date: date
+    check_in: datetime | None
+    check_out: datetime | None
+    status: str
+    remarks: str | None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    class Config:
+        from_attributes = True

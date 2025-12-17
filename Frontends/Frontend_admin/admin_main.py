@@ -68,8 +68,8 @@ class AdminUI:
             padx=20,
             pady=12,
             anchor="w",
-            width=20,
-            cursor="hand2"
+            width=30,
+            cursor="arrow"
         )
         btn.pack(pady=5, fill="x")
 
@@ -104,6 +104,9 @@ class AdminUI:
 
         fee_btn = self.add_btn("Manage Fees")
         self.build_fees_dropdown(fee_btn)
+        
+        result_btn = self.add_btn("Manage Exams and Results")
+        self.build_result_dropdown(result_btn)
 
         tc_btn = self.add_btn("Manage TCs")
         self.build_tc_dropdown(tc_btn)
@@ -114,7 +117,15 @@ class AdminUI:
         work_btn = self.add_btn("Manage Work")
         self.build_work_dropdown(work_btn)
 
-    
+        onboarding_btn = self.add_btn("Manage Onboardings")
+        self.build_onboarding_dropdown(onboarding_btn)
+
+        offboarding_btn = self.add_btn("Manage Offboardings and Transfers")
+        self.build_offboarding_dropdown(offboarding_btn)
+        
+        master_btn = self.add_btn("View Master Tables")
+        self.build_master_dropdown(master_btn)
+
     def clear_content(self):
         for widget in self.content.winfo_children():
             widget.destroy()
@@ -142,6 +153,16 @@ class AdminUI:
         teacher.add_command(label="Delete Attendance", command=self.load_delete_teacher_attendance_screen)
 
         menu.add_cascade(label="Teacher Attendance", menu=teacher)
+        parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
+
+        staff = tk.Menu(menu, tearoff=0)
+        staff.add_command(label="View All Attendance", command=self.load_view_all_staff_attendance)
+        staff.add_command(label="View by ID", command=self.load_view_staff_attendance_by_id)
+        staff.add_command(label="Attendance Summary", command=self.load_staff_attendance_summary_screen)
+        staff.add_command(label="Update Attendance", command=self.load_update_staff_attendance_screen)
+        staff.add_command(label="Delete Attendance", command=self.load_delete_staff_attendance_screen)
+
+        menu.add_cascade(label="Staff Attendance", menu=staff)
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
     
     # =========================================
@@ -205,6 +226,104 @@ class AdminUI:
 
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
 
+    # ==========================================
+    def build_onboarding_dropdown(self, parent_label):
+        menu = tk.Menu(self.root, tearoff=0)
+
+        menu.add_command(label="Create Teacher Onboarding", command=lambda: self.load_create_onboarding_screen())
+        menu.add_command(label="View Teacher Onboarding Queue", command=lambda: self.load_view_onboarding_queue_screen())
+        menu.add_command(label="Approve Teacher Onboarding", command=lambda: self.load_approve_teacher_onboarding_screen())
+
+        so = tk.Menu(menu, tearoff=0)
+        so.add_command(label="Create Onboarding", command=lambda: self.load_create_staff_onboarding_screen())
+        so.add_command(label="View Onboarding Queue", command=lambda: self.load_view_staff_onboarding_queue_screen())
+        so.add_command(label="Approve Onboarding", command=lambda: self.load_approve_staff_onboarding_screen())
+ 
+        menu.add_cascade(label="Staff Onboardings", menu=so)
+
+        parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
+
+    # ===========================================
+    def build_offboarding_dropdown(self, parent_label):
+        menu = tk.Menu(self.root, tearoff=0)
+
+        # ========== TEACHER MENUS ==========
+        teacher_menu = tk.Menu(menu, tearoff=0)
+
+        # ---- TEACHER OFFBOARDING SUBMENU ----
+        teacher_off_menu = tk.Menu(teacher_menu, tearoff=0)
+        teacher_off_menu.add_command(label="Create Separation Request", command=lambda: self.load_issue_teacher_separation_screen())
+        teacher_off_menu.add_command(label="View Separation Queue", command=lambda: self.load_view_all_teacher_separation_screen())
+        teacher_off_menu.add_command(label="Approve Separation", command=lambda: self.load_approve_teacher_separation_screen())
+
+        teacher_menu.add_cascade(label="Manage Offboardings", menu=teacher_off_menu)
+
+        # ---- TEACHER TRANSFER SUBMENU ----
+        teacher_trans_menu = tk.Menu(teacher_menu, tearoff=0)
+        teacher_trans_menu.add_command(label="Create Transfer Request", command=lambda: self.load_create_teacher_transfer_screen())
+        teacher_trans_menu.add_command(label="View Transfer Queue", command=lambda: self.load_view_all_teacher_transfers_screen())
+        teacher_trans_menu.add_command(label="Approve Transfer", command=lambda: self.load_approve_teacher_transfer_screen())
+
+        teacher_menu.add_cascade(label="Manage Transfers", menu=teacher_trans_menu)
+
+        menu.add_cascade(label="For Teachers", menu=teacher_menu)
+
+        # ========== STAFF MENUS ==========
+        staff_menu = tk.Menu(menu, tearoff=0)
+
+        staff_off_menu = tk.Menu(staff_menu, tearoff=0)
+        staff_off_menu.add_command(label="Create Offboarding", command=lambda: self.load_issue_staff_separation_screen())
+        staff_off_menu.add_command(label="View Offboarding Queue", command=lambda: self.load_view_all_staff_separation_screen())
+        staff_off_menu.add_command(label="Approve Offboarding", command=lambda: self.load_approve_staff_separation_screen())
+        
+        staff_menu.add_cascade(label="Manage Offboardings", menu=staff_off_menu)
+
+        staff_trans_menu = tk.Menu(staff_menu, tearoff=0)
+        staff_trans_menu.add_command(label="Create Transfer", command=lambda: self.load_create_staff_transfer_screen())
+        staff_trans_menu.add_command(label="View Transfer Queue", command=lambda: self.load_view_all_staff_transfers_screen())
+        staff_trans_menu.add_command(label="Approve Transfer", command=lambda: self.load_approve_staff_transfer_screen())
+        
+        staff_menu.add_cascade(label="Manage Transfers", menu=staff_trans_menu)
+
+        menu.add_cascade(label="For Staff", menu=staff_menu)
+
+        parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
+
+    # =========================================
+    def build_result_dropdown(self, parent_label):
+        menu = tk.Menu(self.root, tearoff=0)
+
+        menu.add_command(label="Create Exam Type", command=lambda: self.load_create_exam_type_screen())
+        menu.add_command(label="View all Exam Types", command=lambda: self.load_view_all_exams_screen())
+        menu.add_command(label="Update Exam Type", command=lambda: self.load_update_exam_screen())
+        menu.add_command(label="Delete Exam Type", command=lambda: self.load_delete_exam_screen())
+
+        rg = tk.Menu(menu, tearoff=0)
+        rg.add_command(label="Generate and Download Result of a Student", command=lambda: self.load_generate_and_download_result_of_student())
+        rg.add_command(label="Generate and Download Final Result of a Student", command=lambda: self.load_generate_and_download_final_result_of_student())
+        rg.add_command(label="View all Result for an Exam", command=lambda: self.load_view_all_results_for_exam())
+        rg.add_command(label="Generate and Download all students Results for a class", command=lambda: self.load_view_and_download_all_students_results_for_a_class())
+        rg.add_command(label="Generate and Download all Final Results for a Class", command=lambda: self.load_generate_and_download_all_final_results_for_a_class())
+
+        menu.add_cascade(label="Generate Results", menu=rg)
+
+        parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
+
+    # ========================================
+    def build_master_dropdown(self, parent_label):
+        menu = tk.Menu(self.root, tearoff=0)
+
+        menu.add_command(label="Student Master", command=self.load_student_master)
+        menu.add_command(label="Class Master", command=self.load_class_master)
+        menu.add_command(label="Teacher Master", command=self.load_teacher_master)
+        menu.add_command(label="Subject Master", command=self.load_subject_master)
+        menu.add_command(label="Fee Master", command=self.load_fee_master)
+        menu.add_command(label="Exam Master", command=self.load_exam_master)
+        menu.add_command(label="Result Master", command=self.load_result_master)
+        menu.add_command(label="Staff Master", command=self.load_staff_master)
+        menu.add_command(label="Salary Master", command=self.load_salary_master)
+
+        parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
 
     # ===== CHANGE SCREEN VIEW =====
     def change_screen(self, message, back_callback=None, add_callback=None):
@@ -524,7 +643,21 @@ class AdminUI:
             row["method_name"],
             row["is_active"]
         ))
+    
+    def show_mini_notification(self, message):
+        toast = tk.Label(
+        self.root,
+        text=message,
+        bg="#323232",
+        fg="white",
+        font=("Arial", 12),
+        padx=15,
+        pady=8
+    )
+        toast.place(relx=0.98, rely=0.98, anchor="se")
 
+        toast.after(3000, toast.destroy)
+        
     # ==============================================================================
     # ==== Button to create fee ====
     def load_create_fee_screen(self):
@@ -836,7 +969,19 @@ class AdminUI:
                     add_callback=self.load_assign_fee_screen
                 )
                 else:
-                    self.show_popup("Failed", "Failed to Assign Fees!", "error")
+                    error_msg = "Failed to assign fee!"
+                    try:
+                        err = res.json()
+                        if "detail" in err:
+                            error_msg = err["detail"]
+                    except:
+                            pass
+   
+                    self.show_popup("Request Failed", error_msg, "error")
+                    self.change_screen(
+                    "Failed to Assign Fees Try Again with a Valid Student ID!",
+                    add_callback=self.load_assign_fee_screen
+                )
 
             except:
                 self.show_popup("Error","Error in Assigning Fees", "error")
@@ -1992,33 +2137,6 @@ class AdminUI:
         except Exception as e:
             self.show_popup("Backend Error", str(e), "error")
             return
-
-        def show_method_details(self, data):
-            self.clear_content()
-            tk.Label(
-                self.content,
-                text="Payment Method Details",
-                font=("Arial", 26, "bold"),
-                bg="#ECF0F1",
-                fg="#2C3E50"
-                ).pack(pady=20)
-
-            info = tk.Frame(self.content, bg="#ECF0F1")
-            info.pack(pady=20)
-
-            for i, (key, value) in enumerate(data.items()):
-                tk.Label(info, text=f"{key}:", font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=0, padx=10, pady=8)
-                tk.Label(info, text=str(value), font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=1, padx=10, pady=8)
-
-            # Back button
-            btn_frame = tk.Frame(self.content, bg="#ECF0F1")
-            btn_frame.pack(pady=20)
-        
-            self.create_back_button(
-            parent=btn_frame,
-            go_back_callback=self.load_dashboard,
-            form_frame=None     # table screen : no form entries
-            )
 
 
     #-------Timetable Screens------
@@ -6006,7 +6124,7 @@ class AdminUI:
 
         # ---------- LOAD ADMISSION DETAILS ----------
         def load_admission():
-            adm_id = str(adm_id_var).get().strip()
+            adm_id = adm_id_var.get().strip()
 
             if not adm_id.isdigit() or int(adm_id) <= 0:
                 self.show_popup("Failed", "Admission ID should be a Number!", "warning")
@@ -6531,6 +6649,6771 @@ class AdminUI:
             except:
                 self.show_popup("Error", "Unable to approve TC!", "error")
 
+
+    # ==============================================================================
+    # ----- TEACHER ONBOARDING BUTTONS -----
+    # ----- Button to Create Onboardings -----
+    def load_create_onboarding_screen(self):
+        self.clear_content()
+
+        tk.Label(
+        self.content,
+        text="Teacher Onboarding Form",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        fields = [
+        ("Full Name", "full_name"),
+        ("Gender (M/F/O)", "gender"),
+        ("Date of Birth", "date_of_birth"),
+        ("Address", "address"),
+        ("Subject ID", "subject_id"),
+        ("Qualification", "qualification"),
+        ("Experience (Years)", "experience_years"),
+        ("Email", "email"),
+        ("Phone", "phone"),
+        ]
+
+        vars = {}
+
+        for i, (label, key) in enumerate(fields):
+
+            tk.Label(form, text=f"{label}:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=i, column=0, padx=10, pady=6)
+
+            vars[key] = tk.StringVar()
+
+            # calendar for dob
+            if key == "date_of_birth":
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=28)
+                entry.grid(row=i, column=1, padx=5, pady=6)
+
+                tk.Button(
+                form,
+                text="Calendar",
+                font=("Arial", 12),
+                bg="white",
+                command=lambda v=vars[key], b=entry: self.open_calendar_popup(b, v)
+                ).grid(row=i, column=2, padx=5)
+
+            else:
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30)
+                entry.grid(row=i, column=1, padx=10, pady=6)
+
+        # Submit Button
+        submit_btn = tk.Label(
+        form,
+        text="Submit",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20, pady=10,
+        width=20,
+        cursor="arrow",
+        relief="ridge"
+        )
+        submit_btn.grid(row=len(fields), columnspan=2, pady=20)
+
+        def validate():
+            if all(v.get().strip() for v in vars.values()):
+                submit_btn.config(bg="#000000", fg="white", cursor="arrow")
+                submit_btn.bind("<Button-1>", lambda e: submit())
+            else:
+                submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                submit_btn.unbind("<Button-1>")
+
+        for v in vars.values():
+            v.trace_add("write", lambda *args: validate())
+
+        def submit():
+            data = {k: v.get().strip() for k, v in vars.items()}
+
+            # Gender check
+            gender = data["gender"].upper()
+            if gender not in ["M", "F", "O"]:
+                return self.show_popup("Invalid Gender", "Gender must be M/F/O only!", "warning")
+
+            # Subject ID must be int
+            if not data["subject_id"].isdigit():
+                return self.show_popup("Invalid Subject ID", "Subject ID must be numeric!", "warning")
+
+            # Experience must be int
+            if not data["experience_years"].isdigit():
+                 return self.show_popup("Invalid Experience", "Experience must be a number!", "warning")
+
+            # email auto-format
+            if "@school.com" not in data["email"]:
+                data["email"] = data["email"].lower().replace(" ", "") + "@school.com"
+
+            # phone validation
+            if not data["phone"].isdigit() or len(data["phone"]) != 10:
+                return self.show_popup("Invalid Phone", "Phone must be 10 digits!", "warning")
+
+            # POST request
+            try:
+                import requests
+                res = requests.post("http://127.0.0.1:8000/admin/teachers/onboardings/create", json=data)
+
+                if res.status_code == 200:
+                    self.show_popup("Success", "Teacher Onboarding Submitted!", "info")
+                    self.change_screen("Onboarding Submitted!", add_callback=self.load_create_onboarding_screen)
+                else:
+                    msg = res.json().get("detail", "Error occurred")
+                    self.show_popup("Failed", msg, "error")
+
+            except:
+                self.show_popup("Server Error", "Backend not reachable", "error")
+
+
+    # ==============================================================================
+    # ----- Button to View all Onboardings in Queue ------
+    def load_view_onboarding_queue_screen(self):
+        self.clear_content()
+
+        # -------- TITLE --------
+        tk.Label(
+        self.content,
+        text="Teacher Onboarding Queue",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # -------- BACK BUTTON --------
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # -------- TABLE WRAPPER --------
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = (
+        "onboarding_id", "full_name", "date_of_birth", "gender", "address",
+        "email", "phone", "subject_id", "qualification", "experience_years"
+        )
+        # Filter Bar
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=10)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        filter_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=list(cols),
+        state="readonly",
+        width=20
+        )
+        filter_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val_entry = tk.Entry(
+        filter_frame,
+        textvariable=filter_val_var,
+        font=("Arial", 12),
+        width=25
+        )
+        filter_val_entry.grid(row=0, column=2, padx=10)
+
+        # Button styling
+        def style_btn(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+            )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_btn(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_btn(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # Table Scrollbars
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.teacher_onboarding_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+        )
+        self.teacher_onboarding_tree.pack(fill="both", expand=True)
+ 
+        y_scroll.config(command=self.teacher_onboarding_tree.yview)
+        x_scroll.config(command=self.teacher_onboarding_tree.xview)
+
+        for col in cols:
+            self.teacher_onboarding_tree.heading(col, text=col.replace("_", " ").title())
+            self.teacher_onboarding_tree.column(col, width=180, anchor="center")
+
+        # Backend Fetch
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/teachers/onboardings/all")
+            self.all_teacher_onboardings = res.json() if res.status_code == 200 else []
+
+            self.column_values = {
+            "onboarding_id": [str(r["onboarding_id"]) for r in self.all_teacher_onboardings],
+            "full_name": [r["full_name"] for r in self.all_teacher_onboardings],
+            "date_of_birth": [r["date_of_birth"] for r in self.all_teacher_onboardings],
+            "gender": [r["gender"] for r in self.all_teacher_onboardings],
+            "address": [r["address"] for r in self.all_teacher_onboardings],
+            "email": [r["email"] for r in self.all_teacher_onboardings],
+            "phone": [r["phone"] for r in self.all_teacher_onboardings],
+            "subject_id": [str(r["subject_id"]) for r in self.all_teacher_onboardings],
+            "qualification": [r["qualification"] for r in self.all_teacher_onboardings],
+            "experience_years": [str(r["experience_years"]) for r in self.all_teacher_onboardings],
+            }
+        except:
+            self.all_teacher_onboardings = []
+
+        # ----------- UPDATE TABLE -----------
+        def update_table(data):
+            for row in self.teacher_onboarding_tree.get_children():
+                self.teacher_onboarding_tree.delete(row)
+
+            for row in data:
+                self.teacher_onboarding_tree.insert(
+                "",
+                "end",
+                values=(
+                    row["onboarding_id"],
+                    row["full_name"],
+                    row["date_of_birth"],
+                    row["gender"],
+                    row["address"],
+                    row["email"],
+                    row["phone"],
+                    row["subject_id"],
+                    row["qualification"],
+                    row["experience_years"]
+                )
+            )
+
+        # ----------- FILTER HANDLER -----------
+        def load_filtered():
+            col = filter_var.get().strip()
+            val = filter_val_var.get().strip().lower()
+
+            if not col or not val:
+                return
+
+            valid_lower = [str(v).lower() for v in self.column_values.get(col, [])]
+
+            if val not in valid_lower:
+                self.show_popup(
+                "Invalid Search",
+                f"'{val}' not found in {col.replace('_', ' ').title()}",
+                "warning"
+                )
+                filter_val_var.set("")
+                return
+
+            filtered = [
+            r for r in self.all_teacher_onboardings
+            if str(r[col]).lower() == val
+            ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_teacher_onboardings))
+
+        # INITIAL LOAD
+        update_table(self.all_teacher_onboardings)
+
+
+    # ==============================================================================
+    # ----- Button to Approve Onboardings -----
+    def load_approve_teacher_onboarding_screen(self):
+        self.clear_content()
+
+        # ---------------- TITLE ----------------
+        tk.Label(
+        self.content,
+        text="Approve Teacher Onboarding",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=25)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # ---------------- INPUT FIELD ----------------
+        tk.Label(form, text="Onboarding ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=10)
+
+        onboard_id_var = tk.StringVar()
+        onboard_id_entry = tk.Entry(form, textvariable=onboard_id_var,
+                                font=("Arial", 14), width=25)
+        onboard_id_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------------- LOAD BUTTON ----------------
+        load_btn = tk.Label(
+        form,
+        text="Load",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15,
+        pady=5,
+        width=12,
+        relief="ridge",
+        cursor="arrow"
+        )
+        load_btn.grid(row=0, column=2, padx=10)
+
+        # ENABLE LOAD BUTTON ON VALID INPUT
+        def validate_load(*args):
+            if onboard_id_var.get().strip():
+                load_btn.config(bg="#000000", fg="white", cursor="hand2")
+                load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+                load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+                load_btn.bind("<Button-1>", lambda e: load_teacher_onboarding())
+            else:
+                load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                load_btn.unbind("<Enter>")
+                load_btn.unbind("<Leave>")
+                load_btn.unbind("<Button-1>")
+
+        onboard_id_var.trace_add("write", validate_load)
+
+        # ---------------- OUTPUT PANEL ----------------
+        output_frame = tk.Frame(self.content, bg="#ECF0F1")
+        output_frame.pack(pady=20)
+
+        fields = [
+        "full_name", "date_of_birth", "gender", "address",
+        "email", "phone", "subject_id", "qualification", "experience_years"
+        ]
+
+        vars_dict = {}
+
+        for i, field in enumerate(fields):
+            tk.Label(output_frame, text=f"{field}:",
+                 font=("Arial", 14), bg="#ECF0F1").grid(
+            row=i, column=0, padx=10, pady=6, sticky="w"
+            )
+
+            var = tk.StringVar()
+            entry = tk.Entry(
+            output_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+            )
+            entry.grid(row=i, column=1, padx=10, pady=6)
+            vars_dict[field] = var
+
+        # ---------------- BACK BUTTON ----------------
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=30)
+
+        self.create_back_button(
+        parent=btn_row,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
+
+        self.content.update_idletasks()
+
+        # ---------------- APPROVE BUTTON ----------------
+        approve_btn = tk.Label(
+        self.content,
+        text="Approve Onboarding",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        approve_btn.pack(pady=20)
+
+        # ENABLE / DISABLE APPROVE BUTTON
+        def enable_approve():
+            approve_btn.config(bg="#000000", fg="white", cursor="arrow")
+            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
+            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
+            approve_btn.bind("<Button-1>", lambda e: approve_onboarding())
+
+        def disable_approve():
+            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            approve_btn.unbind("<Enter>")
+            approve_btn.unbind("<Leave>")
+            approve_btn.unbind("<Button-1>")
+
+        disable_approve()
+
+        # ---------------- LOAD DATA FUNCTION ----------------
+        def load_teacher_onboarding():
+            oid = onboard_id_var.get().strip()
+
+            if not oid.isdigit() or int(oid) <= 0:
+                self.show_popup("Failed", "Onboarding ID must be a positive number!", "warning")
+                return
+
+            import requests
+
+            try:
+                res = requests.get(f"http://127.0.0.1:8000/admin/teachers/onboardings/{oid}")
+
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "No onboarding record found!", "info")
+                    disable_approve()
+                    for v in vars_dict.values():
+                        v.set("")
+                    return
+
+                data = res.json()
+
+                vars_dict["full_name"].set(data["full_name"])
+                vars_dict["date_of_birth"].set(data["date_of_birth"])
+                vars_dict["gender"].set(data["gender"])
+                vars_dict["address"].set(data["address"])
+                vars_dict["email"].set(data["email"])
+                vars_dict["phone"].set(data["phone"])
+                vars_dict["subject_id"].set(data["subject_id"])
+                vars_dict["qualification"].set(data["qualification"])
+                vars_dict["experience_years"].set(data["experience_years"])
+
+                enable_approve()
+
+            except:
+                self.show_popup("Error", "Error fetching onboarding record!", "error")
+
+        # ---------------- APPROVE FUNCTION ----------------
+        def approve_onboarding():
+            oid = onboard_id_var.get().strip()
+
+            import requests
+
+            try:
+                res = requests.post(
+                f"http://127.0.0.1:8000/admin/teachers/onboardings/approve/{oid}"
+                )
+
+                if res.status_code == 200:
+                    teacher_id = res.json().get("teacher_id")
+                    self.show_popup("Success", f"Teacher Onboarding Approved!\nTeacher ID: {teacher_id}", "success")
+                    self.change_screen(
+                    f"Teacher Onboarding Approved!\nTeacher ID: {teacher_id}",
+                    add_callback=self.load_approve_teacher_onboarding_screen
+                    )
+                else:
+                    self.show_popup("Failed", "Approval failed!", "error")
+
+            except:
+                self.show_popup("Error", "Error approving onboarding!", "error")
+
+    
+    # ==============================================================================
+    # ----- STAFF ONNBOARDINGS ------
+    # ----- Button to Create Staff Onboardings ------
+    def load_create_staff_onboarding_screen(self):
+        self.clear_content()
+
+        tk.Label(
+        self.content,
+        text="Staff Onboarding Form",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        fields = [
+        ("Full Name", "full_name"),
+        ("Date of Birth", "date_of_birth"),
+        ("Gender (M/F/O)", "gender"),
+        ("Address", "address"),
+        ("Department", "department"),
+        ("Role", "role"),
+        ("Email", "email"),
+        ("Phone", "phone"),
+        ("Experience (Years)", "experience_years")
+        ]
+
+        vars = {}
+
+        for i, (label, key) in enumerate(fields):
+
+            tk.Label(form, text=f"{label}:", font=("Arial", 14), bg="#ECF0F1") \
+            .grid(row=i, column=0, padx=10, pady=6)
+
+            vars[key] = tk.StringVar()
+
+            # calendar for dob
+            if key == "date_of_birth":
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=28)
+                entry.grid(row=i, column=1, padx=5, pady=6)
+
+                tk.Button(
+                form,
+                text="Calendar",
+                font=("Arial", 12),
+                bg="white",
+                command=lambda v=vars[key], b=entry: self.open_calendar_popup(b, v)
+                ).grid(row=i, column=2, padx=5)
+
+            else:
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30)
+                entry.grid(row=i, column=1, padx=10, pady=6)
+
+        # Submit Button
+        submit_btn = tk.Label(
+        form,
+        text="Submit",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20, pady=10,
+        width=20,
+        cursor="arrow",
+        relief="ridge"
+        )
+        submit_btn.grid(row=len(fields), columnspan=2, pady=20)
+
+        def validate():
+            if all(v.get().strip() for v in vars.values()):
+                submit_btn.config(bg="#000000", fg="white", cursor="arrow")
+                submit_btn.bind("<Button-1>", lambda e: submit())
+            else:
+                submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                submit_btn.unbind("<Button-1>")
+
+        for v in vars.values():
+            v.trace_add("write", lambda *args: validate())
+
+        def submit():
+            data = {k: v.get().strip() for k, v in vars.items()}
+
+            # Gender check
+            gender = data["gender"].upper()
+            if gender not in ["M", "F", "O"]:
+                return self.show_popup("Invalid Gender", "Gender must be M/F/O only!", "warning")
+
+            # Experience must be int
+            if not data["experience_years"].isdigit():
+                return self.show_popup("Invalid Experience", "Experience must be a number!", "warning")
+
+            # email auto-format
+            if "@school.com" not in data["email"]:
+                data["email"] = data["email"].lower().replace(" ", "") + "@school.com"
+
+            # phone validation
+            if not data["phone"].isdigit() or len(data["phone"]) != 10:
+                return self.show_popup("Invalid Phone", "Phone must be 10 digits!", "warning")
+
+            # POST request
+            try:
+                import requests
+                res = requests.post("http://127.0.0.1:8000/admin/staff/onboardings/create", json=data)
+
+                if res.status_code == 200:
+                    self.show_popup("Success", "Staff Onboarding Submitted!", "info")
+                    self.change_screen("Onboarding Submitted!", add_callback=self.load_create_staff_onboarding_screen)
+                else:
+                    msg = res.json().get("detail", "Error occurred")
+                    self.show_popup("Failed", msg, "error")
+
+            except:
+                self.show_popup("Server Error", "Backend not reachable", "error")
+
+
+    # ==============================================================================
+    # ----- Button to View all staff Onboardings in Queue -----
+    def load_view_staff_onboarding_queue_screen(self):
+        self.clear_content()
+
+        # -------- TITLE --------
+        tk.Label(
+        self.content,
+        text="Staff Onboarding Queue",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # -------- BACK BUTTON --------
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # -------- TABLE WRAPPER --------
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = (
+        "onboarding_id", "full_name", "date_of_birth", "gender", "address",
+        "email", "phone", "department", "role", "experience_years"
+        )
+        # Filter Bar
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=10)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        filter_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=list(cols),
+        state="readonly",
+        width=20
+        )
+        filter_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val_entry = tk.Entry(
+        filter_frame,
+        textvariable=filter_val_var,
+        font=("Arial", 12),
+        width=25
+        )
+        filter_val_entry.grid(row=0, column=2, padx=10)
+
+        # Button styling
+        def style_btn(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+            )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_btn(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_btn(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # Table Scrollbars
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.staff_onboarding_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+        )
+        self.staff_onboarding_tree.pack(fill="both", expand=True)
+ 
+        y_scroll.config(command=self.staff_onboarding_tree.yview)
+        x_scroll.config(command=self.staff_onboarding_tree.xview)
+
+        for col in cols:
+            self.staff_onboarding_tree.heading(col, text=col.replace("_", " ").title())
+            self.staff_onboarding_tree.column(col, width=180, anchor="center")
+
+        # Backend Fetch
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/staff/onboardings/all")
+            self.all_staff_onboardings = res.json() if res.status_code == 200 else []
+
+            self.column_values = {
+            "onboarding_id": [str(r["onboarding_id"]) for r in self.all_staff_onboardings],
+            "full_name": [r["full_name"] for r in self.all_staff_onboardings],
+            "date_of_birth": [r["date_of_birth"] for r in self.all_staff_onboardings],
+            "gender": [r["gender"] for r in self.all_staff_onboardings],
+            "address": [r["address"] for r in self.all_staff_onboardings],
+            "email": [r["email"] for r in self.all_staff_onboardings],
+            "phone": [r["phone"] for r in self.all_staff_onboardings],
+            "department": [r["department"] for r in self.all_staff_onboardings],
+            "role": [r["role"] for r in self.all_staff_onboardings],
+            "experience_years": [str(r["experience_years"]) for r in self.all_staff_onboardings],
+            }
+        except:
+            self.all_staff_onboardings = []
+
+        # ----------- UPDATE TABLE -----------
+        def update_table(data):
+            for row in self.staff_onboarding_tree.get_children():
+                self.staff_onboarding_tree.delete(row)
+
+            for row in data:
+                self.staff_onboarding_tree.insert(
+                "",
+                "end",
+                values=(
+                    row["onboarding_id"],
+                    row["full_name"],
+                    row["date_of_birth"],
+                    row["gender"],
+                    row["address"],
+                    row["email"],
+                    row["phone"],
+                    row["department"],
+                    row["role"],
+                    row["experience_years"]
+                )
+            )
+
+        # ----------- FILTER HANDLER -----------
+        def load_filtered():
+            col = filter_var.get().strip()
+            val = filter_val_var.get().strip().lower()
+
+            if not col or not val:
+                return
+
+            valid_lower = [str(v).lower() for v in self.column_values.get(col, [])]
+
+            if val not in valid_lower:
+                self.show_popup(
+                "Invalid Search",
+                f"'{val}' not found in {col.replace('_', ' ').title()}",
+                "warning"
+                )
+                filter_val_var.set("")
+                return
+
+            filtered = [
+            r for r in self.all_staff_onboardings
+            if str(r[col]).lower() == val
+            ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_staff_onboardings))
+
+        # INITIAL LOAD
+        update_table(self.all_staff_onboardings)
+
+    
+    # ==============================================================================
+    # ----- Button to Approve Staff Onboardings ------
+    def load_approve_staff_onboarding_screen(self):
+        self.clear_content()
+
+        # ---------------- TITLE ----------------
+        tk.Label(
+        self.content,
+        text="Approve Staff Onboarding",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=25)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # ---------------- INPUT FIELD ----------------
+        tk.Label(form, text="Onboarding ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=10)
+
+        onboard_id_var = tk.StringVar()
+        onboard_id_entry = tk.Entry(form, textvariable=onboard_id_var,
+                                font=("Arial", 14), width=25)
+        onboard_id_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------------- LOAD BUTTON ----------------
+        load_btn = tk.Label(
+        form,
+        text="Load",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15,
+        pady=5,
+        width=12,
+        relief="ridge",
+        cursor="arrow"
+        )
+        load_btn.grid(row=0, column=2, padx=10)
+
+        # ENABLE LOAD BUTTON ON VALID INPUT
+        def validate_load(*args):
+            if onboard_id_var.get().strip():
+                load_btn.config(bg="#000000", fg="white", cursor="arrow")
+                load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+                load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+                load_btn.bind("<Button-1>", lambda e: load_staff_onboarding())
+            else:
+                load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                load_btn.unbind("<Enter>")
+                load_btn.unbind("<Leave>")
+                load_btn.unbind("<Button-1>")
+
+        onboard_id_var.trace_add("write", validate_load)
+
+        # ---------------- OUTPUT PANEL ----------------
+        output_frame = tk.Frame(self.content, bg="#ECF0F1")
+        output_frame.pack(pady=20)
+
+        fields = [
+        "full_name", "date_of_birth", "gender", "address", "department", "role",
+        "email", "phone", "experience_years"
+         ]
+
+        vars_dict = {}
+
+        for i, field in enumerate(fields):
+            tk.Label(output_frame, text=f"{field}:",
+                 font=("Arial", 14), bg="#ECF0F1").grid(
+            row=i, column=0, padx=10, pady=6, sticky="w"
+            )
+
+            var = tk.StringVar()
+            entry = tk.Entry(
+            output_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+            )
+            entry.grid(row=i, column=1, padx=10, pady=6)
+            vars_dict[field] = var
+
+        # ---------------- BACK BUTTON ----------------
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=30)
+
+        self.create_back_button(
+        parent=btn_row,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
+
+        self.content.update_idletasks()
+
+        # ---------------- APPROVE BUTTON ----------------
+        approve_btn = tk.Label(
+        self.content,
+        text="Approve Onboarding",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        approve_btn.pack(pady=20)
+
+        # ENABLE / DISABLE APPROVE BUTTON
+        def enable_approve():
+            approve_btn.config(bg="#000000", fg="white", cursor="arrow")
+            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
+            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
+            approve_btn.bind("<Button-1>", lambda e: approve_onboarding())
+
+        def disable_approve():
+            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            approve_btn.unbind("<Enter>")
+            approve_btn.unbind("<Leave>")
+            approve_btn.unbind("<Button-1>")
+
+        disable_approve()
+
+        # ---------------- LOAD DATA FUNCTION ----------------
+        def load_staff_onboarding():
+            oid = onboard_id_var.get().strip()
+
+            if not oid.isdigit() or int(oid) <= 0:
+                self.show_popup("Failed", "Onboarding ID must be a positive number!", "warning")
+                return
+
+            import requests
+
+            try:
+                res = requests.get(f"http://127.0.0.1:8000/admin/staff/onboardings/{oid}")
+
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "No onboarding record found!", "info")
+                    disable_approve()
+                    for v in vars_dict.values():
+                        v.set("")
+                    return
+
+                data = res.json()
+
+                vars_dict["full_name"].set(data["full_name"])
+                vars_dict["date_of_birth"].set(data["date_of_birth"])
+                vars_dict["gender"].set(data["gender"])
+                vars_dict["address"].set(data["address"])
+                vars_dict["email"].set(data["email"])
+                vars_dict["phone"].set(data["phone"])
+                vars_dict["department"].set(data["department"])
+                vars_dict["role"].set(data["role"])
+                vars_dict["experience_years"].set(data["experience_years"])
+
+                enable_approve()
+
+            except:
+                self.show_popup("Error", "Error fetching onboarding record!", "error")
+
+        # ---------------- APPROVE FUNCTION ----------------
+        def approve_onboarding():
+            oid = onboard_id_var.get().strip()
+
+            import requests
+
+            try:
+                res = requests.post(
+                f"http://127.0.0.1:8000/admin/staff/onboardings/approve/{oid}"
+                )
+
+                if res.status_code == 200:
+                    staff_id = res.json().get("staff_id")
+                    self.show_popup("Success", f"Staff Onboarding Approved!\nStaff ID: {staff_id}", "success")
+                    self.change_screen(
+                    f"Staff Onboarding Approved!\nStaff ID: {staff_id}",
+                    add_callback=self.load_approve_staff_onboarding_screen
+                    )
+                else:
+                    self.show_popup("Failed", "Approval failed!", "error")
+
+            except:
+                self.show_popup("Error", "Error approving onboarding!", "error")
+
+
+    # ==============================================================================
+    # ------ TEACHER OFFBOARDINGS/TRANSFERS/SEPERATIONS ------
+    # ----- Button to Issue Separation to a Teacher ------
+    def load_issue_teacher_separation_screen(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Issue Teacher Separation",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=20)
+
+    # ---------- FIELDS ----------
+        fields = [
+        ("Teacher ID", "teacher_id"),
+        ("Reason", "reason"),
+        ("Remarks", "remarks"),
+        ("Last Working Date (YYYY-MM-DD)", "separation_date")
+    ]
+
+        vars = {}
+
+        for i, (label, key) in enumerate(fields):
+
+            tk.Label(
+            form, text=f"{label}:", font=("Arial", 14), bg="#ECF0F1"
+        ).grid(row=i, column=0, padx=10, pady=8)
+
+            vars[key] = tk.StringVar()
+
+        # --- Calendar for separation date ---
+            if key == "separation_date":
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=28)
+                entry.grid(row=i, column=1, padx=10, pady=6)
+
+                tk.Button(
+                form,
+                text="Calendar",
+                font=("Arial", 12),
+                bg="white",
+                relief="flat",
+                command=lambda v=vars[key], b=entry: self.open_calendar_popup(b, v)
+            ).grid(row=i, column=2, padx=5)
+            else:
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30)
+                entry.grid(row=i, column=1, padx=10, pady=6)
+
+    # ---------- BACK BUTTON ----------
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+    )
+
+    # ---------- SUBMIT BUTTON ----------
+        submit_btn = tk.Label(
+        form,
+        text="Issue Separation",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=20,
+        cursor="arrow",
+        relief="ridge"
+    )
+        submit_btn.grid(row=len(fields), column=0, columnspan=3, pady=20)
+
+    # ---------- VALIDATION ----------
+        def validate(*args):
+            if all(vars[k].get().strip() for k in vars):
+                submit_btn.config(bg="#000000", fg="white", cursor="arrow")
+                submit_btn.bind("<Enter>", lambda e: submit_btn.config(bg="#222222"))
+                submit_btn.bind("<Leave>", lambda e: submit_btn.config(bg="#000000"))
+                submit_btn.bind("<Button-1>", lambda e: issue_separation())
+            else:
+                submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                submit_btn.unbind("<Enter>")
+                submit_btn.unbind("<Leave>")
+                submit_btn.unbind("<Button-1>")
+
+        for v in vars.values():
+            v.trace_add("write", validate)
+
+    # ---------- SUBMIT FUNCTION ----------
+        def issue_separation():
+
+        # date format validation
+            import re
+            date_str = vars["separation_date"].get().strip()
+            if not re.match(r"\d{4}-\d{2}-\d{2}$", date_str):
+                self.show_popup("Invalid Date", "Date must be YYYY-MM-DD format!", "warning")
+                return
+
+            payload = {
+            "teacher_id": int(vars["teacher_id"].get().strip()),
+            "reason": vars["reason"].get().strip(),
+            "remarks": vars["remarks"].get().strip(),
+            "separation_date": date_str
+        }
+
+        # ---- send to backend ----
+            import requests
+            res = requests.post("http://127.0.0.1:8000/admin/teachers/separation/issue", json=payload)
+
+            if res.status_code == 200:
+                self.show_popup("Success", "Separation Issued Successfully!", "info")
+                self.change_screen("Teacher Separation Issued!", add_callback=self.load_issue_teacher_separation_screen)
+            else:
+                msg = res.json().get("detail", "Error issuing separation")
+                self.show_popup("Failed", msg, "error")
+
+
+    # ==============================================================================
+    # ----- Button to View all Separation Requests -----
+    def load_view_all_teacher_separation_screen(self):
+        self.clear_content()
+
+    # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="All Teacher Separation Requests",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+    # ---------- BACK BUTTON ----------
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+
+        self.create_back_button(
+        parent=back_frame,
+        go_back_callback=self.load_dashboard,
+        form_frame=None
+    )
+
+    # ---------- TABLE FRAME ----------
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+    # ------- TABLE COLUMNS -------
+        cols = ("sep_id", "teacher_id", "separation_date", "reason", "status")
+
+    # ------- FILTER BAR -------
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=10)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        filter_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=list(cols),
+        state="readonly",
+        width=20
+    )
+        filter_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(
+        filter_frame,
+        textvariable=filter_val_var,
+        font=("Arial", 12),
+        width=25
+    )
+        filter_val.grid(row=0, column=2, padx=10)
+
+    # ----- Black Button Styling -----
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+    # ---------- SCROLLBARS ----------
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+    # ---------- TREEVIEW TABLE ----------
+        self.sep_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.sep_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.sep_tree.yview)
+        x_scroll.config(command=self.sep_tree.xview)
+
+        for col in cols:
+            self.sep_tree.heading(col, text=col.replace("_", " ").title())
+            self.sep_tree.column(col, width=180, anchor="center")
+
+    # ---------- FETCH DATA FROM BACKEND ----------
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/teachers/separation/all")
+            self.all_separations = res.json() if res.status_code == 200 else []
+
+        # Structure for validation
+            self.sep_column_values = {
+            "sep_id": [str(r["sep_id"]) for r in self.all_separations],
+            "teacher_id": [str(r["teacher_id"]) for r in self.all_separations],
+            "separation_date": [r["separation_date"] for r in self.all_separations],
+            "reason": [r["reason"] for r in self.all_separations],
+            "status": [1 if r["status"] else 0 for r in self.all_separations]
+        }
+        except:
+            self.all_separations = []
+
+        # ---------- UPDATE TABLE ----------
+        def update_table(data):
+            for row in self.sep_tree.get_children():
+                self.sep_tree.delete(row)
+
+            for row in data:
+                self.sep_tree.insert(
+                "",
+                "end",
+                values=(
+                    row["sep_id"],
+                    row["teacher_id"],
+                    row["separation_date"],
+                    row["reason"],
+                    1 if row["status"] else 0
+                )
+            )
+
+        # ---------- FILTER FUNCTION ----------
+        def load_filtered():
+            col = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+
+            if not col or not val:
+                return
+
+            valid_list = self.sep_column_values.get(col, [])
+            valid_lower = [str(v).lower() for v in valid_list]
+
+            if val not in valid_lower:
+                self.show_popup(
+                "Invalid Search",
+                f"'{val}' not found in '{col}'.",
+                "warning"
+            )
+                filter_val_var.set("")
+                return
+
+            filtered = [
+            r for r in self.all_separations
+            if str(r[col]).lower() == val
+        ]
+            update_table(filtered)
+
+        def load_all():
+            update_table(self.all_separations)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: load_all())
+
+    # INITIAL LOAD
+        update_table(self.all_separations)
+    
+
+    # ==============================================================================
+    # ----- Button to Approve Separation of a Teacher -----
+    def load_approve_teacher_separation_screen(self):
+        self.clear_content()
+ 
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Approve Teacher Separation",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=25)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # ---------- SEPARATION ID INPUT ----------
+        tk.Label(
+        form,
+        text="Separation ID:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=0, column=0, padx=10, pady=10)
+
+        sep_id_var = tk.StringVar()
+        sep_entry = tk.Entry(form, textvariable=sep_id_var, font=("Arial", 14), width=25)
+        sep_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- LOAD BUTTON ----------
+        load_btn = tk.Label(
+        form,
+        text="Load",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15, pady=5,
+        width=12,
+        relief="ridge",
+        cursor="arrow"
+        )
+        load_btn.grid(row=0, column=2, padx=10)
+
+        # Enable/Disable Load Button
+        def validate_load(*args):
+            if sep_id_var.get().strip():
+                load_btn.config(bg="#000000", fg="white", cursor="hand2")
+                load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+                load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+                load_btn.bind("<Button-1>", lambda e: load_separation())
+            else:
+                load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                load_btn.unbind("<Enter>")
+                load_btn.unbind("<Leave>")
+                load_btn.unbind("<Button-1>")
+
+        sep_id_var.trace_add("write", validate_load)
+
+        # ---------- OUTPUT PANEL ----------
+        output_frame = tk.Frame(self.content, bg="#ECF0F1")
+        output_frame.pack(pady=20)
+
+        fields = ["teacher_id", "separation_date", "reason", "remarks", "status"]
+        vars_dict = {}
+
+        for i, label in enumerate(fields):
+            tk.Label(
+            output_frame,
+            text=f"{label.replace('_',' ').title()}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=6, sticky="w")
+
+            var = tk.StringVar()
+            entry = tk.Entry(
+            output_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+            )
+            entry.grid(row=i, column=1, padx=10, pady=6)
+            vars_dict[label] = var
+
+        # ---------- BUTTON ROW ----------
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=30)
+
+        self.create_back_button(btn_row, self.load_dashboard, form)
+
+        # ---------- APPROVE BUTTON ----------
+        approve_btn = tk.Label(
+        self.content,
+        text="Approve Separation",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        approve_btn.pack(pady=20)
+
+        def enable_approve():
+            approve_btn.config(bg="#000000", fg="white", cursor="hand2")
+            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
+            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
+            approve_btn.bind("<Button-1>", lambda e: approve_separation())
+
+        def disable_approve():
+            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            approve_btn.unbind("<Enter>")
+            approve_btn.unbind("<Leave>")
+            approve_btn.unbind("<Button-1>")
+
+        disable_approve()
+
+        # ---------- LOAD SEPARATION DETAILS ----------
+        def load_separation():
+            sep_id = sep_id_var.get().strip()
+
+            if not sep_id.isdigit() or int(sep_id) <= 0:
+                self.show_popup("Invalid ID", "Separation ID must be a positive number!", "warning")
+                return
+
+            import requests
+            try:
+                res = requests.get(f"http://127.0.0.1:8000/admin/teachers/separation/{sep_id}")
+
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "Separation record not found!", "info")
+                    disable_approve()
+                    for v in vars_dict.values():
+                        v.set("")
+                    return
+
+                data = res.json()
+
+                # set values
+                vars_dict["teacher_id"].set(data["teacher_id"])
+                vars_dict["separation_date"].set(data["separation_date"])
+                vars_dict["reason"].set(data["reason"])
+                vars_dict["status"].set("1" if data["status"] else "0")
+
+                enable_approve()
+
+            except Exception:
+                self.show_popup("Error", "Server not reachable!", "error")
+
+        # ---------- APPROVE SEPARATION ----------
+        def approve_separation():
+            sep_id = sep_id_var.get().strip()
+
+            import requests
+            try:
+                res = requests.post(f"http://127.0.0.1:8000/admin/teachers/separation/approve/{sep_id}")
+
+                if res.status_code == 200:
+                    msg = "Teacher Separation Approved Successfully!"
+                    self.show_popup("Success", msg, "info")
+                    self.change_screen(msg, add_callback=self.load_approve_teacher_separation_screen)
+                else:
+                    self.show_popup("Failed", "Approval failed!", "error")
+
+            except Exception:
+                self.show_popup("Error", "Unable to approve separation!", "error")
+    
+
+    # ==============================================================================
+    # ----- Button to Create a Transfer Request for Teacher -----
+    def load_create_teacher_transfer_screen(self):
+        self.clear_content()
+
+        # ---- TITLE ----
+        tk.Label(
+        self.content,
+        text="Create Teacher Transfer Request",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ---- FORM FRAME ----
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=15)
+
+        fields = [
+        ("Teacher ID", "teacher_id"),
+        ("New Department", "new_department"),
+        ("New Subject ID", "new_subject_id"),
+        ("New Class ID", "new_class_id"),
+        ("Request Date (YYYY-MM-DD)", "request_date"),
+        ]
+
+        self.tf_vars = {}
+
+        for i, (label, key) in enumerate(fields):
+
+            tk.Label(
+            form, text=f"{label}:", font=("Arial", 14), bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=8, sticky="e")
+ 
+            var = tk.StringVar()
+            self.tf_vars[key] = var
+
+            entry = tk.Entry(
+            form, textvariable=var, font=("Arial", 14), width=28
+            )
+            entry.grid(row=i, column=1, padx=10, pady=8)
+
+            # Calendar only for request_date
+            if key == "request_date":
+                tk.Button(
+                form,
+                text="Calendar",
+                font=("Arial", 12),
+                bg="white",
+                relief="ridge",
+                command=lambda e=entry, v=var: self.open_calendar_popup(e, v)
+                ).grid(row=i, column=2, padx=5)
+
+        # ---- BACK BUTTON ----
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=20)
+
+        self.create_back_button(
+        parent=btn_row,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
+
+        # ---- SUBMIT BUTTON ----
+        submit_btn = tk.Label(
+        self.content,
+        text="Create Transfer Request",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=12,
+        width=22,
+        relief="ridge",
+        cursor="arrow"
+        )
+        submit_btn.pack(pady=20)
+
+        # ---------- ENABLE/DISABLE ----------
+        def enable():
+            submit_btn.config(bg="#000000", fg="white", cursor="hand2")
+            submit_btn.bind("<Enter>", lambda e: submit_btn.config(bg="#222222"))
+            submit_btn.bind("<Leave>", lambda e: submit_btn.config(bg="#000000"))
+            submit_btn.bind("<Button-1>", lambda e: submit_request())
+
+        def disable():
+            submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            submit_btn.unbind("<Enter>")
+            submit_btn.unbind("<Leave>")
+            submit_btn.unbind("<Button-1>")
+
+        disable()
+
+        # ---------- VALIDATION ----------
+        import re
+        def validate(*args):
+            data = {k: v.get().strip() for k, v in self.tf_vars.items()}
+
+            if not data["teacher_id"].isdigit():
+                disable()
+                return
+
+            if data["new_subject_id"] and not data["new_subject_id"].isdigit():
+                disable()
+                return
+            
+            if data["new_class_id"] and not data["new_class_id"].isdigit():
+                disable()
+                return
+            
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", data["request_date"]):
+                disable()
+                return
+
+            enable()
+
+        for v in self.tf_vars.values():
+            v.trace_add("write", validate)
+
+        # ---------- SUBMIT FUNCTION ----------
+        def submit_request():
+            data = {k: v.get().strip() for k, v in self.tf_vars.items()}
+
+            # Required fields
+            if not data["teacher_id"] or not data["request_date"]:
+                self.show_popup("Missing Data", "Teacher ID and Request Date are required", "warning")
+                return
+
+            payload = {
+            "teacher_id": int(data["teacher_id"]),
+            "new_department": data["new_department"] if data["new_department"] else None,
+            "new_subject_id": int(data["new_subject_id"]) if data["new_subject_id"] else None,
+            "new_class_id": int(data["new_class_id"]) if data["new_class_id"] else None,
+            "request_date": data["request_date"]
+            }
+
+            import requests
+            try:
+                res = requests.post(
+                "http://127.0.0.1:8000/admin/teacher-transfer/request",
+                json=payload
+                )
+
+                if res.status_code == 200:
+                    self.show_popup("Success", "Transfer Request Added to Queue!", "info")
+                    self.change_screen(
+                    "Transfer Request Created!",
+                    add_callback=self.load_create_teacher_transfer_screen
+                    )
+                else:
+                    msg = res.json().get("detail", "Error occurred")
+                    self.show_popup("Failed", msg, "error")
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+
+
+    # ==============================================================================
+    # ----- Button to View all Transfer Requests in Queue for Teacher -----
+    def load_view_all_teacher_transfers_screen(self):
+        self.clear_content()
+
+        # ----- TITLE -----
+        tk.Label(
+        self.content,
+        text="All Teacher Transfer Requests",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        # -------- BACK BUTTON --------
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # -------- TABLE FRAME --------
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        # ---- TABLE COLUMNS (MATCHING TeacherTransfer MODEL) ----
+        cols = (
+        "transfer_id",
+        "teacher_id",
+        "old_department",
+        "old_subject_id",
+        "new_department",
+        "new_subject_id",
+        "request_date",
+        "status"
+    )
+
+        # ====== FILTER BAR ======
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=10)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        filter_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=list(cols),
+        state="readonly",
+        width=20
+    )
+        filter_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(
+        filter_frame,
+        textvariable=filter_val_var,
+        font=("Arial", 12),
+        width=25
+    )
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # ---- Button Styling ----
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ------ TABLE + SCROLLBARS ------
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.transfer_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.transfer_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.transfer_tree.yview)
+        x_scroll.config(command=self.transfer_tree.xview)
+
+        for col in cols:
+            self.transfer_tree.heading(col, text=col.replace("_", " ").title())
+            self.transfer_tree.column(col, width=180, anchor="center")
+
+        # ----- BACKEND FETCH ------
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/teacher-transfer/all")
+            self.all_transfers = res.json() if res.status_code == 200 else []
+
+            # For filter validation:
+            self.transfer_column_values = {
+            "transfer_id": [str(r["transfer_id"]) for r in self.all_transfers],
+            "teacher_id": [str(r["teacher_id"]) for r in self.all_transfers],
+            "old_department": [str(r["old_department"]) for r in self.all_transfers],
+            "old_subject_id": [str(r["old_subject_id"]) for r in self.all_transfers],
+            "new_department": [str(r["new_department"]) for r in self.all_transfers],
+            "new_subject_id": [str(r["new_subject_id"]) for r in self.all_transfers],
+            "request_date": [r["request_date"] for r in self.all_transfers],
+            "status": [1 if r["status"] else 0 for r in self.all_transfers]
+        }
+
+        except:
+            self.all_transfers = []
+
+        # ------- UPDATE TABLE -------
+        def update_table(data):
+            for row in self.transfer_tree.get_children():
+                self.transfer_tree.delete(row)
+
+            for row in data:
+                self.transfer_tree.insert(
+                "",
+                "end",
+                values=(
+                    row["transfer_id"],
+                    row["teacher_id"],
+                    row["old_department"],
+                    row["old_subject_id"],
+                    row["new_department"],
+                    row["new_subject_id"],
+                    row["request_date"],
+                    1 if row["status"] else 0
+                )
+            )
+
+        # ------- FILTER FUNCTION -------
+        def load_filtered():
+            col = filter_var.get().strip()
+            val = filter_val_var.get().strip().lower()
+
+            if not col or not val:
+                return
+
+            valid_list = self.transfer_column_values.get(col, [])
+            valid_lower = [str(v).lower() for v in valid_list]
+
+            if val not in valid_lower:
+                self.show_popup(
+                "Invalid Search",
+                f"'{val}' not found in column '{col}'.",
+                "warning"
+            )
+                filter_val_var.set("")
+                return
+
+            filtered = [
+                r for r in self.all_transfers
+                if str(r[col]).lower() == val
+            ]
+            update_table(filtered)
+
+        def load_all():
+            update_table(self.all_transfers)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: load_all())
+
+        # INITIAL LOAD
+        update_table(self.all_transfers)
+
+
+    # ==============================================================================
+    # ----- Button to Approve a Transfer Request for a Teacher -----
+    def load_approve_teacher_transfer_screen(self):
+        self.clear_content()
+
+        # ----- TITLE -----
+        tk.Label(
+        self.content,
+        text="Approve Teacher Transfer Request",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=25)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # ---------- TRANSFER ID INPUT ----------
+        tk.Label(form, text="Transfer ID:", font=("Arial", 14), bg="#ECF0F1").grid(
+        row=0, column=0, padx=10, pady=10
+        )
+
+        transfer_id_var = tk.StringVar()
+        transfer_id_entry = tk.Entry(form, textvariable=transfer_id_var,
+                                 font=("Arial", 14), width=25)
+        transfer_id_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- LOAD BUTTON ----------
+        load_btn = tk.Label(
+        form,
+        text="Load",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15, pady=5,
+        width=12,
+        relief="ridge",
+        cursor="arrow"
+    )
+        load_btn.grid(row=0, column=2, padx=10)
+
+        # Enable/Disable LOAD button
+        def validate_load(*args):
+            if transfer_id_var.get().strip():
+                load_btn.config(bg="#000000", fg="white", cursor="hand2")
+                load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+                load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+                load_btn.bind("<Button-1>", lambda e: load_transfer())
+            else:
+                load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                load_btn.unbind("<Enter>")
+                load_btn.unbind("<Leave>")
+                load_btn.unbind("<Button-1>")
+
+        transfer_id_var.trace_add("write", validate_load)
+
+        # ---------- OUTPUT PANEL ----------
+        output_frame = tk.Frame(self.content, bg="#ECF0F1")
+        output_frame.pack(pady=20)
+
+        fields = [
+        "teacher_id",
+        "old_department", "new_department",
+        "old_subject_id", "new_subject_id",
+        "old_class_id", "new_class_id",
+        "request_date", "status"
+        ]
+    
+        vars_dict = {}
+
+        for i, label in enumerate(fields):
+            tk.Label(
+            output_frame,
+            text=f"{label.replace('_',' ').title()}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=6, sticky="w")
+
+            var = tk.StringVar()
+            entry = tk.Entry(
+            output_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+            )
+            entry.grid(row=i, column=1, padx=10, pady=6)
+            vars_dict[label] = var
+
+        # ---------- BACK BUTTON ----------
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=30)
+
+        self.create_back_button(
+        parent=btn_row,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+    )
+
+        # ---------- APPROVE BUTTON ----------
+        approve_btn = tk.Label(
+        self.content,
+        text="Approve Transfer",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+    )
+        approve_btn.pack(pady=20)
+
+        def enable_approve():
+            approve_btn.config(bg="#000000", fg="white", cursor="hand2")
+            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
+            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
+            approve_btn.bind("<Button-1>", lambda e: approve_transfer())
+
+        def disable_approve():
+            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            approve_btn.unbind("<Enter>")
+            approve_btn.unbind("<Leave>")
+            approve_btn.unbind("<Button-1>")
+
+        disable_approve()
+
+        # ---------- LOAD TRANSFER DETAILS ----------
+        def load_transfer():
+            tid = transfer_id_var.get().strip()
+
+            if not tid.isdigit() or int(tid) <= 0:
+                self.show_popup("Invalid ID", "Transfer ID must be a positive number!", "warning")
+                return
+
+            import requests
+            try:
+                res = requests.get(f"http://127.0.0.1:8000/admin/teacher-transfer/{tid}")
+
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "No record found for this Transfer ID!", "info")
+                    disable_approve()
+                    for v in vars_dict.values():
+                        v.set("")
+                    return
+
+                data = res.json()
+
+                # Fill UI
+                for key in vars_dict:
+                    vars_dict[key].set(data.get(key))
+
+                # status formatting
+                vars_dict["status"].set("1" if data["status"] else "0")
+
+                enable_approve()
+
+            except:
+                self.show_popup("Error", "Server not reachable!", "error")
+
+        # ---------- APPROVE TRANSFER ----------
+        def approve_transfer():
+            tid = transfer_id_var.get().strip()
+            import requests
+
+            try:
+                res = requests.post(
+                f"http://127.0.0.1:8000/admin/teacher-transfer/approve/{tid}"
+            )
+
+                if res.status_code == 200:
+                    self.show_popup("Success", "Transfer Approved Successfully!", "info")
+                    self.change_screen(
+                    "Transfer Approved Successfully!",
+                    add_callback=self.load_approve_teacher_transfer_screen
+                )
+                else:
+                    msg = res.json().get("detail", "Approval failed!")
+                    self.show_popup("Failed", msg, "error")
+
+            except:
+                self.show_popup("Error", "Unable to approve transfer!", "error")
+    
+
+    # ==============================================================================
+    # ------ STAFF OFFBOARDINGS/TRANSFERS/SEPERATIONS ------
+    # ----- Button to Issue Separation to a staff -----
+    def load_issue_staff_separation_screen(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Issue Staff Separation",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=20)
+
+        # ---------- FIELDS ----------
+        fields = [
+        ("Staff ID", "staff_id"),
+        ("Reason", "reason"),
+        ("Remarks", "remarks"),
+        ("Last Working Date (YYYY-MM-DD)", "separation_date")
+        ]
+
+        vars = {}
+
+        for i, (label, key) in enumerate(fields):
+
+            tk.Label(
+            form, text=f"{label}:", font=("Arial", 14), bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=8)
+
+            vars[key] = tk.StringVar()
+
+            # --- Calendar for separation date ---
+            if key == "separation_date":
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=28)
+                entry.grid(row=i, column=1, padx=10, pady=6)
+
+                tk.Button(
+                form,
+                text="Calendar",
+                font=("Arial", 12),
+                bg="white",
+                relief="flat",
+                command=lambda v=vars[key], b=entry: self.open_calendar_popup(b, v)
+                ).grid(row=i, column=2, padx=5)
+            else:
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30)
+                entry.grid(row=i, column=1, padx=10, pady=6)
+
+        # ---------- BACK BUTTON ----------
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
+
+        # ---------- SUBMIT BUTTON ----------
+        submit_btn = tk.Label(
+        form,
+        text="Issue Separation",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=20,
+        cursor="arrow",
+        relief="ridge"
+        )
+        submit_btn.grid(row=len(fields), column=0, columnspan=3, pady=20)
+
+        # ---------- VALIDATION ----------
+        def validate(*args):
+            if all(vars[k].get().strip() for k in vars):
+                submit_btn.config(bg="#000000", fg="white", cursor="arrow")
+                submit_btn.bind("<Enter>", lambda e: submit_btn.config(bg="#222222"))
+                submit_btn.bind("<Leave>", lambda e: submit_btn.config(bg="#000000"))
+                submit_btn.bind("<Button-1>", lambda e: issue_separation())
+            else:
+                submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                submit_btn.unbind("<Enter>")
+                submit_btn.unbind("<Leave>")
+                submit_btn.unbind("<Button-1>")
+
+        for v in vars.values():
+            v.trace_add("write", validate)
+
+        # ---------- SUBMIT FUNCTION ----------
+        def issue_separation():
+
+            # date format validation
+            import re
+            date_str = vars["separation_date"].get().strip()
+            if not re.match(r"\d{4}-\d{2}-\d{2}$", date_str):
+                self.show_popup("Invalid Date", "Date must be YYYY-MM-DD format!", "warning")
+                return
+
+            payload = {
+            "staff_id": int(vars["staff_id"].get().strip()),
+            "reason": vars["reason"].get().strip(),
+            "remarks": vars["remarks"].get().strip(),
+            "separation_date": date_str
+            }
+
+            # ---- send to backend ----
+            import requests
+            res = requests.post("http://127.0.0.1:8000/admin/staff/separation/issue", json=payload)
+
+            if res.status_code == 200:
+                self.show_popup("Success", "Separation Issued Successfully!", "info")
+                self.change_screen("Staff Separation Issued!", add_callback=self.load_issue_staff_separation_screen)
+            else:
+                msg = res.json().get("detail", "Error issuing separation")
+                self.show_popup("Failed", msg, "error")
+
+    # ==============================================================================
+    # ----- Button to View all Separations in Queue -----
+    def load_view_all_staff_separation_screen(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="All Staff Separation Requests",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ---------- BACK BUTTON ----------
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+
+        self.create_back_button(
+        parent=back_frame,
+        go_back_callback=self.load_dashboard,
+        form_frame=None
+        )
+
+        # ---------- TABLE FRAME ----------
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        # ------- TABLE COLUMNS -------
+        cols = ("sep_id", "staff_id", "separation_date", "reason", "status")
+
+        # ------- FILTER BAR -------
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=10)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        filter_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=list(cols),
+        state="readonly",
+        width=20
+        )
+        filter_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(
+        filter_frame,
+        textvariable=filter_val_var,
+        font=("Arial", 12),
+        width=25
+        )
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # ----- Black Button Styling -----
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+            )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ---------- SCROLLBARS ----------
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        # ---------- TREEVIEW TABLE ----------
+        self.sep_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+        )
+        self.sep_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.sep_tree.yview)
+        x_scroll.config(command=self.sep_tree.xview)
+
+        for col in cols:
+            self.sep_tree.heading(col, text=col.replace("_", " ").title())
+            self.sep_tree.column(col, width=180, anchor="center")
+
+        # ---------- FETCH DATA FROM BACKEND ----------
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/staff/separation/all")
+            self.all_separations = res.json() if res.status_code == 200 else []
+
+            # Structure for validation
+            self.sep_column_values = {
+            "sep_id": [str(r["sep_id"]) for r in self.all_separations],
+            "staff_id": [str(r["staff_id"]) for r in self.all_separations],
+            "separation_date": [r["separation_date"] for r in self.all_separations],
+            "reason": [r["reason"] for r in self.all_separations],
+            "status": [1 if r["status"] else 0 for r in self.all_separations]
+            }
+        except:
+            self.all_separations = []
+
+        # ---------- UPDATE TABLE ----------
+        def update_table(data):
+            for row in self.sep_tree.get_children():
+                self.sep_tree.delete(row)
+
+            for row in data:
+                self.sep_tree.insert(
+                "",
+                "end",
+                values=(
+                    row["sep_id"],
+                    row["staff_id"],
+                    row["separation_date"],
+                    row["reason"],
+                    1 if row["status"] else 0
+                )
+            )
+
+        # ---------- FILTER FUNCTION ----------
+        def load_filtered():
+            col = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+
+            if not col or not val:
+                return
+
+            valid_list = self.sep_column_values.get(col, [])
+            valid_lower = [str(v).lower() for v in valid_list]
+
+            if val not in valid_lower:
+                self.show_popup(
+                "Invalid Search",
+                f"'{val}' not found in '{col}'.",
+                "warning"
+                )
+                filter_val_var.set("")
+                return
+
+            filtered = [
+            r for r in self.all_separations
+            if str(r[col]).lower() == val
+            ]
+            update_table(filtered)
+
+        def load_all():
+            update_table(self.all_separations)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: load_all())
+
+        # INITIAL LOAD
+        update_table(self.all_separations)
+    
+
+    # ==============================================================================
+    # ----- Button to Approve Separations by ID -----
+    def load_approve_staff_separation_screen(self):
+        self.clear_content()
+ 
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Approve Staff Separation",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=25)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # ---------- SEPARATION ID INPUT ----------
+        tk.Label(
+        form,
+        text="Separation ID:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=0, column=0, padx=10, pady=10)
+
+        sep_id_var = tk.StringVar()
+        sep_entry = tk.Entry(form, textvariable=sep_id_var, font=("Arial", 14), width=25)
+        sep_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- LOAD BUTTON ----------
+        load_btn = tk.Label(
+        form,
+        text="Load",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15, pady=5,
+        width=12,
+        relief="ridge",
+        cursor="arrow"
+        )
+        load_btn.grid(row=0, column=2, padx=10)
+
+        # Enable/Disable Load Button
+        def validate_load(*args):
+            if sep_id_var.get().strip():
+                load_btn.config(bg="#000000", fg="white", cursor="hand2")
+                load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+                load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+                load_btn.bind("<Button-1>", lambda e: load_separation())
+            else:
+                load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                load_btn.unbind("<Enter>")
+                load_btn.unbind("<Leave>")
+                load_btn.unbind("<Button-1>")
+
+        sep_id_var.trace_add("write", validate_load)
+
+        # ---------- OUTPUT PANEL ----------
+        output_frame = tk.Frame(self.content, bg="#ECF0F1")
+        output_frame.pack(pady=20)
+
+        fields = ["staff_id", "separation_date", "reason", "remarks", "status"]
+        vars_dict = {}
+
+        for i, label in enumerate(fields):
+            tk.Label(
+            output_frame,
+            text=f"{label.replace('_',' ').title()}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=6, sticky="w")
+
+            var = tk.StringVar()
+            entry = tk.Entry(
+            output_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+            )
+            entry.grid(row=i, column=1, padx=10, pady=6)
+            vars_dict[label] = var
+
+        # ---------- BUTTON ROW ----------
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=30)
+
+        self.create_back_button(btn_row, self.load_dashboard, form)
+
+        # ---------- APPROVE BUTTON ----------
+        approve_btn = tk.Label(
+        self.content,
+        text="Approve Separation",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        approve_btn.pack(pady=20)
+
+        def enable_approve():
+            approve_btn.config(bg="#000000", fg="white", cursor="hand2")
+            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
+            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
+            approve_btn.bind("<Button-1>", lambda e: approve_separation())
+
+        def disable_approve():
+            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            approve_btn.unbind("<Enter>")
+            approve_btn.unbind("<Leave>")
+            approve_btn.unbind("<Button-1>")
+
+        disable_approve()
+
+        # ---------- LOAD SEPARATION DETAILS ----------
+        def load_separation():
+            sep_id = sep_id_var.get().strip()
+
+            if not sep_id.isdigit() or int(sep_id) <= 0:
+                self.show_popup("Invalid ID", "Separation ID must be a positive number!", "warning")
+                return
+
+            import requests
+            try:
+                res = requests.get(f"http://127.0.0.1:8000/admin/staff/separation/{sep_id}")
+
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "Separation record not found!", "info")
+                    disable_approve()
+                    for v in vars_dict.values():
+                        v.set("")
+                    return
+
+                data = res.json()
+
+                # set values
+                vars_dict["staff_id"].set(data["staff_id"])
+                vars_dict["separation_date"].set(data["separation_date"])
+                vars_dict["reason"].set(data["reason"])
+                vars_dict["status"].set("1" if data["status"] else "0")
+
+                enable_approve()
+
+            except Exception:
+                self.show_popup("Error", "Server not reachable!", "error")
+
+        # ---------- APPROVE SEPARATION ----------
+        def approve_separation():
+            sep_id = sep_id_var.get().strip()
+
+            import requests
+            try:
+                res = requests.post(f"http://127.0.0.1:8000/admin/staff/separation/approve/{sep_id}")
+
+                if res.status_code == 200:
+                    msg = "Staff Separation Approved Successfully!"
+                    self.show_popup("Success", msg, "info")
+                    self.change_screen(msg, add_callback=self.load_approve_staff_separation_screen)
+                else:
+                    self.show_popup("Failed", "Approval failed!", "error")
+
+            except Exception:
+                self.show_popup("Error", "Unable to approve separation!", "error")
+
+    # ==============================================================================
+    # ----- Button Create a Transfer Request for a staff Member -----
+    def load_create_staff_transfer_screen(self):
+        self.clear_content()
+
+        # ---- TITLE ----
+        tk.Label(
+        self.content,
+        text="Create Staff Transfer Request",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ---- FORM FRAME ----
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=15)
+
+        fields = [
+        ("Staff ID", "staff_id"),
+        ("New Department", "new_department"),
+        ("New Role", "new_role"),
+        ("Request Date (YYYY-MM-DD)", "request_date"),
+        ]
+
+        self.tf_vars = {}
+
+        for i, (label, key) in enumerate(fields):
+
+            tk.Label(
+            form, text=f"{label}:", font=("Arial", 14), bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=8, sticky="e")
+ 
+            var = tk.StringVar()
+            self.tf_vars[key] = var
+
+            entry = tk.Entry(
+            form, textvariable=var, font=("Arial", 14), width=28
+            )
+            entry.grid(row=i, column=1, padx=10, pady=8)
+
+            # Calendar only for request_date
+            if key == "request_date":
+                tk.Button(
+                form,
+                text="Calendar",
+                font=("Arial", 12),
+                bg="white",
+                relief="ridge",
+                command=lambda e=entry, v=var: self.open_calendar_popup(e, v)
+                ).grid(row=i, column=2, padx=5)
+
+        # ---- BACK BUTTON ----
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=20)
+
+        self.create_back_button(
+        parent=btn_row,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
+
+        # ---- SUBMIT BUTTON ----
+        submit_btn = tk.Label(
+        self.content,
+        text="Create Transfer Request",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=12,
+        width=22,
+        relief="ridge",
+        cursor="arrow"
+        )
+        submit_btn.pack(pady=20)
+
+        # ---------- ENABLE/DISABLE ----------
+        def enable():
+            submit_btn.config(bg="#000000", fg="white", cursor="hand2")
+            submit_btn.bind("<Enter>", lambda e: submit_btn.config(bg="#222222"))
+            submit_btn.bind("<Leave>", lambda e: submit_btn.config(bg="#000000"))
+            submit_btn.bind("<Button-1>", lambda e: submit_request())
+
+        def disable():
+            submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            submit_btn.unbind("<Enter>")
+            submit_btn.unbind("<Leave>")
+            submit_btn.unbind("<Button-1>")
+
+        disable()
+
+        # ---------- VALIDATION ----------
+        import re
+        def validate(*args):
+            data = {k: v.get().strip() for k, v in self.tf_vars.items()}
+
+            if not data["staff_id"].isdigit():
+                disable()
+                return
+            
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", data["request_date"]):
+                disable()
+                return
+
+            enable()
+
+        for v in self.tf_vars.values():
+            v.trace_add("write", validate)
+
+        # ---------- SUBMIT FUNCTION ----------
+        def submit_request():
+            data = {k: v.get().strip() for k, v in self.tf_vars.items()}
+
+            # Required fields
+            if not data["staff_id"] or not data["request_date"]:
+                self.show_popup("Missing Data", "Staff ID and Request Date are required", "warning")
+                return
+
+            payload = {
+            "staff_id": int(data["staff_id"]),
+            "new_department": data["new_department"] if data["new_department"] else None,
+            "new_role": data["new_role"] if data["new_role"] else None,
+            "request_date": data["request_date"]
+            }
+
+            import requests
+            try:
+                res = requests.post(
+                "http://127.0.0.1:8000/admin/staff-transfer/request",
+                json=payload
+                )
+
+                if res.status_code == 200:
+                    self.show_popup("Success", "Transfer Request Added to Queue!", "info")
+                    self.change_screen(
+                    "Transfer Request Created!",
+                    add_callback=self.load_create_staff_transfer_screen
+                    )
+                else:
+                    msg = res.json().get("detail", "Error occurred")
+                    self.show_popup("Failed", msg, "error")
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+
+
+    # ==============================================================================
+    # ----- Button to View all Transfer Requests in Queue -----
+    def load_view_all_staff_transfers_screen(self):
+        self.clear_content()
+
+        # ----- TITLE -----
+        tk.Label(
+        self.content,
+        text="All Staff Transfer Requests",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # -------- BACK BUTTON --------
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # -------- TABLE FRAME --------
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        # ---- TABLE COLUMNS (MATCHING StaffTransfer MODEL) ----
+        cols = (
+        "transfer_id",
+        "staff_id",
+        "old_department",
+        "old_role",
+        "new_department",
+        "new_role",
+        "request_date",
+        "status"
+        )
+
+        # ====== FILTER BAR ======
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=10)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        filter_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=list(cols),
+        state="readonly",
+        width=20
+        )
+        filter_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(
+        filter_frame,
+        textvariable=filter_val_var,
+        font=("Arial", 12),
+        width=25
+        )
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # ---- Button Styling ----
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+            )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ------ TABLE + SCROLLBARS ------
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.transfer_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+        )
+        self.transfer_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.transfer_tree.yview)
+        x_scroll.config(command=self.transfer_tree.xview)
+
+        for col in cols:
+            self.transfer_tree.heading(col, text=col.replace("_", " ").title())
+            self.transfer_tree.column(col, width=180, anchor="center")
+
+        # ----- BACKEND FETCH ------
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/staff-transfer/all")
+            self.all_transfers = res.json() if res.status_code == 200 else []
+
+            # For filter validation:
+            self.transfer_column_values = {
+            "transfer_id": [str(r["transfer_id"]) for r in self.all_transfers],
+            "staff_id": [str(r["staff_id"]) for r in self.all_transfers],
+            "old_department": [str(r["old_department"]) for r in self.all_transfers],
+            "old_role": [str(r["old_role"]) for r in self.all_transfers],
+            "new_department": [str(r["new_department"]) for r in self.all_transfers],
+            "new_role": [str(r["new_role"]) for r in self.all_transfers],
+            "request_date": [r["request_date"] for r in self.all_transfers],
+            "status": [1 if r["status"] else 0 for r in self.all_transfers]
+            }
+
+        except:
+            self.all_transfers = []
+
+        # ------- UPDATE TABLE -------
+        def update_table(data):
+            for row in self.transfer_tree.get_children():
+                self.transfer_tree.delete(row)
+
+            for row in data:
+                self.transfer_tree.insert(
+                "",
+                "end",
+                values=(
+                    row["transfer_id"],
+                    row["staff_id"],
+                    row["old_department"],
+                    row["old_role"],
+                    row["new_department"],
+                    row["new_role"],
+                    row["request_date"],
+                    1 if row["status"] else 0
+                )
+            )
+
+        # ------- FILTER FUNCTION -------
+        def load_filtered():
+            col = filter_var.get().strip()
+            val = filter_val_var.get().strip().lower()
+
+            if not col or not val:
+                return
+
+            valid_list = self.transfer_column_values.get(col, [])
+            valid_lower = [str(v).lower() for v in valid_list]
+
+            if val not in valid_lower:
+                self.show_popup(
+                "Invalid Search",
+                f"'{val}' not found in column '{col}'.",
+                "warning"
+                )
+                filter_val_var.set("")
+                return
+
+            filtered = [
+                r for r in self.all_transfers
+                if str(r[col]).lower() == val
+            ]
+            update_table(filtered)
+
+        def load_all():
+            update_table(self.all_transfers)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: load_all())
+
+        # INITIAL LOAD
+        update_table(self.all_transfers)
+
+    # ==============================================================================  
+    # ----- Button to Approve a Transfer Request of a Staff Member -----
+    def load_approve_staff_transfer_screen(self):
+        self.clear_content()
+
+        # ----- TITLE -----
+        tk.Label(
+        self.content,
+        text="Approve Staff Transfer Request",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=25)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # ---------- TRANSFER ID INPUT ----------
+        tk.Label(form, text="Transfer ID:", font=("Arial", 14), bg="#ECF0F1").grid(
+        row=0, column=0, padx=10, pady=10
+        )
+
+        transfer_id_var = tk.StringVar()
+        transfer_id_entry = tk.Entry(form, textvariable=transfer_id_var,
+                                 font=("Arial", 14), width=25)
+        transfer_id_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- LOAD BUTTON ----------
+        load_btn = tk.Label(
+        form,
+        text="Load",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15, pady=5,
+        width=12,
+        relief="ridge",
+        cursor="arrow"
+        )
+        load_btn.grid(row=0, column=2, padx=10)
+
+        # Enable/Disable LOAD button
+        def validate_load(*args):
+            if transfer_id_var.get().strip():
+                load_btn.config(bg="#000000", fg="white", cursor="hand2")
+                load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+                load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+                load_btn.bind("<Button-1>", lambda e: load_transfer())
+            else:
+                load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                load_btn.unbind("<Enter>")
+                load_btn.unbind("<Leave>")
+                load_btn.unbind("<Button-1>")
+
+        transfer_id_var.trace_add("write", validate_load)
+
+        # ---------- OUTPUT PANEL ----------
+        output_frame = tk.Frame(self.content, bg="#ECF0F1")
+        output_frame.pack(pady=20)
+
+        fields = [
+        "staff_id",
+        "old_department", "new_department",
+        "old_role", "new_role",
+        "request_date", "status"
+        ]
+    
+        vars_dict = {}
+
+        for i, label in enumerate(fields):
+            tk.Label(
+            output_frame,
+            text=f"{label.replace('_',' ').title()}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=6, sticky="w")
+
+            var = tk.StringVar()
+            entry = tk.Entry(
+            output_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+            )
+            entry.grid(row=i, column=1, padx=10, pady=6)
+            vars_dict[label] = var
+
+        # ---------- BACK BUTTON ----------
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=30)
+
+        self.create_back_button(
+        parent=btn_row,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
+
+        # ---------- APPROVE BUTTON ----------
+        approve_btn = tk.Label(
+        self.content,
+        text="Approve Transfer",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        approve_btn.pack(pady=20)
+
+        def enable_approve():
+            approve_btn.config(bg="#000000", fg="white", cursor="hand2")
+            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
+            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
+            approve_btn.bind("<Button-1>", lambda e: approve_transfer())
+
+        def disable_approve():
+            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            approve_btn.unbind("<Enter>")
+            approve_btn.unbind("<Leave>")
+            approve_btn.unbind("<Button-1>")
+
+        disable_approve()
+
+        # ---------- LOAD TRANSFER DETAILS ----------
+        def load_transfer():
+            tid = transfer_id_var.get().strip()
+
+            if not tid.isdigit() or int(tid) <= 0:
+                self.show_popup("Invalid ID", "Transfer ID must be a positive number!", "warning")
+                return
+
+            import requests
+            try:
+                res = requests.get(f"http://127.0.0.1:8000/admin/staff-transfer/{tid}")
+
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "No record found for this Transfer ID!", "info")
+                    disable_approve()
+                    for v in vars_dict.values():
+                        v.set("")
+                    return
+
+                data = res.json()
+
+                # Fill UI
+                for key in vars_dict:
+                    vars_dict[key].set(data.get(key))
+
+                # status formatting
+                vars_dict["status"].set("1" if data["status"] else "0")
+
+                enable_approve()
+
+            except:
+                self.show_popup("Error", "Server not reachable!", "error")
+
+        # ---------- APPROVE TRANSFER ----------
+        def approve_transfer():
+            tid = transfer_id_var.get().strip()
+            import requests
+
+            try:
+                res = requests.post(
+                f"http://127.0.0.1:8000/admin/staff-transfer/approve/{tid}"
+                )
+
+                if res.status_code == 200:
+                    self.show_popup("Success", "Transfer Approved Successfully!", "info")
+                    self.change_screen(
+                    "Transfer Approved Successfully!",
+                    add_callback=self.load_approve_staff_transfer_screen
+                    )
+                else:
+                    msg = res.json().get("detail", "Approval failed!")
+                    self.show_popup("Failed", msg, "error")
+
+            except:
+                self.show_popup("Error", "Unable to approve transfer!", "error")
+    
+    # ==============================================================================
+    # ====== STAFF's ATTENDANCE ======
+    # ----- Button to View all Staff's Attendance ------
+    def load_view_all_staff_attendance(self):
+        self.clear_content()
+
+        # ---- Title ----
+        tk.Label(
+        self.content,
+        text="All Staff Attendance Records",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ---- Back Button ----
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ---- Table Frame ----
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        # Columns
+        cols = ("record_id", "staff_id", "date", "status", "remarks")
+
+        # ----- FILTER BAR (Dropdown + Entry + Black Buttons) -----
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=10)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        filter_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=list(cols),
+        state="readonly",
+        width=18
+        )
+        filter_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_value_var = tk.StringVar()
+        filter_value = tk.Entry(
+            filter_frame,
+            textvariable=filter_value_var,
+            font=("Arial", 12),
+             width=20
+        )
+        filter_value.grid(row=0, column=2, padx=10)
+
+        # ---------- Button Style ----------
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="hand2",
+            font=("Arial", 12, "bold")
+            )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        # LOAD Button
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        # LOAD ALL Button
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ---- Scrollbars ----
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        # ---- TABLE ----
+        self.staff_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set,
+        height=18
+        )
+        self.staff_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.staff_tree.yview)
+        x_scroll.config(command=self.staff_tree.xview)
+
+        # Column Widths
+        widths = {
+        "record_id": 120,
+        "staff_id": 120,
+        "date": 150,
+        "status": 100,
+        "remarks": 220,
+        }
+
+        for col in cols:
+            self.staff_tree.heading(col, text=col.replace("_", " ").title())
+            self.staff_tree.column(col, width=widths[col], anchor="center")
+
+        # ---- FETCH BACKEND DATA ----
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/attendance/staff")
+            self.all_staff_att = res.json() if res.status_code == 200 else []
+            self.column_values_staff_att = {
+                "record_id":   [str(r["record_id"]) for r in self.all_staff_att],
+                "staff_id":  [str(r["staff_id"]) for r in self.all_staff_att],
+                "date":        [r["date"] for r in self.all_staff_att],
+                "status":      [r["status"] for r in self.all_staff_att],
+                "remarks":     [r["remarks"] for r in self.all_staff_att],
+            }
+        except:
+            self.all_staff_att = []
+
+        # ---- UPDATE TABLE ----
+        def update_table(data):
+            for r in self.staff_tree.get_children():
+                self.staff_tree.delete(r)
+
+            for row in data:
+                self.staff_tree.insert(
+                "",
+                "end",
+                values=(
+                    row["record_id"],
+                    row["staff_id"],
+                    row["date"],
+                    row["status"],
+                    row.get("remarks", "")
+                )
+            )
+
+        # ---- FILTER LOGIC ----
+        def load_filtered():
+            col = filter_var.get().strip()
+            val = filter_value.get().strip()
+
+            if not col or not val:
+                return
+            valid_list = self.column_values_staff_att.get(col, [])
+            valid_lower = [str(v).lower() for v in valid_list]
+
+            if val not in valid_lower:
+                self.show_popup(
+                "Invalid Search Value",
+                f"'{val}' not found in column '{col}'.",
+                "warning"
+            )
+                filter_value_var.set("")
+                return
+            filtered = [
+            r for r in self.all_staff_att
+            if str(r[col]).lower() == val.lower()
+            ]
+            update_table(filtered)
+
+        def load_all():
+            update_table(self.all_staff_att)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: load_all())
+
+    # ---- INITIAL LOAD ----
+        update_table(self.all_staff_att)
+
+    # ==============================================================================
+    # ----- Button to View Staff Attendance by ID -----
+    def load_view_staff_attendance_by_id(self):
+        self.clear_content()
+
+        title = tk.Label(
+        self.content,
+        text="View Staff Attendance by Record ID",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        )
+        title.pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=20)
+
+        # ===== record ID input =====
+        tk.Label(form, text="Record ID:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=0, padx=10, pady=8)
+
+        rec_var = tk.StringVar()
+        rec_entry = tk.Entry(form, textvariable=rec_var, font=("Arial", 14), width=25)
+        rec_entry.grid(row=0, column=1, padx=10, pady=8)
+        
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        # Back Button from global function
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,    
+        form_frame=form                          
+        )
+        # ===== Search Button (Label style) =====
+        search_btn = tk.Label(
+        form,
+        text="Search",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15,
+        pady=5,
+        width=12,
+        relief="ridge",
+        cursor="arrow"
+        )
+        search_btn.grid(row=0, column=2, padx=10)
+
+        # ====== Output fields ======
+        tk.Label(form, text="Staff ID:", font=("Arial", 14), bg="#ECF0F1").grid(row=1, column=0, padx=10, pady=8)
+        tk_id = tk.Entry(form, font=("Arial", 14), width=25, state="disabled")
+        tk_id.grid(row=1, column=1, padx=10, pady=8)
+
+        tk.Label(form, text="Date:", font=("Arial", 14), bg="#ECF0F1").grid(row=2, column=0, padx=10, pady=8)
+        date_entry = tk.Entry(form, font=("Arial", 14), width=25, state="disabled")
+        date_entry.grid(row=2, column=1, padx=10, pady=8)
+
+        tk.Label(form, text="Status:", font=("Arial", 14), bg="#ECF0F1").grid(row=3, column=0, padx=10, pady=8)
+        status_entry = tk.Entry(form, font=("Arial", 14), width=25, state="disabled")
+        status_entry.grid(row=3, column=1, padx=10, pady=8)
+
+        tk.Label(form, text="Remarks:", font=("Arial", 14), bg="#ECF0F1").grid(row=4, column=0, padx=10, pady=8)
+        remarks_entry = tk.Entry(form, font=("Arial", 14), width=25, state="disabled")
+        remarks_entry.grid(row=4, column=1, padx=10, pady=8)
+
+        tk.Label(form, text="Record ID:", font=("Arial", 14), bg="#ECF0F1").grid(row=5, column=0, padx=10, pady=8)
+        rec_id_entry = tk.Entry(form, font=("Arial", 14), width=25, state="disabled")
+        rec_id_entry.grid(row=5, column=1, padx=10, pady=8)
+
+        # ===== ENABLE / DISABLE SEARCH BUTTON =====
+        def validate_search_btn(*args):
+            if rec_var.get().strip():
+                search_btn.config(bg="#000000", fg="white", cursor="hand2")
+                search_btn.bind("<Enter>", lambda e: search_btn.config(bg="#222222"))
+                search_btn.bind("<Leave>", lambda e: search_btn.config(bg="#000000"))
+
+                search_btn.bind("<Button-1>", lambda e: fetch_attendance())
+            else:
+                search_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                search_btn.unbind("<Enter>")
+                search_btn.unbind("<Leave>")
+                search_btn.unbind("<Button-1>")
+
+        rec_var.trace_add("write", validate_search_btn)
+
+        # ===== FETCH DATA FROM BACKEND =====
+        def fetch_attendance():
+            record_id = rec_var.get().strip()
+            if not record_id:
+                self.show_popup(
+                    "Missing Input",
+                    "Please enter a Record ID.",
+                    "warning"
+                )
+                return
+            if not record_id.isdigit() or int(record_id) <= 0:
+                self.show_popup(
+                    "Invalid Record ID",
+                    "Record ID must be a positive number.",
+                    "warning"
+                )
+                return
+            import requests
+            try:
+                res = requests.get(f"http://127.0.0.1:8000/admin/attendance/staff/{record_id}")
+
+                if res.status_code == 200:
+                    data = res.json()
+
+                    # Enable all entries
+                    for box in (tk_id, date_entry, status_entry, remarks_entry, rec_id_entry):
+                        box.config(state="normal")
+
+                    # Clear previous values
+                    tk_id.delete(0, "end")
+                    date_entry.delete(0, "end")
+                    status_entry.delete(0, "end")
+                    remarks_entry.delete(0, "end")
+                    rec_id_entry.delete(0, "end")
+
+                    # Fill new data
+                    tk_id.insert(0, data["staff_id"])
+                    date_entry.insert(0, data["date"])
+                    status_entry.insert(0, data["status"])
+                    remarks_entry.insert(0, data.get("remarks", ""))
+                    rec_id_entry.insert(0, data.get("record_id", ""))
+
+                    # Disable them again
+                    for box in (tk_id, date_entry, status_entry, remarks_entry, rec_id_entry):
+                        box.config(state="disabled")
+
+                else:
+                    self.show_popup(
+                        "Not Found",
+                        f"No attendance record found for ID {record_id}.",
+                        "error"
+                    )
+                    return
+
+            except Exception as e:
+                self.show_popup(
+                    "Backend Error",
+                    f"Something went wrong.\nError: {e}",
+                    "error"
+                )
+                return
+
+    # ==============================================================================
+    # ----- Button to View Summary of Staff Attendance by Staff ID -----
+    def load_staff_attendance_summary_screen(self):
+        self.clear_content()
+
+        title = tk.Label(
+        self.content,
+        text="Staff Attendance Summary",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        )
+        title.pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # ===== Inputs =====
+        tk.Label(form, text="Staff ID:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=0, column=0, padx=10, pady=8)
+        sid_var = tk.StringVar()
+        sid_entry = tk.Entry(form, textvariable=sid_var, font=("Arial", 14), width=25)
+        sid_entry.grid(row=0, column=1, padx=10, pady=8)
+
+        # ---- FROM DATE ----
+        tk.Label(
+            form,
+            text="From Date (YYYY-MM-DD):",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=1, column=0, padx=10, pady=8)
+
+        from_var = tk.StringVar()
+        from_entry = tk.Entry(form, textvariable=from_var, font=("Arial", 14), width=20)
+        from_entry.grid(row=1, column=1, padx=5, pady=8)
+
+        tk.Button(
+            form,
+            text="Calendar",
+            font=("Arial", 12),
+            bg="white",
+            relief="flat",
+            command=lambda v=from_var, e=from_entry: self.open_calendar_popup(e, v)
+        ).grid(row=1, column=2, padx=5)
+
+
+        # ---- TO DATE ----
+        tk.Label(
+            form,
+            text="To Date (YYYY-MM-DD):",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+        ).grid(row=2, column=0, padx=10, pady=8)
+
+        to_var = tk.StringVar()
+        to_entry = tk.Entry(form, textvariable=to_var, font=("Arial", 14), width=20)
+        to_entry.grid(row=2, column=1, padx=5, pady=8)
+
+        tk.Button(
+            form,
+            text="Calendar",
+            font=("Arial", 12),
+            bg="white",
+            relief="flat",
+            command=lambda v=to_var, e=to_entry: self.open_calendar_popup(e, v)
+        ).grid(row=2, column=2, padx=5)
+
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        # Back Button from global function
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,    
+        form_frame=form                          
+        )
+        # ===== Submit Button =====
+        summary_btn = tk.Label(
+        form,
+        text="Get Summary",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        relief="ridge",
+        padx=15,
+        pady=5,
+        width=14,
+        cursor="arrow"
+        )
+        summary_btn.grid(row=3, column=1, pady=15)
+
+        # ===== OUTPUT FRAME =====
+        output = tk.Frame(self.content, bg="#ECF0F1")
+        output.pack(pady=20)
+
+        labels = {}
+        for i, field in enumerate(["Staff ID", "Total Days", "Present", "Absent", "Leave", "Percentage"]):
+            labels[field] = tk.Label(output, text=f"{field}: -", font=("Arial", 16), bg="#ECF0F1", fg="#2C3E50")
+            labels[field].pack(anchor="w", padx=30, pady=3)
+
+        # ===== Enable Button on Input =====
+        def validate_btn(*args):
+            if sid_var.get().strip() and from_var.get().strip() and to_var.get().strip():
+                summary_btn.config(bg="#000000", fg="white", cursor="hand2")
+                summary_btn.bind("<Enter>", lambda e: summary_btn.config(bg="#222222"))
+                summary_btn.bind("<Leave>", lambda e: summary_btn.config(bg="#000000"))
+                summary_btn.bind("<Button-1>", lambda e: fetch_summary())
+            else:
+                summary_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                summary_btn.unbind("<Enter>")
+                summary_btn.unbind("<Leave>")
+                summary_btn.unbind("<Button-1>")
+
+        sid_var.trace_add("write", validate_btn)
+        from_var.trace_add("write", validate_btn)
+        to_var.trace_add("write", validate_btn)
+
+        # ===== BACKEND CALL =====
+        def fetch_summary():
+            staff_id = sid_var.get().strip()
+            date_from = from_var.get().strip()
+            date_to = to_var.get().strip()
+            if not staff_id:
+                self.show_popup(
+                    "Missing Input",
+                    "Staff ID cannot be empty.",
+                    "warning"
+                )
+                return
+
+            # Staff ID must be a positive integer
+            if not staff_id.isdigit() or int(staff_id) <= 0:
+                self.show_popup(
+                    "Invalid Staff ID",
+                    "Staff ID must be a positive number.",
+                    "warning"
+                )
+                return
+
+            # Date From empty
+            if not date_from:
+                self.show_popup(
+                    "Missing Date",
+                    "Please enter a 'From' date.",
+                    "warning"
+                )
+                return
+
+            # Date To empty
+            if not date_to:
+                self.show_popup(
+                    "Missing Date",
+                    "Please enter a 'To' date.",
+                    "warning"
+                )
+                return
+
+            # Date format validation
+            import re
+            date_pattern = r"^\d{4}-\d{2}-\d{2}$"
+
+            if not re.match(date_pattern, date_from):
+                self.show_popup(
+                    "Invalid Date Format",
+                    "From Date must be in YYYY-MM-DD format.",
+                    "error"
+                )
+                return
+
+            import requests
+            url = (
+                f"http://127.0.0.1:8000/admin/attendance/staff/summary/{staff_id}"
+                f"?date_from={date_from}"
+                f"&date_to={date_to}"
+            )
+
+            try:
+                res = requests.get(url)     
+                if res.status_code != 200:
+                    res = requests.get(url)
+                    self.show_popup(
+                            "Not Found",
+                            "Staff member not found or no summary available for given date range.",
+                            "error"
+                    )
+                    return
+                data = res.json()
+                
+                labels["Staff ID"].config(text=f"Staff ID: {data['staff_id']}")
+                labels["Total Days"].config(text=f"Total Days: {data['total_days']}")
+                labels["Present"].config(text=f"Present: {data['present']}")
+                labels["Absent"].config(text=f"Absent: {data['absent']}")
+                labels["Leave"].config(text=f"Leave: {data['leave']}")
+                labels["Percentage"].config(text=f"Percentage: {data['percentage']}%")
+
+            except Exception as e:
+                self.show_popup(
+                    "Backend Error",
+                    f"Failed to fetch summary.\nError: {e}",
+                    "error"
+                )
+                return
+
+    # ==============================================================================
+    # ----- Button to Update Staff's Attendance -----
+    def load_update_staff_attendance_screen(self):
+        self.clear_content()
+
+        title = tk.Label(
+        self.content,
+        text="Update Staff Attendance",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        )
+        title.pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=20)
+
+        # ====== INPUT FIELDS ======
+        tk.Label(form, text="Record ID:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=0, column=0, padx=10, pady=8)
+        record_var = tk.StringVar()
+        record_entry = tk.Entry(form, textvariable=record_var, font=("Arial", 14), width=25)
+        record_entry.grid(row=0, column=1, padx=10, pady=8)
+
+        # ----- Load Button -----
+        load_btn = tk.Label(
+        form,
+        text="Load",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        relief="ridge",
+        width=12,
+        padx=10, pady=5,
+        cursor="arrow"
+        )
+        load_btn.grid(row=0, column=2, padx=12)
+
+        # ==== Fields that get filled AFTER load ====
+        fields = {
+        "Staff ID": tk.StringVar(),
+        "Date": tk.StringVar(),
+        "Status": tk.StringVar(),
+        "Remarks": tk.StringVar()
+        }
+        row_index = 1
+        entries = {}
+        for label, var in fields.items():
+
+            tk.Label(
+                form,
+                text=f"{label}:",
+                font=("Arial", 14),
+                bg="#ECF0F1"
+            ).grid(row=row_index, column=0, padx=10, pady=8)
+
+            # ---- DATE FIELD GETS SPECIAL TREATMENT ----
+            if label == "Date":
+                ent = tk.Entry(
+                    form,
+                    textvariable=var,
+                    font=("Arial", 14),
+                    width=20,
+                    state="disabled"
+                )
+                ent.grid(row=row_index, column=1, padx=5, pady=8)
+
+                # Calendar button
+                cal_btn = tk.Button(
+                    form,
+                    text="Calendar",
+                    font=("Arial", 12),
+                    bg="white",
+                    relief="flat",
+                    command=lambda v=var, e=ent: self.open_calendar_popup(e, v)
+                )
+                cal_btn.grid(row=row_index, column=2, padx=5)
+
+            else:
+                # ---- NORMAL DISABLED ENTRY ----
+                ent = tk.Entry(
+                    form,
+                    textvariable=var,
+                    font=("Arial", 14),
+                    width=25,
+                    state="disabled"
+                )
+                ent.grid(row=row_index, column=1, padx=10, pady=8)
+
+            entries[label] = ent
+            row_index += 1
+        
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        # Back Button from global function
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,    
+        form_frame=form                          
+        )
+        self.content.update_idletasks()
+
+        # ====== UPDATE BUTTON ======
+        update_btn = tk.Label(
+        self.content,
+        text="Update Attendance",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        relief="ridge",
+        padx=20, pady=10,
+        width=20,
+        cursor="arrow"
+        )
+        update_btn.pack(pady=25)
+
+        # ===== VALIDATION FOR LOAD BUTTON =====
+        def validate_load(*args):
+            if record_var.get().strip():
+                load_btn.config(bg="#000000", fg="white", cursor="arrow")
+                load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+                load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+                load_btn.bind("<Button-1>", lambda e: load_record())
+            else:
+                load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                load_btn.unbind("<Enter>")
+                load_btn.unbind("<Leave>")
+                load_btn.unbind("<Button-1>")
+
+        record_var.trace_add("write", validate_load)
+
+        # ===== LOAD EXISTING RECORD =====
+        def load_record():
+            rec_id = record_var.get().strip()
+            if not rec_id:
+                self.show_popup("Missing Input", "Record ID cannot be empty!", "warning")
+                return
+
+            # Must be positive integer
+            if not rec_id.isdigit() or int(rec_id) <= 0:
+                self.show_popup("Invalid Record ID", "Record ID must be a positive number.", "warning")
+                return
+
+            import requests
+            try:
+                res = requests.get(f"http://127.0.0.1:8000/admin/attendance/staff/{rec_id}")
+                if res.status_code != 200:
+                    self.show_popup(
+                        "Not Found",
+                        f"No attendance record found for ID {rec_id}.",
+                        "error"
+                    )
+                    return
+                data = res.json()
+
+                # Enable all input fields
+                for ent in entries.values():
+                    ent.config(state="normal")
+
+                # Fill values
+                fields["Staff ID"].set(data["staff_id"])
+                fields["Date"].set(data["date"])
+                fields["Status"].set(data["status"])
+                fields["Remarks"].set(data.get("remarks", ""))
+
+                enable_update_validation()
+
+            except Exception as e:
+                self.show_popup(
+                    "Backend Error",
+                    f"Could not fetch staff attendance.\nError: {e}",
+                    "error"
+                )
+
+        # ===== VALIDATE ALL FIELDS BEFORE UPDATE =====
+        def enable_update_validation():
+
+            def validate_all(*args):
+                if all(v.get().strip() for v in fields.values()):
+                    update_btn.config(
+                    bg="#000000", fg="white",
+                    cursor="arrow"
+                    )
+                    update_btn.bind("<Enter>", lambda e: update_btn.config(bg="#222222"))
+                    update_btn.bind("<Leave>", lambda e: update_btn.config(bg="#000000"))
+                    update_btn.bind("<Button-1>", lambda e: submit_update())
+                else:
+                    update_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                    update_btn.unbind("<Enter>")
+                    update_btn.unbind("<Leave>")
+                    update_btn.unbind("<Button-1>")
+
+            # Track all fields live
+            for var in fields.values():
+                var.trace_add("write", validate_all)
+
+        # ===== SUBMIT UPDATE TO BACKEND =====
+        def submit_update():
+            rec_id = record_var.get().strip()
+
+            if not rec_id:
+                self.show_popup("Missing Record ID", "Please enter a Record ID!", "warning")
+                return
+
+            if not rec_id.isdigit() or int(rec_id) <= 0:
+                self.show_popup("Invalid Record ID", "Record ID must be a positive number.", "warning")
+                return
+            
+            staff_raw = fields["Staff ID"].get().strip()
+            if not staff_raw.isdigit() or int(staff_raw) <= 0:
+                self.show_popup("Invalid Staff ID", "Staff ID must be a positive number.", "warning")
+                return
+            staff_id = int(staff_raw)
+
+            # Date
+            date_val = fields["Date"].get().strip()
+            import re
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_val):
+                self.show_popup("Invalid Date", "Date must be in YYYY-MM-DD format!", "error")
+                return
+
+            # Status
+            status_val = fields["Status"].get().strip().upper()
+            if status_val not in ["P", "A", "L"]:
+                self.show_popup("Invalid Status", "Status must be P, A, or L only!", "warning")
+                return
+            
+            remarks_val = fields["Remarks"].get().strip()
+
+            payload = {
+            "staff_id": staff_id,
+            "date": date_val,
+            "status": status_val,
+            "remarks": remarks_val
+            }
+
+            import requests
+            rec_id = record_var.get().strip()
+            try:
+                res = requests.put(f"http://127.0.0.1:8000/admin/attendance/staff/update/{rec_id}", json=payload)
+                if res.status_code == 200:
+                    self.show_popup("Success", "Staff Attendance Updated Successfully!", "info")
+                    self.change_screen("Staff Attendance Updated Successfully",
+                            add_callback=self.load_update_staff_attendance_screen)   
+                else:
+                    msg = res.json().get("detail", "Update failed!")
+                    self.show_popup("Error", msg, "error")
+    
+            except Exception as e:
+                self.show_popup("Backend Error", f"Error updating data:\n{e}", "error")
+
+
+    # ==============================================================================
+    # ----- Button to Delete Staff's Attendance -----
+    def load_delete_staff_attendance_screen(self):
+        self.clear_content()
+
+        title = tk.Label(
+        self.content,
+        text="Delete Staff Attendance",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        )
+        title.pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=20)
+
+        # ---- RECORD ID INPUT ----
+        tk.Label(form, text="Record ID:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=0, column=0, padx=10, pady=8)
+
+        record_var = tk.StringVar()
+        record_entry = tk.Entry(form, textvariable=record_var, font=("Arial", 14), width=25)
+        record_entry.grid(row=0, column=1, padx=10, pady=8)
+
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        # Back Button from global function
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,    
+        form_frame=form                          
+        )
+        self.content.update_idletasks()
+
+        # ---- DELETE BUTTON ----
+        delete_btn = tk.Label(
+        self.content,
+        text="Delete Attendance",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        relief="ridge",
+        padx=20, pady=10,
+        width=20,
+        cursor="arrow"
+        )
+        delete_btn.pack(pady=25)
+
+       # ===== VALIDATE DELETE BUTTON (Enable / Disable) =====
+        def validate_delete(*args):
+            if record_var.get().strip():
+                delete_btn.config(bg="#000000", fg="white", cursor="arrow")
+
+                # Hover
+                delete_btn.bind("<Enter>", lambda e: delete_btn.config(bg="#222222"))
+                delete_btn.bind("<Leave>", lambda e: delete_btn.config(bg="#000000"))
+
+                # Click
+                delete_btn.bind("<Button-1>", lambda e: submit_delete())
+
+            else:
+                delete_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                delete_btn.unbind("<Enter>")
+                delete_btn.unbind("<Leave>")
+                delete_btn.unbind("<Button-1>")
+
+        record_var.trace_add("write", validate_delete)
+
+        # ===== DELETE REQUEST TO BACKEND =====
+        def submit_delete():
+            rec_id = record_var.get().strip()
+            if not rec_id:
+                self.show_popup("Missing Record ID", "Please enter Record ID!", "warning")
+                return
+
+            if not rec_id.isdigit() or int(rec_id) <= 0:
+                self.show_popup("Invalid Record ID",
+                        "Record ID must be a positive number.",
+                        "warning")
+                return
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/attendance/staff/delete/{rec_id}"
+                res = requests.delete(url)
+
+                if res.status_code == 200:
+                    self.show_popup("Success",
+                            "Staff Attendance Deactivated Successfully!",
+                            "info")
+                    self.change_screen("Staff Attendance Deactivated Successfully",
+                                       add_callback=self.load_delete_staff_attendance_screen)
+                else:
+                    msg = res.json().get("detail", "Record Not Found")
+                    self.show_popup("Delete Failed", msg, "error")
+                    return
+
+            except Exception as e:
+                self.show_popup("Backend Error",
+                        f"Unable to delete record.\n{e}",
+                        "error")
+
+
+    # ==============================================================================
+    # ===== STUDENT'S EXAMS/MARKS/RESULTS =====
+    # ----- Button to Create an Exam Type -----
+    def load_create_exam_type_screen(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Create Exam Type",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # ---------- FORM FIELDS ----------
+        fields = [
+        ("Exam Name", "exam_name"),
+        ("Description", "description"),
+        ("Exam Date (YYYY-MM-DD)", "exam_date")
+        ]
+
+        vars = {}
+
+        for i, (label, key) in enumerate(fields):
+            tk.Label(
+            form,
+            text=f"{label}:",
+            bg="#ECF0F1",
+            font=("Arial", 14)
+            ).grid(row=i, column=0, padx=10, pady=8, sticky="w")
+
+            vars[key] = tk.StringVar()
+
+            # Date field → calendar
+            if key == "exam_date":
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=28)
+                entry.grid(row=i, column=1, padx=10, pady=6)
+
+                tk.Button(
+                form,
+                text="Calendar",
+                font=("Arial", 12),
+                bg="white",
+                relief="ridge",
+                command=lambda v=vars[key], b=entry: self.open_calendar_popup(b, v)
+            ).grid(row=i, column=2, padx=5)
+
+            else:
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30)
+                entry.grid(row=i, column=1, padx=10, pady=6)
+
+        # ========== BACK BUTTON ==========
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+    )
+
+        # ===== SUBMIT BUTTON =====
+        submit_btn = tk.Label(
+        self.content,
+        text="Create Exam",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=12,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+    )
+        submit_btn.pack(pady=20)
+
+        # ---------- ENABLE / DISABLE ----------
+        def enable():
+            submit_btn.config(bg="#000000", fg="white", cursor="hand2")
+            submit_btn.bind("<Enter>", lambda e: submit_btn.config(bg="#222222"))
+            submit_btn.bind("<Leave>", lambda e: submit_btn.config(bg="#000000"))
+            submit_btn.bind("<Button-1>", lambda e: submit())
+
+        def disable():
+            submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            submit_btn.unbind("<Enter>")
+            submit_btn.unbind("<Leave>")
+            submit_btn.unbind("<Button-1>")
+   
+        disable()
+
+        # ---------- VALIDATION ----------
+        import re
+
+        def validate(*args):
+            name = vars["exam_name"].get().strip()
+            desc = vars["description"].get().strip()
+            date = vars["exam_date"].get().strip()
+
+            if not name or not desc:
+                disable()
+                return
+
+            # Date format check
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", date):
+                disable()
+                return
+
+            enable()
+
+        for v in vars.values():
+            v.trace_add("write", validate)
+
+        # ---------- SUBMIT FUNCTION ----------
+        def submit():
+            payload = {
+            "exam_name": vars["exam_name"].get().strip(),
+            "description": vars["description"].get().strip(),
+            "exam_date": vars["exam_date"].get().strip(),
+            }
+
+            import requests
+            try:
+                res = requests.post(
+                "http://127.0.0.1:8000/admin/exams/create",
+                json=payload
+            )
+
+                if res.status_code == 200 or res.status_code == 201:
+                    self.show_popup("Success", "Exam Created Successfully!", "info")
+                    self.change_screen("Exam Created!", add_callback=self.load_create_exam_type_screen)
+                else:
+                    self.show_popup("Error", res.text, "error")
+
+            except Exception as e:
+                self.show_popup("Server Error", str(e), "error")
+
+    
+    # ==============================================================================
+    # ----- Button to View all Exam Types -----
+    def load_view_all_exams_screen(self):
+        self.clear_content()
+
+        # ----- TITLE -----
+        tk.Label(
+        self.content,
+        text="All Exams",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # -------- BACK BUTTON --------
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # -------- TABLE FRAME --------
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        # ---- EXAM TABLE COLUMNS ----
+        cols = ("exam_id", "exam_name", "description", "exam_date")
+
+        # ------ TABLE + SCROLLBARS ------
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.exam_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.exam_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.exam_tree.yview)
+        x_scroll.config(command=self.exam_tree.xview)
+
+        for col in cols:
+            self.exam_tree.heading(col, text=col.replace("_", " ").title())
+            self.exam_tree.column(col, width=200, anchor="center")
+        
+        # ===== FILTER BAR AT BOTTOM =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        sort_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=list(cols),
+        state="readonly",
+        width=18
+    )
+        sort_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(filter_frame, textvariable=filter_val_var,
+                          font=("Arial", 12), width=25)
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # BUTTON STYLE
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        # LOAD BUTTON
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        # LOAD ALL BUTTON
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ----- FETCH FROM BACKEND -----
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/exams/all")
+            self.exams = res.json() if res.status_code == 200 else []
+        except:
+            self.exams = []
+            self.show_popup("Error", "Unable to load exams from server!", "error")
+
+        # ------- FUNCTION TO UPDATE TABLE -------
+        def update_table(data):
+            for row in self.exam_tree.get_children():
+                self.exam_tree.delete(row)
+
+            for row in data:
+                self.exam_tree.insert(
+                "",
+                "end",
+                values=(
+                    row["exam_id"],
+                    row["exam_name"],
+                    row["description"],
+                    row["exam_date"]
+                )
+            )
+        
+        # ===== FILTER FUNCTION =====
+        def load_filtered():
+            col = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+            if not col or not val:
+                return
+
+            filtered = [
+            r for r in self.exams
+            if val in str(r[col]).lower()
+        ]
+
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.exams))
+
+        update_table(self.exams)
+
+        # INITIAL TABLE LOAD
+        update_table(self.exams)
+
+    # ==============================================================================
+    # ----- Button to Update Exam by ID -----
+    def load_update_exam_screen(self):
+        self.clear_content()
+
+        # ----- TITLE -----
+        tk.Label(
+        self.content,
+        text="Update Exam Details",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=25)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # ================== INPUT → EXAM ID ====================
+        tk.Label(form, text="Exam ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=10)
+
+        exam_id_var = tk.StringVar()
+        exam_id_entry = tk.Entry(form, textvariable=exam_id_var, font=("Arial", 14), width=25)
+        exam_id_entry.grid(row=0, column=1, padx=10)
+
+        # ---------- LOAD BUTTON ----------
+        load_btn = tk.Label(
+        form,
+        text="Load",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15, pady=5,
+        width=12,
+        relief="ridge",
+        cursor="arrow"
+    )
+        load_btn.grid(row=0, column=2, padx=10)
+
+        # ---------- OUTPUT FIELDS ----------
+        fields = ["exam_name", "description", "exam_date"]
+        vars_dict = {}
+
+        output_frame = tk.Frame(self.content, bg="#ECF0F1")
+        output_frame.pack(pady=20)
+
+        for i, label in enumerate(fields):
+            tk.Label(
+            output_frame,
+            text=f"{label.replace('_',' ').title()}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+        ).grid(row=i, column=0, padx=10, pady=6, sticky="w")
+
+            var = tk.StringVar()
+            entry = tk.Entry(output_frame, textvariable=var, font=("Arial", 14), width=30)
+            entry.grid(row=i, column=1, padx=10, pady=6)
+
+            vars_dict[label] = var
+
+        # Calendar button for exam_date
+        tk.Button(
+        output_frame,
+        text="Calendar",
+        font=("Arial", 12),
+        bg="white",
+        relief="ridge",
+        command=lambda: self.open_calendar_popup(
+            output_frame.grid_slaves(row=2, column=1)[0],
+            vars_dict["exam_date"]
+        )
+    ).grid(row=2, column=2, padx=6)
+
+        # ---------- BACK BUTTON ----------
+        back_row = tk.Frame(self.content, bg="#ECF0F1")
+        back_row.pack(pady=10)
+        self.create_back_button(back_row, self.load_dashboard, form)
+
+        # ---------- UPDATE BUTTON ----------
+        update_btn = tk.Label(
+        self.content,
+        text="Update Exam",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+    )
+        update_btn.pack(pady=15)
+
+        # Disable button initially
+        def disable_update():
+            update_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            update_btn.unbind("<Enter>")
+            update_btn.unbind("<Leave>")
+            update_btn.unbind("<Button-1>")
+
+        def enable_update():
+            update_btn.config(bg="#000000", fg="white", cursor="hand2")
+            update_btn.bind("<Enter>", lambda e: update_btn.config(bg="#222222"))
+            update_btn.bind("<Leave>", lambda e: update_btn.config(bg="#000000"))
+            update_btn.bind("<Button-1>", lambda e: update_exam())
+
+        disable_update()
+
+        # ---------- LOAD EXAM DETAILS ----------
+        def load_exam():
+            exam_id = exam_id_var.get().strip()
+
+            if not exam_id.isdigit():
+                self.show_popup("Invalid Input", "Exam ID must be a number!", "warning")
+                disable_update()
+                return
+
+            import requests
+            res = requests.get(f"http://127.0.0.1:8000/admin/exams/{exam_id}")
+
+            if res.status_code != 200:
+                self.show_popup("Not Found", "No exam found!", "info")
+                disable_update()
+                for v in vars_dict.values():
+                    v.set("")
+                return
+
+            data = res.json()
+
+            vars_dict["exam_name"].set(data["exam_name"])
+            vars_dict["description"].set(data["description"])
+            vars_dict["exam_date"].set(data["exam_date"])
+
+            enable_update()
+
+        # Bind to Load button
+        def validate_load(*args):
+            if exam_id_var.get().strip():
+                load_btn.config(bg="#000000", fg="white", cursor="hand2")
+                load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+                load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+                load_btn.bind("<Button-1>", lambda e: load_exam())
+            else:
+                load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                load_btn.unbind("<Enter>")
+                load_btn.unbind("<Leave>")
+                load_btn.unbind("<Button-1>")
+
+        exam_id_var.trace_add("write", validate_load)
+
+        # ---------- UPDATE REQUEST ----------
+        def update_exam():
+            exam_id = exam_id_var.get().strip()
+
+            payload = {
+            "exam_name": vars_dict["exam_name"].get().strip(),
+            "description": vars_dict["description"].get().strip(),
+            "exam_date": vars_dict["exam_date"].get().strip()
+        }
+
+            import re
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", payload["exam_date"]):
+                self.show_popup("Invalid Date", "Date must be YYYY-MM-DD!", "warning")
+                return
+
+            import requests
+            res = requests.put(
+            f"http://127.0.0.1:8000/admin/exams/update/{exam_id}",
+            json=payload
+        )
+
+            if res.status_code == 200:
+                self.show_popup("Success", "Exam Updated Successfully!", "info")
+                self.change_screen(
+                "Exam Updated Successfully!",
+                add_callback=self.load_update_exam_screen
+            )
+            else:
+                self.show_popup("Error", "Failed to update exam!", "error")
+
+    # ==============================================================================
+    # ----- Button to Delete Exam Type -----
+    def load_delete_exam_screen(self):
+        self.clear_content()
+
+        # Title
+        tk.Label(
+        self.content,
+        text="Delete Exam Type",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # Exam ID input
+        tk.Label(
+        form, text="Exam ID:", font=("Arial", 14), bg="#ECF0F1"
+    ).grid(row=0, column=0, padx=10, pady=10)
+
+        exam_id_var = tk.StringVar()
+        tk.Entry(
+        form, textvariable=exam_id_var, font=("Arial", 14), width=25
+    ).grid(row=0, column=1, padx=10, pady=10)
+
+        # Back button
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=20)
+        self.create_back_button(btn_row, self.load_dashboard, form)
+
+        # Delete button
+        delete_btn = tk.Label(
+        self.content,
+        text="Delete Exam",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+    )
+        delete_btn.pack(pady=20)
+
+        # Enable / Disable logic
+        def validate(*args):
+            if exam_id_var.get().strip().isdigit():
+                enable()
+            else:
+                disable()
+
+        def enable():
+            delete_btn.config(bg="#000000", fg="white", cursor="hand2")
+            delete_btn.bind("<Enter>", lambda e: delete_btn.config(bg="#222222"))
+            delete_btn.bind("<Leave>", lambda e: delete_btn.config(bg="#000000"))
+            delete_btn.bind("<Button-1>", lambda e: delete_exam())
+
+        def disable():
+            delete_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            delete_btn.unbind("<Enter>")
+            delete_btn.unbind("<Leave>")
+            delete_btn.unbind("<Button-1>")
+
+        exam_id_var.trace_add("write", validate)
+        disable()
+
+        # Delete call
+        def delete_exam():
+            exam_id = exam_id_var.get().strip()
+
+            try:
+                import requests
+                res = requests.delete(
+                f"http://127.0.0.1:8000/admin/exams/delete/{exam_id}"
+            )
+
+                if res.status_code == 200:
+                    self.show_popup("Success", "Exam Deleted Successfully!", "info")
+                    self.change_screen(
+                    "Exam Deleted!",
+                    add_callback=self.load_delete_exam_screen
+                )
+                else:
+                    msg = res.json().get("detail", "Failed to delete exam")
+                    self.show_popup("Error", msg, "error")
+
+            except Exception as e:
+                self.show_popup("Server Error", str(e), "error")
+
+    # ==============================================================================
+    # ----- Button to Generate and Download Result of a Student with Some Exam ID -----
+    def load_generate_and_download_result_of_student(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Generate & Download Result of a Student",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        # ===== FORM FRAME =====
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # -------- Inputs --------
+        tk.Label(form, text="Student ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        sid_var = tk.StringVar()
+        tk.Entry(form, textvariable=sid_var, width=25, font=("Arial", 14))\
+        .grid(row=0, column=1, padx=10, pady=10)
+
+        tk.Label(form, text="Exam ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        exam_var = tk.StringVar()
+        tk.Entry(form, textvariable=exam_var, width=25, font=("Arial", 14))\
+        .grid(row=1, column=1, padx=10, pady=10)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(pady=10)
+        self.create_back_button(back_frame, self.load_dashboard, form)
+
+        # ====== RESULT SUMMARY CARD FRAME ======
+        summary_frame = tk.Frame(self.content, bg="#ECF0F1")
+        summary_frame.pack(pady=20)
+
+        summary_vars = {
+        "Total Marks": tk.StringVar(),
+        "Percentage": tk.StringVar(),
+        "Grade": tk.StringVar()
+    }
+
+        # Create output card labels (disabled entries)
+        for i, (label, var) in enumerate(summary_vars.items()):
+            tk.Label(summary_frame, text=f"{label}:", font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=i, column=0, padx=10, pady=6, sticky="e")
+
+            tk.Entry(
+            summary_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+        ).grid(row=i, column=1, padx=10, pady=6)
+
+        # ====== FETCH BUTTON ======
+        fetch_btn = tk.Label(
+        self.content,
+        text="Generate Result",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20, pady=12,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+    )
+        fetch_btn.pack(pady=10)
+
+        # ====== DOWNLOAD BUTTON ======
+        download_btn = tk.Label(
+        self.content,
+        text="Download Result",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20, pady=12,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+    )
+        download_btn.pack(pady=10)
+
+        # Disable download button initially
+        def disable_download():
+            download_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            download_btn.unbind("<Enter>")
+            download_btn.unbind("<Leave>")
+            download_btn.unbind("<Button-1>")
+
+        disable_download()
+
+        # ====== ENABLE / DISABLE FETCH BUTTON ======
+        def enable_fetch():
+            fetch_btn.config(bg="#000000", fg="white", cursor="arrow")
+            fetch_btn.bind("<Enter>", lambda e: fetch_btn.config(bg="#222222"))
+            fetch_btn.bind("<Leave>", lambda e: fetch_btn.config(bg="#000000"))
+            fetch_btn.bind("<Button-1>", lambda e: fetch_result())
+
+        def disable_fetch():
+            fetch_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            fetch_btn.unbind("<Enter>")
+            fetch_btn.unbind("<Leave>")
+            fetch_btn.unbind("<Button-1>")
+
+        disable_fetch()
+
+        # Validation
+        def validate(*args):
+            sid = sid_var.get().strip()
+            eid = exam_var.get().strip()
+
+            if sid.isdigit() and eid.isdigit():
+                enable_fetch()
+            else:
+                disable_fetch()
+
+        sid_var.trace_add("write", validate)
+        exam_var.trace_add("write", validate)
+
+        # ====== FETCH RESULT FUNCTION ======
+        def fetch_result():
+            sid = int(sid_var.get().strip())
+            eid = int(exam_var.get().strip())
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/student/{sid}/{eid}"
+                res = requests.get(url)
+ 
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "Result not found!", "warning")
+                    return
+
+                data = res.json()
+
+                summary_vars["Total Marks"].set(data["total_marks"])
+                summary_vars["Percentage"].set(data["percentage"])
+                summary_vars["Grade"].set(data["grade"])
+
+                # Enable download button
+                enable_download()
+
+            except Exception as e:
+                self.show_popup("Server Error", str(e), "error")
+
+        # ====== ENABLE DOWNLOAD BUTTON ======
+        def enable_download():
+            download_btn.config(bg="#000000", fg="white", cursor="arrow")
+            download_btn.bind("<Enter>", lambda e: download_btn.config(bg="#222222"))
+            download_btn.bind("<Leave>", lambda e: download_btn.config(bg="#000000"))
+            download_btn.bind("<Button-1>", lambda e: download_pdf())
+
+        # ====== DOWNLOAD FUNCTION ======
+        def download_pdf():
+            sid = sid_var.get().strip()
+            eid = exam_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/student/{sid}/{eid}/download"
+                res = requests.get(url)
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "Cannot download result!", "error")
+                    return
+
+                # Extract filename
+                fname = f"result_{sid}_{eid}.pdf"
+                if "content-disposition" in res.headers:
+                    import re
+                    cd = res.headers["content-disposition"]
+                    match = re.findall('filename="?(.+)"?', cd)
+                    if match:
+                        fname = match[0]
+
+                # Ask where to save
+                from tkinter import filedialog
+                save_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf",
+                initialfile=fname,
+                filetypes=[("PDF Files", "*.pdf")]
+            )
+
+                if not save_path:
+                    return
+
+                with open(save_path, "wb") as f:
+                    f.write(res.content)
+
+                self.show_mini_notification(f"Downloaded: {fname}")
+                self.change_screen("Student's Result Downloaded Successfully!",
+                                   add_callback=self.load_generate_and_download_result_of_student)
+            except Exception as e:
+                self.show_popup("Backend Error", str(e), "error")
+
+
+    # ==============================================================================
+    # ----- Button to View and Download Final Result of a Student -----
+    def load_generate_and_download_final_result_of_student(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Generate & Download Final Result of a Student",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        # ===== FORM FRAME =====
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # -------- Student ID Input --------
+        tk.Label(
+        form,
+        text="Student ID:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+    ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+
+        sid_var = tk.StringVar()
+        tk.Entry(
+        form,
+        textvariable=sid_var,
+        width=25,
+        font=("Arial", 14)
+    ).grid(row=0, column=1, padx=10, pady=10)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(pady=5)
+        self.create_back_button(back_frame, self.load_dashboard, form)
+
+        # ===== SUMMARY FRAME (Output) =====
+        summary_frame = tk.Frame(self.content, bg="#ECF0F1")
+        summary_frame.pack(pady=20)
+
+        summary_vars = {
+        "Exam Count": tk.StringVar(),
+        "Total Marks": tk.StringVar(),
+        "Max Marks": tk.StringVar(),
+        "Percentage": tk.StringVar(),
+        "Final Grade": tk.StringVar()
+    }
+
+        # Create summary card layout
+        for i, (label, var) in enumerate(summary_vars.items()):
+            tk.Label(
+            summary_frame,
+            text=f"{label}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+        ).grid(row=i, column=0, padx=10, pady=6, sticky="e")
+
+            tk.Entry(
+            summary_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+        ).grid(row=i, column=1, padx=10, pady=6)
+
+        # ---- Exam-wise result area ----
+        tk.Label(
+        summary_frame,
+        text="Exam-wise Details:",
+        font=("Arial", 14, "bold"),
+        bg="#ECF0F1"
+    ).grid(row=len(summary_vars), column=0, columnspan=2, pady=10)
+
+        exam_list_box = tk.Text(
+        summary_frame,
+        width=60,
+        height=10,
+        font=("Arial", 12),
+        state="disabled",
+        bg="#F2F3F4"
+    )
+        exam_list_box.grid(row=len(summary_vars) + 1, column=0, columnspan=2, padx=10, pady=5)
+
+        # ====== FETCH BUTTON ======
+        fetch_btn = tk.Label(
+        self.content,
+        text="Generate Final Result",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=12,
+        width=20,
+        relief="ridge",
+        cursor="arrow"
+    )
+        fetch_btn.pack(pady=5)
+
+        # ====== DOWNLOAD BUTTON ======
+        download_btn = tk.Label(
+        self.content,
+        text="Download Final Result",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=12,
+        width=20,
+        relief="ridge",
+        cursor="arrow"
+    )
+        download_btn.pack(pady=5)
+
+        # disable until generated
+        def disable_download():
+            download_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            download_btn.unbind("<Enter>")
+            download_btn.unbind("<Leave>")
+            download_btn.unbind("<Button-1>")
+
+        disable_download()
+
+        # ====== ENABLE FETCH BUTTON ======
+        def enable_fetch():
+            fetch_btn.config(bg="#000000", fg="white", cursor="arrow")
+            fetch_btn.bind("<Enter>", lambda e: fetch_btn.config(bg="#222222"))
+            fetch_btn.bind("<Leave>", lambda e: fetch_btn.config(bg="#000000"))
+            fetch_btn.bind("<Button-1>", lambda e: fetch_result())
+
+        def disable_fetch():
+            fetch_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            fetch_btn.unbind("<Enter>")
+            fetch_btn.unbind("<Leave>")
+            fetch_btn.unbind("<Button-1>")
+
+        disable_fetch()
+
+        # ====== VALIDATION ======
+        def validate(*args):
+            sid = sid_var.get().strip()
+
+            if sid.isdigit() and int(sid) > 0:
+                enable_fetch()
+            else:
+                disable_fetch()
+
+        sid_var.trace_add("write", validate)
+
+        # ====== FETCH RESULT FUNCTION ======
+        def fetch_result():
+            sid = sid_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/final/{sid}"
+                res = requests.get(url)
+
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "No results found for this student!", "warning")
+                    return
+
+                data = res.json()
+
+                # Fill summary card
+                summary_vars["Exam Count"].set(data["exam_count"])
+                summary_vars["Total Marks"].set(data["total_marks"])
+                summary_vars["Max Marks"].set(data["max_marks"])
+                summary_vars["Percentage"].set(data["percentage"])
+                summary_vars["Final Grade"].set(data["final_grade"])
+
+                # Fill exam-wise details
+                exam_list_box.config(state="normal")
+                exam_list_box.delete("1.0", tk.END)
+                for e in data["exam_wise_details"]:
+                    exam_list_box.insert(
+                        tk.END,
+                        f"Exam {e['exam_id']} : Marks: {e['obtained_marks']} / {e['max_marks']} | Grade: {e['grade']}\n"
+                    )
+
+                exam_list_box.config(state="disabled")
+
+                # enable download
+                enable_download()
+
+            except Exception as e:
+                self.show_popup("Server Error", str(e), "error")
+
+        # ====== ENABLE DOWNLOAD BUTTON ======
+        def enable_download():
+            download_btn.config(bg="#000", fg="white", cursor="hand2")
+            download_btn.bind("<Enter>", lambda e: download_btn.config(bg="#222"))
+            download_btn.bind("<Leave>", lambda e: download_btn.config(bg="#000"))
+            download_btn.bind("<Button-1>", lambda e: download_pdf())
+
+        # ====== DOWNLOAD FUNCTION ======
+        def download_pdf():
+            sid = sid_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/final/download/{sid}"
+                res = requests.get(url)
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "Cannot download final result!", "error")
+                    return
+
+                # Extract filename
+                fname = f"student_{sid}_final_result.pdf"
+                if "content-disposition" in res.headers:
+                    import re
+                    cd = res.headers["content-disposition"]
+                    match = re.findall(r'filename="?(.+)"?', cd)
+                    if match:
+                        fname = match[0]
+
+                # Ask save location
+                from tkinter import filedialog
+                save_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf",
+                initialfile=fname,
+                filetypes=[("PDF Files", "*.pdf")]
+            )
+
+                if not save_path:
+                    return
+
+                with open(save_path, "wb") as f:
+                    f.write(res.content)
+
+                self.show_mini_notification(f"Downloaded: {fname}")
+                self.change_screen(f"PDF of Final Result of Student ID {sid} Downloaded Successfully!",
+                                   add_callback=self.load_generate_and_download_final_result_of_student)
+
+            except Exception as e:
+                self.show_popup("Backend Error", str(e), "error")
+
+    
+    # ==============================================================================
+    # ----- Button to View all Results for an Exam -----
+    def load_view_all_results_for_exam(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="View All Results for an Exam",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        # ===== FORM FRAME =====
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        tk.Label(
+        form,
+        text="Exam ID:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+    ).grid(row=0, column=0, padx=10, pady=10)
+
+        exam_var = tk.StringVar()
+ 
+        tk.Entry(
+        form,
+        textvariable=exam_var,
+        font=("Arial", 14),
+        width=25
+    ).grid(row=0, column=1, padx=10, pady=10)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, form)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = ("result_id", "student_id", "exam_id", "total_marks", "percentage", "grade")
+
+        # Scrollbars
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.result_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.result_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.result_tree.yview)
+        x_scroll.config(command=self.result_tree.xview)
+
+        # Configure headings
+        for col in cols:
+            self.result_tree.heading(col, text=col.replace("_", " ").title())
+            self.result_tree.column(col, width=180, anchor="center")
+
+        # ===== LOAD BUTTON =====
+        load_btn = tk.Label(
+        self.content,
+        text="Load Results",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=12,
+        width=16,
+        relief="ridge",
+        cursor="arrow"
+    )
+        load_btn.pack(pady=10)
+
+        def enable_load():
+            load_btn.config(bg="#000000", fg="white", cursor="arrow")
+            load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+            load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+            load_btn.bind("<Button-1>", lambda e: load_results())
+
+        def disable_load():
+            load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            load_btn.unbind("<Enter>")
+            load_btn.unbind("<Leave>")
+            load_btn.unbind("<Button-1>")
+
+        disable_load()
+
+        # ===== VALIDATION =====
+        def validate(*args):
+            if exam_var.get().strip().isdigit():
+                enable_load()
+            else:
+                disable_load()
+
+        exam_var.trace_add("write", validate)
+
+        # ===== LOAD RESULTS FUNCTION =====
+        def load_results():
+            exam_id = exam_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/exam/{exam_id}"
+                res = requests.get(url)
+  
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "No results found for this Exam ID!", "warning")
+                    return
+
+                data = res.json()
+
+                # insert into table
+                for row in self.result_tree.get_children():
+                    self.result_tree.delete(row)
+
+                for r in data:
+                    self.result_tree.insert(
+                    "",
+                    "end",
+                    values=(
+                        r["result_id"],
+                        r["student_id"],
+                        r["exam_id"],
+                        r["total_marks"],
+                        r["percentage"],
+                        r["grade"]
+                    )
+                )
+
+            except Exception as e:
+                self.show_popup("Server Error", str(e), "error")
+
+
+    # ==============================================================================
+    # ----- Button to Generate and Download Results of all Students of a class with Some Exam ID ------
+    def load_view_and_download_all_students_results_for_a_class(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="View & Download All Students' Results for a Class",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        # ===== FORM =====
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        tk.Label(form, text="Class ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=8, sticky="e")
+        tk.Label(form, text="Exam ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=1, column=0, padx=10, pady=8, sticky="e")
+
+        class_var = tk.StringVar()
+        exam_var = tk.StringVar()
+
+        tk.Entry(form, textvariable=class_var, font=("Arial", 14), width=25)\
+        .grid(row=0, column=1, padx=10, pady=8)
+        tk.Entry(form, textvariable=exam_var, font=("Arial", 14), width=25)\
+        .grid(row=1, column=1, padx=10, pady=8)
+
+        # BACK BUTTON
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, form)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=15)
+
+        cols = ("student_id", "full_name", "exam_id", "total_marks", "percentage", "grade")
+
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.class_results_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.class_results_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.class_results_tree.yview)
+        x_scroll.config(command=self.class_results_tree.xview)
+
+        # Setup columns
+        for col in cols:
+            self.class_results_tree.heading(col, text=col.replace("_", " ").title())
+            self.class_results_tree.column(col, width=170, anchor="center")
+
+        # ===== BUTTONS =====
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=20)
+
+        load_btn = tk.Label(
+        btn_frame, text="Load Results",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC", fg="#AEB6BF",
+        padx=20, pady=10, width=15,
+        relief="ridge", cursor="arrow"
+    )
+        load_btn.grid(row=0, column=0, padx=15)
+
+        download_btn = tk.Label(
+        btn_frame, text="Download All (ZIP)",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC", fg="#AEB6BF",
+        padx=20, pady=10, width=18,
+        relief="ridge", cursor="arrow"
+    )
+        download_btn.grid(row=0, column=1, padx=15)
+
+        # ===== BUTTON ENABLE/DISABLE =====
+        def enable(btn):
+            btn.config(bg="#000", fg="white", cursor="hand2")
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000"))
+
+        def disable(btn):
+            btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            btn.unbind("<Enter>"); btn.unbind("<Leave>")
+
+        disable(load_btn)
+        disable(download_btn)
+
+        # ===== VALIDATION =====
+        def validate(*args):
+            if class_var.get().strip().isdigit() and exam_var.get().strip().isdigit():
+                enable(load_btn)
+                enable(download_btn)
+                load_btn.bind("<Button-1>", lambda e: load_results())
+                download_btn.bind("<Button-1>", lambda e: download_zip())
+            else:
+                disable(load_btn)
+                disable(download_btn)
+
+        class_var.trace_add("write", validate)
+        exam_var.trace_add("write", validate)
+
+        # ===== LOAD RESULTS FUNCTION =====
+        def load_results():
+            class_id = class_var.get().strip()
+            exam_id = exam_var.get().strip()
+
+            # Clear table
+            for item in self.class_results_tree.get_children():
+                self.class_results_tree.delete(item)
+
+            import requests
+            url = f"http://127.0.0.1:8000/admin/results/exam/{exam_id}"
+
+            try:
+                res = requests.get(url)
+                if res.status_code != 200:
+                    self.show_popup("Error", "No results found for this exam!", "error")
+                    return
+    
+                all_results = res.json()
+
+                # filter only this class
+                for r in all_results:
+                    # Fetching student info
+                    stu = requests.get(f"http://127.0.0.1:8000/admin/results/students/{r['student_id']}")
+                    if stu.status_code != 200:
+                        continue
+
+                    stu_data = stu.json()
+                    if stu_data["class_id"] != int(class_id):
+                        continue
+
+                    self.class_results_tree.insert(
+                    "", "end",
+                    values=(
+                        r["student_id"],
+                        stu_data["full_name"],
+                        r["exam_id"],
+                        r["total_marks"],
+                        r["percentage"],
+                        r["grade"]
+                    )
+                )
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+
+        # ===== DOWNLOAD ZIP FUNCTION =====
+        def download_zip():
+            class_id = class_var.get().strip()
+            exam_id = exam_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/download/class/{class_id}/{exam_id}"
+                res = requests.get(url)
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "No results available to download!", "error")
+                    return
+
+                # Ask save location
+                from tkinter import filedialog
+                file_path = filedialog.asksaveasfilename(
+                defaultextension=".zip",
+                filetypes=[("ZIP Files", "*.zip")],
+                initialfile=f"class_{class_id}_exam_{exam_id}_results.zip"
+            )
+
+                if not file_path:
+                    return
+
+                with open(file_path, "wb") as f:
+                    f.write(res.content)
+
+                self.show_mini_notification("ZIP Downloaded Successfully!")
+                self.change_screen(f"Downloaded Results of all Students for Class ID {class_id} Based on Exam ID {exam_id}",
+                                   add_callback=self.load_view_and_download_all_students_results_for_a_class)
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+
+
+    # ==============================================================================
+    # ----- Button to Generate and Download Final Results of a class -----
+    def load_generate_and_download_all_final_results_for_a_class(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Generate & Download Final Results for a Class",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+    ).pack(pady=20)
+
+        # ===== FORM =====
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        tk.Label(form, text="Class ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=8, sticky="e")
+
+        class_var = tk.StringVar()
+
+        tk.Entry(form, textvariable=class_var, font=("Arial", 14), width=25)\
+        .grid(row=0, column=1, padx=10, pady=8)
+
+        # BACK BUTTON
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, form)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=15)
+
+        cols = ("student_id", "full_name", "total_marks", "max_marks", "percentage", "final_grade")
+
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.final_results_tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.final_results_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.final_results_tree.yview)
+        x_scroll.config(command=self.final_results_tree.xview)
+
+        for col in cols:
+            self.final_results_tree.heading(col, text=col.replace("_", " ").title())
+            self.final_results_tree.column(col, width=160, anchor="center")
+
+        # ===== BUTTONS =====
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=20)
+
+        load_btn = tk.Label(
+        btn_frame, text="Generate Final Results",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC", fg="#AEB6BF",
+        padx=20, pady=10, width=20,
+        relief="ridge", cursor="arrow"
+    )
+        load_btn.grid(row=0, column=0, padx=20)
+
+        download_btn = tk.Label(
+        btn_frame, text="Download All (ZIP)",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC", fg="#AEB6BF",
+        padx=20, pady=10, width=18,
+        relief="ridge", cursor="arrow"
+    )
+        download_btn.grid(row=0, column=1, padx=20)
+
+        # ===== ENABLE / DISABLE BUTTONS =====
+        def enable(btn):
+            btn.config(bg="#000000", fg="white", cursor="arrow")
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        def disable(btn):
+            btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            btn.unbind("<Enter>"); btn.unbind("<Leave>")
+
+        disable(load_btn)
+        disable(download_btn)
+
+        # ===== VALIDATION =====
+        def validate(*args):
+            if class_var.get().strip().isdigit():
+                enable(load_btn)
+                enable(download_btn)
+                load_btn.bind("<Button-1>", lambda e: load_results())
+                download_btn.bind("<Button-1>", lambda e: download_zip())
+            else:
+                disable(load_btn)
+                disable(download_btn)
+
+        class_var.trace_add("write", validate)
+
+        # ===== LOAD FINAL RESULTS (TABLE VIEW) =====
+        def load_results():
+            class_id = class_var.get().strip()
+
+            # Clear table
+            for item in self.final_results_tree.get_children():
+                self.final_results_tree.delete(item)
+
+            import requests
+
+            try:
+                # Step 1: get all students of the class
+                stu_res = requests.get(f"http://127.0.0.1:8000/admin/master/students/class/{class_id}")
+                if stu_res.status_code != 200:
+                    self.show_popup("Error", "No active students in this class!", "error")
+                    return
+
+                students = stu_res.json()
+
+                # Step 2: For each student fetch FINAL RESULT
+                for stu in students:
+                    sid = stu["student_id"]
+                    res = requests.get(f"http://127.0.0.1:8000/admin/results/final/{sid}")
+
+                    if res.status_code != 200:
+                        continue  # skip students with no results
+
+                    r = res.json()
+
+                    self.final_results_tree.insert(
+                    "", "end",
+                    values=(
+                        r["student_id"],
+                        stu["full_name"],
+                        r["total_marks"],
+                        r["max_marks"],
+                        r["percentage"],
+                        r["final_grade"]
+                    )
+                )
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+
+        # ===== DOWNLOAD FINAL RESULTS ZIP =====
+        def download_zip():
+            class_id = class_var.get().strip()
+
+            import requests
+            try:
+                url = f"http://127.0.0.1:8000/admin/results/final/download/class/{class_id}"
+                res = requests.get(url)
+ 
+                if res.status_code != 200:
+                    self.show_popup("Error", "Unable to generate ZIP!", "error")
+                    return
+
+                # File dialog
+                from tkinter import filedialog
+                file_path = filedialog.asksaveasfilename(
+                defaultextension=".zip",
+                filetypes=[("ZIP Files", "*.zip")],
+                initialfile=f"class_{class_id}_final_results.zip"
+            )
+
+                if not file_path:
+                    return
+
+                with open(file_path, "wb") as f:
+                    f.write(res.content)
+
+                self.show_mini_notification("Final Results ZIP Downloaded!")
+                self.change_screen(f"Successfully Downloaded all Final Results for Class ID {class_id}",
+                                   add_callback=self.load_generate_and_download_all_final_results_for_a_class)
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+
+    # ==============================================================================
+    # ----- MASTER TABLES -----
+    # ----- Button to View Student Master Table -----
+    def load_student_master(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Student Master",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+            ("student_id", "Student Id"),
+            ("roll_no", "Roll No"),
+            ("full_name", "Full Name"),
+            ("date_of_birth", "Date Of Birth"),
+            ("gender", "Gender"),
+            ("address", "Address"),
+            ("previous_school", "Previous School"),
+            ("father_name", "Father Name"),
+            ("mother_name", "Mother Name"),
+            ("parent_phone", "Parent Phone"),
+            ("parent_email", "Parent Email"),
+            ("class_id", "Class Id"),
+            ("is_active", "Is Active")
+        ]
+
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+ 
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        column_keys = [c[0] for c in cols]
+
+        self.student_tree = ttk.Treeview(
+            table_frame,
+            columns=column_keys,
+            show="headings",
+            yscrollcommand=y_scroll.set,
+            xscrollcommand=x_scroll.set
+        )
+
+        self.student_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.student_tree.yview)
+        x_scroll.config(command=self.student_tree.xview)
+
+        # HEADINGS
+        for key, label in cols:
+            self.student_tree.heading(key, text=label)
+            self.student_tree.column(key, width=180, anchor="center")
+
+        # ===== FILTER BAR AT BOTTOM =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        sort_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+    )
+        sort_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(filter_frame, textvariable=filter_val_var,
+                          font=("Arial", 12), width=25)
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # BUTTON STYLE
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        # LOAD BUTTON
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        # LOAD ALL BUTTON
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== BACKEND FETCH =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/master/students")
+            self.all_students = res.json() if res.status_code == 200 else []
+        except:
+            self.all_students = []
+
+        # ===== UPDATE TABLE FUNCTION =====
+        def update_table(data):
+            for row in self.student_tree.get_children():
+                self.student_tree.delete(row)
+
+            for r in data:
+                values = [r.get(key, "") for key, _ in cols]
+                self.student_tree.insert("", "end", values=values)
+
+
+        # ===== FILTER FUNCTION =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+
+            filtered = [
+                r for r in self.all_students
+                if val in str(r.get(key, "")).lower()
+                ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_students))
+
+        update_table(self.all_students)
+
+
+    # ==============================================================================
+    # ----- Button to View Class Master Table -----
+    def load_class_master(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Class Master",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+            ("class_id", "Class ID"),
+            ("class_name", "Class Name"),
+            ("section", "Section")
+            ]
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+ 
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        column_keys = [c[0] for c in cols]
+
+        self.class_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.class_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.class_tree.yview)
+        x_scroll.config(command=self.class_tree.xview)
+
+        # HEADINGS
+        for key, label in cols:
+            self.class_tree.heading(key, text=label)
+            self.class_tree.column(key, width=180, anchor="center")
+
+        # ===== FILTER BAR AT BOTTOM =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        sort_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+    )
+        sort_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(filter_frame, textvariable=filter_val_var,
+                          font=("Arial", 12), width=25)
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # BUTTON STYLE
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        # LOAD BUTTON
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        # LOAD ALL BUTTON
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== BACKEND FETCH =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/master/classes")
+            self.all_classes = res.json() if res.status_code == 200 else []
+        except:
+            self.all_classes = []
+
+        # ===== UPDATE TABLE FUNCTION =====
+        def update_table(data):
+            for row in self.class_tree.get_children():
+                self.class_tree.delete(row)
+
+            for r in data:
+                values = [r.get(key, "") for key, _ in cols]
+                self.class_tree.insert("", "end", values=values)
+
+
+        # ===== FILTER FUNCTION =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+
+            filtered = [
+                r for r in self.all_classes
+                if val in str(r.get(key, "")).lower()
+                ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_classes))
+
+        update_table(self.all_classes)
+
+    # ==============================================================================
+    # ----- Button to View Teacher Master Table -----
+    def load_teacher_master(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Teacher Master",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+        ("teacher_id", "Teacher ID"),
+        ("full_name", "Full Name"),
+        ("subject_id", "Subject ID"),
+        ("email", "Email"),
+        ("phone", "Phone"), 
+        ("date_of_birth", "Date of Birth"),
+        ("gender", "Gender"),
+        ("address", "Address"),
+        ("class_id", "Class ID"),
+        ("is_active", "Is Active"),
+        ("department", "Department"),
+        ("qualification", "Qualification"),
+        ("experience_years", "Experience Years")
+        ]
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+ 
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+        
+        column_keys = [c[0] for c in cols]
+
+        self.teacher_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.teacher_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.teacher_tree.yview)
+        x_scroll.config(command=self.teacher_tree.xview)
+
+        # HEADINGS
+        for key, label in cols:
+            self.teacher_tree.heading(key, text=label)
+            self.teacher_tree.column(key, width=180, anchor="center")
+
+        # ===== FILTER BAR AT BOTTOM =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        sort_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+    )
+        sort_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(filter_frame, textvariable=filter_val_var,
+                          font=("Arial", 12), width=25)
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # BUTTON STYLE
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        # LOAD BUTTON
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        # LOAD ALL BUTTON
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== BACKEND FETCH =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/master/teachers")
+            self.all_teachers = res.json() if res.status_code == 200 else []
+        except:
+            self.all_teachers = []
+
+        # ===== UPDATE TABLE FUNCTION =====
+        def update_table(data):
+            for row in self.teacher_tree.get_children():
+                self.teacher_tree.delete(row)
+
+            for r in data:
+                values = [r.get(key, "") for key, _ in cols]
+                self.teacher_tree.insert("", "end", values=values)
+
+        # ===== FILTER FUNCTION =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+
+            filtered = [
+                r for r in self.all_teachers
+                if val in str(r.get(key, "")).lower()
+                ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_teachers))
+
+        update_table(self.all_teachers)
+
+    # ==============================================================================
+    # ----- Button to View Subject Master Table -----
+    def load_subject_master(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Subject Master",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+            ("subject_id", "Student ID"),
+            ("subject_name", "Subject Name")
+            ]
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+ 
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+        
+        column_keys = [c[0] for c in cols]
+
+        self.subject_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.subject_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.subject_tree.yview)
+        x_scroll.config(command=self.subject_tree.xview)
+
+        # HEADINGS
+        for key, label in cols:
+            self.subject_tree.heading(key, text=label)
+            self.subject_tree.column(key, width=180, anchor="center")
+
+        # ===== FILTER BAR AT BOTTOM =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        sort_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+    )
+        sort_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(filter_frame, textvariable=filter_val_var,
+                          font=("Arial", 12), width=25)
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # BUTTON STYLE
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        # LOAD BUTTON
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        # LOAD ALL BUTTON
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== BACKEND FETCH =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/master/subjects")
+            self.all_subjects = res.json() if res.status_code == 200 else []
+        except:
+            self.all_subjects = []
+
+        # ===== UPDATE TABLE FUNCTION =====
+        def update_table(data):
+            for row in self.subject_tree.get_children():
+                self.subject_tree.delete(row)
+
+            for r in data:
+                values = [r.get(key, "") for key, _ in cols]
+                self.subject_tree.insert("", "end", values=values)
+
+        # ===== FILTER FUNCTION =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+
+            filtered = [
+                r for r in self.all_subjects
+                if val in str(r.get(key, "")).lower()
+                ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_subjects))
+
+        update_table(self.all_subjects)
+    
+    # ==============================================================================
+    # ----- Button to View Fee Master Table -----
+    def load_fee_master(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Fee Master",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+            ("fee_id", "Fee ID"),
+            ("class_id", "Class ID"),
+            ("fee_type", "Fee Type"),
+            ("amount", "Amount"),
+            ("currency", "Currency"), 
+            ("effective_from", "Effective_from"),
+            ("effective_to", "Effective_to"),
+            ("is_active", "Is_active"), 
+            ("notes", "Notes")
+            ]
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+ 
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+        
+        column_keys = [c[0] for c in cols]
+
+        self.fee_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.fee_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.fee_tree.yview)
+        x_scroll.config(command=self.fee_tree.xview)
+
+        # HEADINGS
+        for key, label in cols:
+            self.fee_tree.heading(key, text=label)
+            self.fee_tree.column(key, width=180, anchor="center")
+
+        # ===== FILTER BAR AT BOTTOM =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        sort_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+    )
+        sort_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(filter_frame, textvariable=filter_val_var,
+                          font=("Arial", 12), width=25)
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # BUTTON STYLE
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        # LOAD BUTTON
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        # LOAD ALL BUTTON
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== BACKEND FETCH =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/master/fees")
+            self.all_fees = res.json() if res.status_code == 200 else []
+        except:
+            self.all_fees = []
+
+        # ===== UPDATE TABLE FUNCTION =====
+        def update_table(data):
+            for row in self.fee_tree.get_children():
+                self.fee_tree.delete(row)
+
+            for r in data:
+                values = [r.get(key, "") for key, _ in cols]
+                self.fee_tree.insert("", "end", values=values)
+
+        # ===== FILTER FUNCTION =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+
+            filtered = [
+                r for r in self.all_fees
+                if val in str(r.get(key, "")).lower()
+                ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_fees))
+
+        update_table(self.all_fees)
+
+    # ==============================================================================
+    # ----- Button to View Exam Master Table -----
+    def load_exam_master(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Exam Master",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+            ("exam_id", "Exam ID"),
+            ("exam_name", "Exam Name"),
+            ("description", "Description"),
+            ("exam_date", "Exam Date"),
+            ("is_active", "Is Active")
+            ]
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+ 
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+        
+        column_keys = [c[0] for c in cols]
+
+        self.exam_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.exam_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.exam_tree.yview)
+        x_scroll.config(command=self.exam_tree.xview)
+
+        # HEADINGS
+        for key, label in cols:
+            self.exam_tree.heading(key, text=label)
+            self.exam_tree.column(key, width=180, anchor="center")
+
+        # ===== FILTER BAR AT BOTTOM =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        sort_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+    )
+        sort_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(filter_frame, textvariable=filter_val_var,
+                          font=("Arial", 12), width=25)
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # BUTTON STYLE
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        # LOAD BUTTON
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        # LOAD ALL BUTTON
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== BACKEND FETCH =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/master/exams")
+            self.all_exams = res.json() if res.status_code == 200 else []
+        except:
+            self.all_exams = []
+
+        # ===== UPDATE TABLE FUNCTION =====
+        def update_table(data):
+            for row in self.exam_tree.get_children():
+                self.exam_tree.delete(row)
+
+            for r in data:
+                values = [r.get(key, "") for key, _ in cols]
+                self.exam_tree.insert("", "end", values=values)
+
+        # ===== FILTER FUNCTION =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+
+            filtered = [
+                r for r in self.all_exams
+                if val in str(r.get(key, "")).lower()
+                ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_exams))
+
+        update_table(self.all_exams)
+
+    # ==============================================================================
+    # ----- Button to View Result Master Table -----
+    def load_result_master(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Result Master",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+            ("result_id", "Result ID"),
+            ("student_id", "Student ID"),
+            ("exam_id", "Exam ID"),
+            ("total_marks", "Total Marks"), 
+            ("obtained_marks", "Obtained Marks"),
+            ("percentage", "Percentage"),
+            ("grade", "Grade"),
+            ("result_status", "Result Status")
+            ]
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+ 
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+        
+        column_keys = [c[0] for c in cols]
+
+        self.result_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.result_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.result_tree.yview)
+        x_scroll.config(command=self.result_tree.xview)
+
+        # HEADINGS
+        for key, label in cols:
+            self.result_tree.heading(key, text=label)
+            self.result_tree.column(key, width=180, anchor="center")
+
+        # ===== FILTER BAR AT BOTTOM =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        sort_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+    )
+        sort_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(filter_frame, textvariable=filter_val_var,
+                          font=("Arial", 12), width=25)
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # BUTTON STYLE
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        # LOAD BUTTON
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        # LOAD ALL BUTTON
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== BACKEND FETCH =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/master/results")
+            self.all_results = res.json() if res.status_code == 200 else []
+        except:
+            self.all_results = []
+
+        # ===== UPDATE TABLE FUNCTION =====
+        def update_table(data):
+            for row in self.result_tree.get_children():
+                self.result_tree.delete(row)
+
+            for r in data:
+                values = [r.get(key, "") for key, _ in cols]
+                self.result_tree.insert("", "end", values=values)
+
+        # ===== FILTER FUNCTION =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+
+            filtered = [
+                r for r in self.all_results
+                if val in str(r.get(key, "")).lower()
+                ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_results))
+
+        update_table(self.all_results)
+
+    # ==============================================================================
+    # ----- Button to View Staff Master Table -----
+    def load_staff_master(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Staff Master",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+            ("staff_id", "Staff ID"),
+            ("full_name", "Full Name"),
+            ("date_of_birth", "Date of Birth"),
+            ("gender", "Gender"),
+            ("address", "Address"),
+            ("department", "Department"), 
+            ("role", "Role"),
+            ("email", "Email"),
+            ("phone", "Phone"),
+            ("experience_years", "Experience Years")
+            ]
+        
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+ 
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+        
+        column_keys = [c[0] for c in cols]
+
+        self.staff_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.staff_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.staff_tree.yview)
+        x_scroll.config(command=self.staff_tree.xview)
+
+        # HEADINGS
+        for key, label in cols:
+            self.staff_tree.heading(key, text=label)
+            self.staff_tree.column(key, width=180, anchor="center")
+
+        # ===== FILTER BAR AT BOTTOM =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        sort_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+    )
+        sort_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(filter_frame, textvariable=filter_val_var,
+                          font=("Arial", 12), width=25)
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # BUTTON STYLE
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        # LOAD BUTTON
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        # LOAD ALL BUTTON
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== BACKEND FETCH =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/master/staff")
+            self.all_staff = res.json() if res.status_code == 200 else []
+        except:
+            self.all_staff = []
+
+        # ===== UPDATE TABLE FUNCTION =====
+        def update_table(data):
+            for row in self.staff_tree.get_children():
+                self.staff_tree.delete(row)
+
+            for r in data:
+                values = [r.get(key, "") for key, _ in cols]
+                self.staff_tree.insert("", "end", values=values)
+
+        # ===== FILTER FUNCTION =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+
+            filtered = [
+                r for r in self.all_staff
+                if val in str(r.get(key, "")).lower()
+                ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_staff))
+
+        update_table(self.all_staff)
+
+    # ==============================================================================
+    # ----- Button to View Salary Master Table -----
+    def load_salary_master(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Salary Master",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+            ("salary_id", "Salary ID"),
+            ("role", "Role"),
+            ("base_salary", "Base Salary"),
+            ("bonus_percentage", "Bonus Percentage"),
+            ("is_active", "Is Active")
+            ]
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+ 
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+        
+        column_keys = [c[0] for c in cols]
+
+        self.salary_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+    )
+        self.salary_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.salary_tree.yview)
+        x_scroll.config(command=self.salary_tree.xview)
+
+        # HEADINGS
+        for key, label in cols:
+            self.salary_tree.heading(key, text=label)
+            self.salary_tree.column(key, width=180, anchor="center")
+
+        # ===== FILTER BAR AT BOTTOM =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Sort By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        sort_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+    )
+        sort_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(filter_frame, textvariable=filter_val_var,
+                          font=("Arial", 12), width=25)
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # BUTTON STYLE
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        # LOAD BUTTON
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        # LOAD ALL BUTTON
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== BACKEND FETCH =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/master/salary")
+            self.all_salaries = res.json() if res.status_code == 200 else []
+        except:
+            self.all_salaries = []
+
+        # ===== UPDATE TABLE FUNCTION =====
+        def update_table(data):
+            for row in self.salary_tree.get_children():
+                self.salary_tree.delete(row)
+
+            for r in data:
+                values = [r.get(key, "") for key, _ in cols]
+                self.salary_tree.insert("", "end", values=values)
+
+        # ===== FILTER FUNCTION =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+
+            filtered = [
+                r for r in self.all_salaries
+                if val in str(r.get(key, "")).lower()
+                ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_salaries))
+
+        update_table(self.all_salaries)
 
     # ==============================================================================
     # ===== DASHBOARD PAGE ======

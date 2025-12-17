@@ -13,7 +13,7 @@ class TimetableBase(BaseModel):
     room_no: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TimetableCreate(TimetableBase):
@@ -30,16 +30,20 @@ class TimetableUpdate(BaseModel):
     room_no: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TimetableOut(TimetableBase):
     timetable_id: int
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
+    class Config:
+        from_attributes = True
 
 
 class TimetableFilter(BaseModel):
     class_id: Optional[int] = None
     teacher_id: Optional[int] = None
     subject: Optional[str] = None
+    class Config:
+        from_attributes = True

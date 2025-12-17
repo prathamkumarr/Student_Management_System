@@ -22,13 +22,20 @@ router = APIRouter(prefix="/teacher/attendance", tags=["Teacher Attendance Manag
 # endpoint for marking attendance indiviually
 @router.post("/student/mark", status_code=201)
 def mark_attendance(attendance: MarkAttendanceItem, db: Session = Depends(get_db)):
-    # Checking student existence
+    
     student = db.execute(
-        text("SELECT full_name FROM students_master WHERE student_id = :sid"),
+        text("SELECT full_name, is_active FROM students_master WHERE student_id = :sid"),
         {"sid": attendance.student_id}
     ).fetchone()
+
     if not student:
         raise HTTPException(status_code=404, detail=f"Student ID {attendance.student_id} not found")
+
+    if student[1] == 0:  # 0 = inactive
+        raise HTTPException(
+            status_code=400,
+            detail=f"Attendance cannot be marked — Student {attendance.student_id} has been issued a TC"
+        )
 
     # Checking subject existence
     subject = db.execute(
@@ -38,7 +45,7 @@ def mark_attendance(attendance: MarkAttendanceItem, db: Session = Depends(get_db
     if not subject:
         raise HTTPException(status_code=404, detail=f"Subject ID {attendance.subject_id} not found")
 
-    # Checking for existing of attendance
+    # Checking for existing attendance
     existing = db.query(AttendanceRecord).filter(
         AttendanceRecord.student_id == attendance.student_id,
         AttendanceRecord.subject_id == attendance.subject_id,
@@ -52,7 +59,7 @@ def mark_attendance(attendance: MarkAttendanceItem, db: Session = Depends(get_db
             detail=f"Attendance already marked for student {attendance.student_id} on {attendance.lecture_date}"
         )
 
-    # Inserting new record with actual names fetched from DB
+    # Insert new attendance record
     new_record = AttendanceRecord(
         student_id=attendance.student_id,
         subject_id=attendance.subject_id,
@@ -60,7 +67,7 @@ def mark_attendance(attendance: MarkAttendanceItem, db: Session = Depends(get_db
         lecture_date=attendance.lecture_date,
         status=attendance.status,
         remarks=attendance.remarks,
-        student_name=student[0],
+        student_name=student.full_name,  # or student[0]
         subject_name=subject[0]
     )
 
@@ -83,7 +90,7 @@ def mark_attendance(attendance: MarkAttendanceItem, db: Session = Depends(get_db
 @router.post("/student/mark-bulk", status_code=201)
 def mark_bulk(payload: MarkAttendanceBulk, db: Session = Depends(get_db)):
 
-    # Parse absent IDs safely
+    # Parse absent IDs
     try:
         absentees = [
             int(x.strip()) for x in payload.absent_ids.split(",") if x.strip()
@@ -109,9 +116,13 @@ def mark_bulk(payload: MarkAttendanceBulk, db: Session = Depends(get_db)):
 
     subject_name = subject_row[0]
 
-    # Fetch all students of this class 
+    # Fetch all students of this class including is_active
     student_data = db.execute(
-        text("SELECT student_id, full_name FROM students_master WHERE class_id = :cid"),
+        text("""
+            SELECT student_id, full_name, is_active 
+            FROM students_master 
+            WHERE class_id = :cid
+        """),
         {"cid": class_id}
     ).fetchall()
 
@@ -120,7 +131,12 @@ def mark_bulk(payload: MarkAttendanceBulk, db: Session = Depends(get_db)):
 
     processed = 0
 
-    for sid, student_name in student_data:
+    for sid, student_name, is_active in student_data:
+
+        # Skip if student has TC (inactive)
+        if is_active == 0:
+            continue
+
         status = "A" if sid in absentees else "P"
         remarks = "Absent" if sid in absentees else "Present"
 
@@ -136,7 +152,6 @@ def mark_bulk(payload: MarkAttendanceBulk, db: Session = Depends(get_db)):
             existing.remarks = remarks
             existing.subject_name = subject_name
             existing.student_name = student_name
-
         else:
             db.add(AttendanceRecord(
                 student_id=sid,
@@ -153,7 +168,9 @@ def mark_bulk(payload: MarkAttendanceBulk, db: Session = Depends(get_db)):
 
     db.commit()
 
-    return {"message": f"{processed} attendance records processed"}
+    msg = f"{processed} attendance records processed"
+
+    return {"message": msg}
 
 
 # endpoint to view attendance of a student using attendance_id
