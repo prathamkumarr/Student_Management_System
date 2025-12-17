@@ -11,3 +11,5 @@ from Backends.Shared.models.tc_models import TransferCertificate
 
 from Backends.Shared.models.timetable_models import Timetable
 from Backends.Shared.models.work_models import WorkRecord
+
+from Backends.Shared.models.activity_models import ExtraCurricularActivity
