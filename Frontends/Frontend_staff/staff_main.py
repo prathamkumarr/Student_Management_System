@@ -3,9 +3,21 @@ from tkinter import ttk
 from tkcalendar import Calendar
 import datetime
 
+import sys
+
+if len(sys.argv) > 1:
+    try:
+        STAFF_ID = int(sys.argv[1])
+    except:
+        print("Invalid staff id received!")
+        sys.exit()
+else:
+    print("Staff ID missing!")
+    sys.exit()
+
 # =============
 class StaffUI:
-    def __init__(self, root, staff_id = 4):
+    def __init__(self, root, staff_id):
         self.root = root
 
         # teacher Logged-In Details (Dummy OR Fetched From Login)
@@ -30,7 +42,7 @@ class StaffUI:
     # ===== BUTTON CREATOR =====
     def add_btn(self, text, cmd=None):
         btn = tk.Label(
-            self.sidebar,
+            self.menu_wrapper,
             text=text,
             font=("Arial", 14, "bold"),
             bg="#000000",
@@ -39,7 +51,7 @@ class StaffUI:
             pady=12,
             anchor="w",
             width=30,
-            cursor="arrow"
+            cursor="hand2"
         )
         btn.pack(pady=5, fill="x")
 
@@ -53,22 +65,53 @@ class StaffUI:
 
         return btn
 
-
+    # ------ LOGOUT FUNCTION -------
+    def logout(self):
+        self.root.destroy()
+        import subprocess, sys
+        subprocess.Popen(
+        [sys.executable, "-m", "Frontends.login.login_main"]
+    )
+        
     # ===== SIDEBAR BUILD =====
     def build_sidebar(self):
 
-        tk.Label(
+        # ---------- TITLE TOP ----------
+        title = tk.Label(
             self.sidebar,
             text="STAFF PANEL",
             bg="#1E2A38",
             fg="white",
             font=("Arial", 18, "bold")
-            ).pack(pady=20)
+        )
+        title.pack(fill="x", pady=(20, 20))
+
+        # ---------- WRAPPER PUSHES LOGOUT DOWN ----------
+        self.menu_wrapper = tk.Frame(self.sidebar, bg="#1E2A38")
+        self.menu_wrapper.pack(fill="both", expand=True)
 
         # Main Buttons
         att_btn = self.add_btn("Mark and View Attendance")
         self.build_attendance_dropdown(att_btn)
+ 
+        # ------- LOGOUT BUTTON -------
+        self.logout_btn = tk.Label(
+            self.sidebar,
+            text="Logout",
+            font=("Arial", 12, "bold"),
+            bg="#8E44AD",
+            fg="white",
+            padx=10,
+            pady=10,
+            width=14,
+            cursor="hand2",
+        ) 
+        self.logout_btn.pack(side="bottom", pady=(0, 30))
 
+        self.logout_btn.bind("<Enter>", lambda e: self.logout_btn.config(bg="#732d91"))
+        self.logout_btn.bind("<Leave>", lambda e: self.logout_btn.config(bg="#8E44AD"))
+        self.logout_btn.bind("<Button-1>", lambda e: self.logout())
+        
     def clear_content(self):
         for widget in self.content.winfo_children():
             widget.destroy()
@@ -934,5 +977,5 @@ class StaffUI:
 # ======== RUN UI ========
 if __name__ == "__main__":
     root = tk.Tk()
-    app = StaffUI(root)
+    ui = StaffUI(root, staff_id=STAFF_ID)
     root.mainloop()

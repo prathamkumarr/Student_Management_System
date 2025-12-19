@@ -10,16 +10,28 @@ from tkcalendar import Calendar
 import datetime
 from tkcalendar import DateEntry
 
+import sys
+
+if len(sys.argv) > 1:
+    try:
+        TEACHER_ID = int(sys.argv[1])
+    except:
+        print("Invalid teacher id received!")
+        sys.exit()
+else:
+    print("Teacher ID missing!")
+    sys.exit()
+
 # =============
 class TeacherUI:
-    def __init__(self, root, teacher_id = 4):
+    def __init__(self, root, teacher_id):
         self.root = root
 
         # teacher Logged-In Details (Dummy OR Fetched From Login)
         self.teacher_id = teacher_id
 
 
-        self.root.title("School ERP - Teacher Panel")
+        self.root.title(f"School ERP - Teacher Panel - ID {self.teacher_id}")
         self.root.geometry("1200x700")
         self.root.configure(bg="#ECF0F1")
 
@@ -38,7 +50,7 @@ class TeacherUI:
     # ===== BUTTON CREATOR =====
     def add_btn(self, text, cmd=None):
         btn = tk.Label(
-            self.sidebar,
+            self.menu_wrapper,
             text=text,
             font=("Arial", 14, "bold"),
             bg="#000000",
@@ -47,7 +59,7 @@ class TeacherUI:
             pady=12,
             anchor="w",
             width=30,
-            cursor="arrow"
+            cursor="hand2"
         )
         btn.pack(pady=5, fill="x")
 
@@ -61,17 +73,30 @@ class TeacherUI:
 
         return btn
 
+    # ------ LOGOUT FUNCTION -------
+    def logout(self):
+        self.root.destroy()
+        import subprocess, sys
+        subprocess.Popen(
+        [sys.executable, "-m", "Frontends.login.login_main"]
+    )
 
     # ===== SIDEBAR BUILD =====
     def build_sidebar(self):
 
-        tk.Label(
+        # ---------- TITLE TOP ----------
+        title = tk.Label(
             self.sidebar,
             text="TEACHER PANEL",
             bg="#1E2A38",
             fg="white",
             font=("Arial", 18, "bold")
-            ).pack(pady=20)
+        )
+        title.pack(fill="x", pady=(20, 20))
+        
+        # ---------- WRAPPER PUSHES LOGOUT DOWN ----------
+        self.menu_wrapper = tk.Frame(self.sidebar, bg="#1E2A38")
+        self.menu_wrapper.pack(fill="both", expand=True)
 
         # Main Buttons
         att_btn = self.add_btn("Manage Attendances")
@@ -84,6 +109,23 @@ class TeacherUI:
         work_btn = self.add_btn("Manage Work")
         self.build_work_dropdown(work_btn)
 
+        # ------- LOGOUT BUTTON -------
+        self.logout_btn = tk.Label(
+            self.sidebar,
+            text="Logout",
+            font=("Arial", 12, "bold"),
+            bg="#8E44AD",
+            fg="white",
+            padx=10,
+            pady=10,
+            width=14,
+            cursor="hand2",
+        ) 
+        self.logout_btn.pack(side="bottom", pady=(0, 30))
+
+        self.logout_btn.bind("<Enter>", lambda e: self.logout_btn.config(bg="#732d91"))
+        self.logout_btn.bind("<Leave>", lambda e: self.logout_btn.config(bg="#8E44AD"))
+        self.logout_btn.bind("<Button-1>", lambda e: self.logout())
     
     def clear_content(self):
         for widget in self.content.winfo_children():
@@ -3814,5 +3856,5 @@ class TeacherUI:
 # ======== RUN UI ========
 if __name__ == "__main__":
     root = tk.Tk()
-    app = TeacherUI(root)
+    ui = TeacherUI(root, teacher_id=TEACHER_ID)
     root.mainloop()

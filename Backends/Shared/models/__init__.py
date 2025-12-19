@@ -30,3 +30,7 @@ from Backends.Shared.models.exam_master import ExamMaster
 from Backends.Shared.models.result_models import ResultMaster
 from Backends.Shared.models.student_marks_models import StudentMarks
 from Backends.Shared.models.activity_models import ExtraCurricularActivity
+
+from Backends.Shared.models.credentials_models import StudentCredential
+from Backends.Shared.models.credentials_models import TeacherCredential
+from Backends.Shared.models.credentials_models import StaffCredential

@@ -82,7 +82,7 @@ class AdminUI:
     # ===== BUTTON CREATOR =====
     def add_btn(self, text, cmd=None):
         btn = tk.Label(
-            self.sidebar,
+            self.menu_wrapper,
             text=text,
             font=("Arial", 14, "bold"),
             bg="#000000",
@@ -91,7 +91,7 @@ class AdminUI:
             pady=12,
             anchor="w",
             width=30,
-            cursor="arrow"
+            cursor="hand2"
         )
         btn.pack(pady=5, fill="x")
 
@@ -105,11 +105,31 @@ class AdminUI:
 
         return btn
 
+    # ------ LOGOUT FUNCTION -------
+    def logout(self):
+        self.root.destroy()
+        import subprocess, sys
+        subprocess.Popen(
+        [sys.executable, "-m", "Frontends.login.login_main"]
+    )
+
 
     # ===== SIDEBAR BUILD =====
     def build_sidebar(self):
 
-        tk.Label( self.sidebar, text="ADMIN PANEL", bg="#1E2A38", fg="white", font=("Arial", 18, "bold")).pack(pady=20)
+        # ---------- TITLE TOP ----------
+        title = tk.Label(
+            self.sidebar,
+            text="ADMIN PANEL",
+            bg="#1E2A38",
+            fg="white",
+            font=("Arial", 18, "bold")
+        )
+        title.pack(fill="x", pady=(20, 20))
+        
+        # ---------- WRAPPER PUSHES LOGOUT DOWN ----------
+        self.menu_wrapper = tk.Frame(self.sidebar, bg="#1E2A38")
+        self.menu_wrapper.pack(fill="both", expand=True)
 
         # Main Buttons
         admission_btn = self.add_btn("Manage Admissions")
@@ -142,10 +162,27 @@ class AdminUI:
         master_btn = self.add_btn("View Master Tables")
         self.build_master_dropdown(master_btn)
 
-        activity_btn = self.add_btn("Manage Extra \nCurricular Activities")
+        activity_btn = self.add_btn("Manage Extra-Curricular Activities")
         self.build_activity_dropdown(activity_btn)
 
-    
+        # ------- LOGOUT BUTTON -------
+        self.logout_btn = tk.Label(
+            self.sidebar,
+            text="Logout",
+            font=("Arial", 12, "bold"),
+            bg="#8E44AD",
+            fg="white",
+            padx=10,
+            pady=10,
+            width=14,
+            cursor="hand2",
+        ) 
+        self.logout_btn.pack(side="bottom", pady=(0, 30))
+
+        self.logout_btn.bind("<Enter>", lambda e: self.logout_btn.config(bg="#732d91"))
+        self.logout_btn.bind("<Leave>", lambda e: self.logout_btn.config(bg="#8E44AD"))
+        self.logout_btn.bind("<Button-1>", lambda e: self.logout())
+
     def clear_content(self):
         for widget in self.content.winfo_children():
             widget.destroy()
@@ -2140,7 +2177,33 @@ class AdminUI:
         method_id_var.trace_add("write", validate)
 
     #---------------
+    def show_method_details(self, data):
+            self.clear_content()
+            tk.Label(
+                self.content,
+                text="Payment Method Details",
+                font=("Arial", 26, "bold"),
+                bg="#ECF0F1",
+                fg="#2C3E50"
+                ).pack(pady=20)
 
+            info = tk.Frame(self.content, bg="#ECF0F1")
+            info.pack(pady=20)
+
+            for i, (key, value) in enumerate(data.items()):
+                tk.Label(info, text=f"{key}:", font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=0, padx=10, pady=8)
+                tk.Label(info, text=str(value), font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=1, padx=10, pady=8)
+
+            # Back button
+            btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+            btn_frame.pack(pady=20)
+        
+            self.create_back_button(
+            parent=btn_frame,
+            go_back_callback=self.load_dashboard,
+            form_frame=None     # table screen : no form entries
+            )
+            
     def fetch_method_details(self, method_id):
         if not method_id.strip():
             self.show_popup("Missing Input", "Method ID cannot be empty!", "warning")

@@ -1,57 +1,25 @@
-import subprocess
+import os
 import sys
+import subprocess
 import time
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from multiprocessing import Process
 
-# ---- CONFIG ----
 BACKEND_FILE = "Backends.Backend_main:app"
 
-FRONTENDS = {
-    "admin": "Frontends/Frontend_admin/admin_main.py",
-    "teacher": "Frontends/Frontend_teacher/teacher_main.py",
-    "student": "Frontends/Frontend_student/student_main.py",
-    "staff": "Frontends/Frontend_staff/staff_main.py"
-}
-
-# ---- START BACKEND ----
 def start_backend():
-    print("[BOOT] Starting backend...")
     subprocess.Popen(
         [sys.executable, "-m", "uvicorn", BACKEND_FILE, "--reload"]
     )
 
-# ---- START FRONTEND ----
-def start_frontend(name, file):
-    print(f"[BOOT] Starting frontend: {name}")
+def start_login():
     subprocess.Popen(
-        [sys.executable, file]
+        [sys.executable, "-m", "Frontends.login.login_main"]
     )
 
 if __name__ == "__main__":
-
-    print("Launching School ERP FULL SYSTEM")
-    print("=====================================\n")
-
-    # START BACKEND
-    backend_proc = Process(target=start_backend)
-    backend_proc.start()
-
-    # giving backend time to start
+    start_backend()
     time.sleep(1)
-
-    # STARTING ALL FRONTENDS
-    frontend_procs = [
-        Process(target=start_frontend, args=(name, file))
-        for name, file in FRONTENDS.items()
-    ]
-
-    for p in frontend_procs:
-        p.start()
-
-    print("\nALL SYSTEMS LIVE!")
-    print("Admin / Teacher / Student / Staff dashboards are now running.\n")
-
-    # KEEP RUNNING
-    backend_proc.join()
-    for p in frontend_procs:
-        p.join()
+    start_login()
