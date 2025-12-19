@@ -50,6 +50,11 @@ from Backends.Backend_admin.routers.result_generation_router import router as re
 
 from Backends.Backend_students.routers.result_router import router as result_router
 from Backends.Backend_admin.routers.master_router import router as master_router
+from Backends.Shared.routers.auth_router import router as auth_router
+
+from Backends.Shared.models.credentials_models import (
+    StudentCredential, StaffCredential, TeacherCredential
+)
 
 app = FastAPI(
     title="ERP's Backend",
@@ -115,7 +120,7 @@ app.include_router(classes_details_router)
 app.include_router(subjects_details_router)
 app.include_router(students_details_router)
 
-
+app.include_router(auth_router)
 
 
 

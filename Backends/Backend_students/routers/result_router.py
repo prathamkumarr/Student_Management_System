@@ -32,26 +32,6 @@ def get_exam_result(student_id: int, exam_id: int, db: Session = Depends(get_db)
     }
 
 
-@router.get("/{student_id}/{exam_id}")
-def get_exam_result(student_id: int, exam_id: int, db: Session = Depends(get_db)):
-
-    result = db.query(ResultMaster).filter(
-        ResultMaster.student_id == student_id,
-        ResultMaster.exam_id == exam_id
-    ).first()
-
-    if not result:
-        raise HTTPException(404, "Result not found")
-
-    return {
-        "student_id": result.student_id,
-        "exam_id": result.exam_id,
-        "total_marks": result.total_marks,
-        "percentage": result.percentage,
-        "grade": result.grade
-    }
-
-
 @router.get("/final/{student_id}")
 def get_final_year_result(student_id: int, db: Session = Depends(get_db)):
 
