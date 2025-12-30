@@ -3,10 +3,7 @@ from sqlalchemy.orm import Session
 from Backends.Shared.connection import get_db
 from Backends.Shared.models.students_master import StudentMaster
 
-router = APIRouter(
-    prefix="/admin/students",
-    tags=["Admin - Students"]
-)
+router = APIRouter(prefix="/admin/students", tags=["Admin - Students"])
 
 @router.get("/")
 def get_all_students(db: Session = Depends(get_db)):
