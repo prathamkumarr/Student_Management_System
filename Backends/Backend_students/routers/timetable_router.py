@@ -7,11 +7,9 @@ from typing import List, Optional
 from Backends.Shared.connection import get_db
 from Backends.Shared.models.students_master import StudentMaster
 from Backends.Shared.models.timetable_models import Timetable
+from Backends.Shared.models.teachers_master import TeacherMaster
 
-router = APIRouter(
-    prefix="/student/timetable",
-    tags=["Timetable"]
-)
+router = APIRouter(prefix="/student/timetable", tags=["Timetable"])
 
 @router.get("/{student_id}")
 def get_timetable_for_student(
@@ -35,26 +33,35 @@ def get_timetable_for_student(
     if not student:
         raise HTTPException(404, detail="Student not found")
 
-    q = db.query(Timetable).filter(Timetable.class_id == student.class_id)
+    q = (
+        db.query(
+            Timetable,
+            TeacherMaster.full_name.label("teacher_name")
+        )
+        .join(TeacherMaster, Timetable.teacher_id == TeacherMaster.teacher_id)
+        .filter(Timetable.class_id == student.class_id)
+    )
+
 
     if day:
         q = q.filter(Timetable.day == day)
 
     recs = q.all()
 
-    # Return as simple dicts (doesn't depend on Pydantic schemas)
+    # Return as simple dicts 
     result: List[dict] = []
-    for r in recs:
+
+    for timetable, teacher_name in recs:
         result.append({
-            # adjust field names if your model uses different ones
-            "timetable_id": getattr(r, "timetable_id", None),
-            "class_id": r.class_id,
-            "teacher_id": getattr(r, "teacher_id", None),
-            "day": getattr(r, "day", None),
-            "subject": getattr(r, "subject", None),
-            "start_time": getattr(r, "start_time", None),
-            "end_time": getattr(r, "end_time", None),
-            "room_no": getattr(r, "room_no", None),
+            "timetable_id": timetable.timetable_id,
+            "class_id": timetable.class_id,
+            "teacher_name": teacher_name,
+            "day": timetable.day,
+            "subject": timetable.subject,
+            "start_time": timetable.start_time,
+            "end_time": timetable.end_time,
+            "room_no": timetable.room_no,
         })
+
 
     return result
