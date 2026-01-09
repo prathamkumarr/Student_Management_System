@@ -17,6 +17,18 @@ else:
     print("Student ID not provided!")
     sys.exit()
 
+BASE_API_URL = "http://127.0.0.1:8000/admin"
+
+# ----- API HELPER FUNCTIONS -----
+def fetch_subjects():
+    try:
+        res = requests.get(f"{BASE_API_URL}/subjects", timeout=5)
+        if res.status_code == 200:
+            return res.json()
+    except requests.RequestException as e:
+        print("Error fetching subjects:", e)
+    return []
+
 # =============
 class StudentUI:
     def __init__(self, root, student_id):
@@ -1392,7 +1404,7 @@ class StudentUI:
                     self.show_popup("Error", "Invoice not found!", "error")
                     return
 
-        # -------- Extract filename from headers --------
+                # -------- Extract filename from headers --------
                 fname = f"receipt_{inv}.pdf"
                 if "content-disposition" in res.headers:
                     import re
@@ -1401,27 +1413,27 @@ class StudentUI:
                     if match:
                         fname = match[0]
 
-        # -------- Ask where to save --------
+                # -------- Ask where to save --------
                 from tkinter import filedialog
                 file_path = filedialog.asksaveasfilename(
-            defaultextension=".pdf",
-            filetypes=[("PDF files", "*.pdf")],
-            initialfile=fname
-        )
+                defaultextension=".pdf",
+                filetypes=[("PDF files", "*.pdf")],
+                initialfile=fname
+                    )
 
                 if not file_path:
                     return
 
-        # -------- Save File --------
+                # -------- Save File --------
                 with open(file_path, "wb") as f:
                     f.write(res.content)
 
-        # -------- Chrome-style bottom-right mini-notification --------
+                # -------- Chrome-style bottom-right mini-notification --------
                 self.show_mini_notification(f"Downloaded: {fname}")
                 self.change_screen(
-    "Receipt Downloaded Successfully!",
-    add_callback=self.load_download_receipt_screen
-)
+                    "Receipt Downloaded Successfully!",
+                    add_callback=self.load_download_receipt_screen
+                )
 
             except Exception as e:
                 self.show_popup("Backend Error", str(e), "error")
@@ -1432,36 +1444,56 @@ class StudentUI:
     def load_view_subject_wise_marks(self):
         self.clear_content()
 
-    # ===== TITLE =====
+        # ===== TITLE =====
         tk.Label(
         self.content,
         text="View Subject-wise Marks",
         font=("Arial", 24, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
 
-    # ===== SUBJECT ID INPUT =====
+        # ===== SUBJECT ID INPUT =====
         tk.Label(
         form,
         text="Enter Subject ID:",
         font=("Arial", 14),
         bg="#ECF0F1"
-    ).grid(row=0, column=0, padx=10)
+        ).grid(row=0, column=0, padx=10)
 
-        subject_id_var = tk.StringVar()
-        subject_entry = tk.Entry(form, textvariable=subject_id_var, width=20)
-        subject_entry.grid(row=0, column=1, padx=10)
+        # ===== FETCH SUBJECTS FOR DROPDOWN =====
+        subjects = fetch_subjects()
 
-    # ===== BACK BUTTON =====
+        self.subject_map = {
+            f"{s['subject_name']}": s["subject_id"]
+            for s in subjects
+        }
+
+        subject_values = list(self.subject_map.keys())
+        
+        from tkinter.ttk import Combobox
+
+        subject_var = tk.StringVar()
+
+        subject_dd = Combobox(
+        form,
+        textvariable=subject_var,
+        values=subject_values,
+        state="readonly",
+        font=("Arial", 14),
+        width=22
+        )
+        subject_dd.grid(row=0, column=1, padx=10)
+
+        # ===== BACK BUTTON =====
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
         back_frame.pack(pady=10)
         self.create_back_button(back_frame, self.load_dashboard, form)
 
-    # ===== TABLE =====
+        # ===== TABLE =====
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
  
@@ -1476,23 +1508,25 @@ class StudentUI:
 
         marks_tree.pack(fill="both", expand=True)
 
-    # ===== LOAD MARKS FUNCTION =====
+        # ===== LOAD MARKS FUNCTION =====
         def load_marks():
-            subject_id = subject_id_var.get().strip()
+            subject_name = subject_var.get().strip()
 
-            if not subject_id.isdigit():
-                self.show_popup("Invalid Input", "Enter a valid Subject ID", "warning")
+            if subject_name not in self.subject_map:
+                self.show_popup("Invalid Selection", "Please select a subject!", "warning")
                 return
+
+            subject_id = self.subject_map[subject_name]
 
             import requests
             url = f"http://127.0.0.1:8000/student/result/marks/{self.student_id}/{subject_id}"
 
             res = requests.get(url)
-   
+
             if res.status_code != 200:
                 self.show_popup("No Data", "No marks found for this subject", "info")
                 return
-
+   
             data = res.json()
             marks_tree.delete(*marks_tree.get_children())
 
@@ -1501,9 +1535,9 @@ class StudentUI:
                 "",
                 "end",
                 values=(m["exam_id"], f'{m["marks_obtained"]}/{m["max_marks"]}')
-            )
+                )
 
-    # ===== LOAD BUTTON =====
+        # ===== LOAD BUTTON =====
         load_btn = tk.Label(
         self.content,
         text="Load Marks",
@@ -1530,15 +1564,14 @@ class StudentUI:
             load_btn.unbind("<Leave>")
             load_btn.unbind("<Button-1>")
 
-    # ===== ENABLE / DISABLE BASED ON INPUT =====
+        # ===== ENABLE / DISABLE BASED ON INPUT =====
         def validate_subject(*args):
-            val = subject_id_var.get().strip()
-            if val.isdigit():
+            if subject_var.get().strip() in self.subject_map:
                 enable_load()
             else:
                 disable_load()
 
-        subject_id_var.trace_add("write", validate_subject)
+        subject_var.trace_add("write", validate_subject)
 
     # ==============================================================================
     # ----- Button to Result Exam - wise -----

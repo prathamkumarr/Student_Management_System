@@ -2,12 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from Backends.Shared.connection import get_db
+from datetime import datetime, timezone
+
 from Backends.Shared.models.employee_salary_models import EmployeeSalary
 from Backends.Shared.models.staff_master import StaffMaster
 from Backends.Shared.models.staff_separation_models import StaffSeparation
 from Backends.Shared.schemas.staff_separation_schemas import (
-    StaffSeparationCreate, StaffSeparationResponse
+    StaffSeparationCreate, StaffSeparationResponse, RejectRequest
 )
+from Backends.Shared.models.credentials_models import StaffCredential
+from Backends.Shared.enums.separation_enums import SeparationStatus
 
 router = APIRouter(
     prefix="/admin/staff/separation",
@@ -19,44 +23,44 @@ router = APIRouter(
 def issue_separation(payload: StaffSeparationCreate, db: Session = Depends(get_db)):
 
     staff = db.query(StaffMaster).filter(
-        StaffMaster.staff_id == payload.staff_id
+        StaffMaster.staff_id == payload.staff_id,
+        StaffMaster.is_active == True
     ).first()
 
     if not staff:
-        raise HTTPException(status_code=404, detail="staff not found")
+        raise HTTPException(404, "Active staff not found")
 
-    # Check if separation already exists
-    existing_sep = db.query(StaffSeparation).filter(
-        StaffSeparation.staff_id == payload.staff_id
+    # only one pending separation allowed
+    existing = db.query(StaffSeparation).filter(
+        StaffSeparation.teacher_id == payload.staff_id,
+        StaffSeparation.status == SeparationStatus.PENDING
     ).first()
 
-    if existing_sep:
-        raise HTTPException(status_code=400, detail="Separation already issued for this staff member!")
+    if existing:
+        raise HTTPException(400, "Pending separation already exists")
 
-    # Mark staff inactive
-    staff.is_active = False
-    db.commit()
-
-    sep_entry = StaffSeparation(
+    sep = StaffSeparation(
         staff_id=payload.staff_id,
         reason=payload.reason,
         remarks=payload.remarks,
-        separation_date=payload.separation_date
+        separation_date=payload.separation_date,
+        status=SeparationStatus.PENDING
     )
 
-    db.add(sep_entry)
+    db.add(sep)
     db.commit()
-    db.refresh(sep_entry)
+    db.refresh(sep)
 
-    return sep_entry
+    return sep
 
 
 # endpoint to view all separation requests
 @router.get("/all", response_model=list[StaffSeparationResponse])
-def get_all_separations(db: Session = Depends(get_db)):
-    entries = db.query(StaffSeparation).all()
-    return entries
-
+def get_all_separations(status: SeparationStatus | None = None, db: Session = Depends(get_db)):
+    q = db.query(StaffSeparation)
+    if status:
+        q = q.filter(StaffSeparation.status == status)
+    return q.all()
 
 # endpoint to view separation by ID
 @router.get("/{sep_id}", response_model=StaffSeparationResponse)
@@ -74,46 +78,76 @@ def get_separation(sep_id: int, db: Session = Depends(get_db)):
 @router.post("/approve/{sep_id}")
 def approve_separation(sep_id: int, db: Session = Depends(get_db)):
 
-    # Fetch separation record
-    sep = db.query(StaffSeparation).filter(
-        StaffSeparation.sep_id == sep_id
-    ).first()
+    sep = (
+        db.query(StaffSeparation)
+        .filter(
+            StaffSeparation.sep_id == sep_id,
+            StaffSeparation.status == SeparationStatus.PENDING
+        )
+        .with_for_update()
+        .first()
+    )
 
     if not sep:
-        raise HTTPException(
-            status_code=404,
-            detail="Separation record not found"
-        )
+        raise HTTPException(404, "Pending separation not found")
 
-    # Fetch staff record
     staff = db.query(StaffMaster).filter(
-        StaffMaster.staff_id == sep.staff_id
+        StaffMaster.staff_id == sep.staff_id,
+        StaffMaster.is_active == True
     ).first()
 
     if not staff:
-        raise HTTPException(
-            status_code=404,
-            detail="staff record not found"
-        )
+        raise HTTPException(400, "Staff already inactive")
 
-    # Deactivate staff
-    staff.is_active = False
+    try:
+        # deactivate staff
+        staff.is_active = False
+
+        # deactivate salary
+        db.query(EmployeeSalary).filter(
+            EmployeeSalary.employee_type == "staff",
+            EmployeeSalary.employee_id == sep.staff_id,
+            EmployeeSalary.is_active == True
+        ).update({"is_active": False})
+
+        # deactivate credentials
+        db.query(StaffCredential).filter(
+            StaffCredential.staff_id == sep.staff_id,
+            StaffCredential.is_active == True
+        ).update({"is_active": False})
+
+        # update separation
+        sep.status = SeparationStatus.APPROVED
+        sep.approved_at = datetime.now(timezone.utc)
+
+        db.commit()
+
+        return {
+            "message": "Staff separation approved",
+            "staff_id": sep.staff_id
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(500, str(e))
+    
+
+# endpoint to reject a request
+@router.post("/reject/{sep_id}")
+def reject_separation(sep_id: int, payload: RejectRequest, db: Session = Depends(get_db)):
+
+    sep = db.query(StaffSeparation).filter(
+        StaffSeparation.sep_id == sep_id,
+        StaffSeparation.status == SeparationStatus.PENDING
+    ).first()
+
+    if not sep:
+        raise HTTPException(404, "Pending separation not found")
+
+    sep.status = SeparationStatus.REJECTED
+    sep.remarks = payload.reason
+    sep.rejected_at = datetime.now(timezone.utc)
+
     db.commit()
 
-    # Deactivate employee salary for this staff
-    db.query(EmployeeSalary).filter(
-        EmployeeSalary.employee_type == "staff",
-        EmployeeSalary.employee_id == sep.staff_id,
-        EmployeeSalary.is_active == True
-    ).update({"is_active": False})
-    db.commit()
-
-    # Mark separation as approved
-    sep.status = True
-    db.commit()
-
-    return {
-        "message": "staff Separation Approved",
-        "staff_id": sep.staff_id
-    }
-
+    return {"message": "Separation rejected"}

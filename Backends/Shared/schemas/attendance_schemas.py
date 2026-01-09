@@ -1,6 +1,8 @@
 from typing import Optional, Literal, Annotated, List
 from datetime import date, datetime
 from pydantic import BaseModel, Field
+from typing import List
+from Backends.Shared.enums.attendance_enums import AttendanceStatus
 
 # ---- helpers ----
 PositiveInt = Annotated[int, Field(gt=0)]
@@ -14,7 +16,7 @@ class MarkAttendanceItem(BaseModel):
     subject_id: int
     class_id: int
     lecture_date: date
-    status: str = Field(default="P", pattern="^(P|A|L)$")
+    status: AttendanceStatus = AttendanceStatus.P
     remarks: Optional[str] = None
     class Config:
         from_attributes = True
@@ -23,7 +25,7 @@ class MarkAttendanceBulk(BaseModel):
     class_id: int
     subject_id: int
     lecture_date: date
-    absent_ids: str  # "8,7"
+    absent_ids: List[int]
     class Config:
         from_attributes = True
 
@@ -31,9 +33,9 @@ class StudentAttendanceBase(BaseModel):
     student_id: PositiveInt = Field(..., description="Student ID (must exist in students_master)")
     class_id: PositiveInt = Field(..., description="Class ID (must exist in classes_master)")
     subject_id: PositiveInt = Field(..., description="Subject ID (must exist in subjects_master)")
-    teacher_id: PositiveInt = Field(..., description="Teacher ID (who marks the attendance)")
+    teacher_id: int | None   
     lecture_date: date = Field(..., description="Date of the lecture")
-    status: str = Field(default="P", pattern="^(P|A|L)$")
+    status: AttendanceStatus = AttendanceStatus.P
     remarks: Optional[NoteStr] = Field(None, description="Optional remarks")
 
     class Config:
@@ -45,7 +47,7 @@ class AttendanceOut(BaseModel):
     subject_id: int
     class_id: int
     lecture_date: date
-    status: str
+    status: AttendanceStatus
     remarks: Optional[str] = None
     class Config:
         from_attributes = True  
@@ -64,20 +66,13 @@ class StudentAttendanceCreate(StudentAttendanceBase):
     pass
 
 class UpdateAttendanceItem(BaseModel):
-    student_id: int
-    subject_id: int
-    class_id: int
-    lecture_date: date
-    status: str = Field(pattern="^(P|A|L)$")
+    status: AttendanceStatus = AttendanceStatus.P
     remarks: Optional[str] = None
     class Config:
         from_attributes = True  
 
 class StudentAttendanceResponse(StudentAttendanceBase):
     attendance_id: int
-    teacher_id: Optional[int] = None
-    student_name: Optional[str] = None
-    subject_name: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     class Config:
@@ -89,7 +84,7 @@ class TeacherAttendanceBase(BaseModel):
     date: date       
     check_in: Optional[datetime] = None
     check_out: Optional[datetime] = None
-    status: str = Field(default="P", pattern="^(P|A|L)$")
+    status: AttendanceStatus = AttendanceStatus.P
     remarks: Optional[NoteStr] = None
     class Config:
         from_attributes = True
@@ -99,7 +94,7 @@ class TeacherAttendanceCreate(TeacherAttendanceBase):
 
 class TeacherAttendanceUpdate(BaseModel):
     check_out: Optional[datetime] = None
-    status: Optional[Literal["P", "A", "L"]] = None
+    status: Optional[AttendanceStatus] = None
     remarks: Optional[str] = None
     class Config:
         from_attributes = True
@@ -120,7 +115,7 @@ class TeacherAttendanceResponse(BaseModel):
     date: date
     check_in: datetime | None
     check_out: datetime | None
-    status: str
+    status: AttendanceStatus
     remarks: str | None
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -152,7 +147,7 @@ class StaffAttendanceBase(BaseModel):
     date: date       
     check_in: Optional[datetime] = None
     check_out: Optional[datetime] = None
-    status: str = Field(default="P", pattern="^(P|A|L)$")
+    status: AttendanceStatus = AttendanceStatus.P
     remarks: Optional[NoteStr] = None
     class Config:
         from_attributes = True
@@ -162,7 +157,7 @@ class StaffAttendanceCreate(StaffAttendanceBase):
 
 class StaffAttendanceUpdate(BaseModel):
     check_out: Optional[datetime] = None
-    status: Optional[Literal["P", "A", "L"]] = None
+    status: Optional[AttendanceStatus] = None
     remarks: Optional[str] = None
     class Config:
         from_attributes = True
@@ -183,7 +178,7 @@ class StaffAttendanceResponse(BaseModel):
     date: date
     check_in: datetime | None
     check_out: datetime | None
-    status: str
+    status: AttendanceStatus
     remarks: str | None
     created_at: datetime | None = None
     updated_at: datetime | None = None

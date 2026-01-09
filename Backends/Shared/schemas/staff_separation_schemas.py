@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 from datetime import date
+from datetime import date, datetime
+from Backends.Shared.enums.separation_enums import SeparationStatus
 
 class StaffSeparationCreate(BaseModel):
     staff_id: int
@@ -16,6 +18,15 @@ class StaffSeparationResponse(BaseModel):
     reason: str
     remarks: str | None
     separation_date: date
-    status: bool
+    status: SeparationStatus
+    approved_at: datetime | None
+    rejected_at: datetime | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class RejectRequest(BaseModel):
+    reason: str
     class Config:
         from_attributes = True

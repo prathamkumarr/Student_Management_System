@@ -16,8 +16,9 @@ class ExamResponse(ExamCreate):
         from_attributes = True
 
 class ExamUpdate(BaseModel):
-    exam_name: str
-    description: str
-    exam_date: date
+    exam_name: str | None = None
+    description: str | None = None
+    exam_date: date | None = None
+
     class Config:
         from_attributes = True

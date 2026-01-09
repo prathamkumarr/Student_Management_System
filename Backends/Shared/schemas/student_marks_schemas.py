@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from pydantic import model_validator
 
 class StudentMarksCreate(BaseModel):
     student_id: int
@@ -9,6 +10,12 @@ class StudentMarksCreate(BaseModel):
     remarks: str | None = None
     class Config:
         from_attributes = True
+
+    @model_validator(mode="after")
+    def validate_marks(self):
+        if self.marks_obtained > self.max_marks:
+            raise ValueError("marks_obtained cannot exceed max_marks")
+        return self
 
 
 class StudentMarksResponse(StudentMarksCreate):

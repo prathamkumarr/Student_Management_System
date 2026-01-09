@@ -52,6 +52,15 @@ def fetch_students():
         print("Error fetching students:", e)
     return []
 
+def fetch_exams():
+    try:
+        res = requests.get(f"{BASE_API_URL}/exams/", timeout=5)
+        if res.status_code == 200:
+            return res.json()
+    except requests.RequestException as e:
+        print("Error fetching exams:", e)
+    return []
+
 
 # ===========
 class AdminUI:
@@ -158,12 +167,12 @@ class AdminUI:
 
         offboarding_btn = self.add_btn("Manage Offboardings and Transfers")
         self.build_offboarding_dropdown(offboarding_btn)
-        
-        master_btn = self.add_btn("View Master Tables")
-        self.build_master_dropdown(master_btn)
 
         activity_btn = self.add_btn("Manage Extra-Curricular Activities")
         self.build_activity_dropdown(activity_btn)
+        
+        master_btn = self.add_btn("View Master Tables")
+        self.build_master_dropdown(master_btn)
 
         # ------- LOGOUT BUTTON -------
         self.logout_btn = tk.Label(
@@ -228,9 +237,8 @@ class AdminUI:
 
         menu.add_command(label="Create Fee", command=lambda: self.load_create_fee_screen())
         menu.add_command(label="Assign Fee", command=lambda: self.load_assign_fee_screen())
-        menu.add_command(label="View Fees", command=lambda: self.load_view_fees_screen())
+        menu.add_command(label="View Fees / Deactivate Fees", command=lambda: self.load_view_fees_screen())
         menu.add_command(label="Update Fee", command=lambda: self.load_update_fee_screen())
-        menu.add_command(label="Delete Fee", command=lambda: self.load_delete_fee_screen())
         menu.add_command(label="Fee History", command=lambda: self.load_fee_history_screen())
 
         pm = tk.Menu(menu, tearoff=0)
@@ -251,6 +259,8 @@ class AdminUI:
         menu.add_command(label="Create Admission", command=self.load_create_admission_screen)
         menu.add_command(label="View All Admissions", command=self.load_view_all_admissions_screen)
         menu.add_command(label="View Admission by ID", command=self.load_view_admission_by_id_screen)
+        menu.add_command(label="Submit Admission", command=self.load_submit_admission_screen)
+        menu.add_command(label="Verify Admission", command=self.load_verify_admission_screen)
         menu.add_command(label="Approve Admission", command=self.load_approve_admission_screen)
         
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
@@ -356,7 +366,7 @@ class AdminUI:
         menu.add_command(label="Delete Exam Type", command=lambda: self.load_delete_exam_screen())
 
         rg = tk.Menu(menu, tearoff=0)
-        rg.add_command(label="Generate and Download Result of a Student", command=lambda: self.load_generate_and_download_result_of_student())
+        rg.add_command(label="View & Download Exam Result", command=lambda: self.load_view_and_download_exam_result_of_student())
         rg.add_command(label="Generate and Download Final Result of a Student", command=lambda: self.load_generate_and_download_final_result_of_student())
         rg.add_command(label="View all Result for an Exam", command=lambda: self.load_view_all_results_for_exam())
         rg.add_command(label="Generate and Download all students Results for a class", command=lambda: self.load_view_and_download_all_students_results_for_a_class())
@@ -380,7 +390,15 @@ class AdminUI:
         menu.add_command(label="Staff Master", command=self.load_staff_master)
         menu.add_command(label="Salary Master", command=self.load_salary_master)
 
+        ct = tk.Menu(menu, tearoff=0)
+        ct.add_command(label="Student Credentials", command=self.load_student_credential_table)
+        ct.add_command(label="Teacher Credentials", command=self.load_teacher_credential_table)
+        ct.add_command(label="Staff Credentials", command=self.load_staff_credential_table)
+    
+        menu.add_cascade(label="Credential Tables", menu=ct)
+
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
+
     # ========================================
     def build_activity_dropdown(self, parent_label):
         menu = tk.Menu(self.root, tearoff=0)
@@ -395,7 +413,7 @@ class AdminUI:
     def change_screen(self, message, back_callback=None, add_callback=None):
         self.clear_content()
 
-    # Main Message
+        # Main Message
         tk.Label(
         self.content,
         text=message,
@@ -404,18 +422,18 @@ class AdminUI:
         fg="#2C3E50",
         wraplength=600,
         justify="center"
-    ).pack(pady=40)
+        ).pack(pady=40)
 
-    # -------- BUTTON FRAME --------
+        # -------- BUTTON FRAME --------
         btn_frame = tk.Frame(self.content, bg="#ECF0F1")
         btn_frame.pack(pady=20)
 
-    # Reusable hover function
+        # Reusable hover function
         def hover(btn):
             btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
             btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
 
-    # ------------ Dashboard / Back Button ------------
+        # ------------ Dashboard / Back Button ------------
         back_btn = tk.Label(
         btn_frame,
         text="Go to Dashboard",
@@ -426,13 +444,13 @@ class AdminUI:
         pady=7,
         width=15,
         cursor="hand2"
-    )
+        )
         back_btn.grid(row=0, column=0, padx=10)
 
         hover(back_btn)
         back_btn.bind("<Button-1>", lambda e: (back_callback or self.load_dashboard)())
 
-    # ------------ Add Another Button (Optional) ------------
+        # ------------ Add Another Button (Optional) ------------
         if add_callback:
             add_btn = tk.Label(
             btn_frame,
@@ -455,19 +473,19 @@ class AdminUI:
         btn_frame = tk.Frame(parent, bg="#ECF0F1")
         btn_frame.pack(pady=20)
 
-    # BACK BUTTON
+        # BACK BUTTON
         back_btn = tk.Label(
         btn_frame, text="Dashboard",
         font=("Arial", 12, "bold"),
         bg="#000", fg="white",
         padx=15, pady=7,
         width=12, cursor="hand2"
-    )
+        )
         back_btn.grid(row=0, column=0, padx=10)
         self._hover(back_btn)
         back_btn.bind("<Button-1>", lambda e: back_callback())
 
-    # ADD ANOTHER BUTTON (optional)
+        # ADD ANOTHER BUTTON (optional)
         if add_callback:
             another_btn = tk.Label(
             btn_frame, text="Add Another",
@@ -536,11 +554,11 @@ class AdminUI:
             px2 = px1 + popup.winfo_width()
             py2 = py1 + popup.winfo_height()
 
-        # Check if click INSIDE popup → DO NOTHING
+            # Check if click INSIDE popup → DO NOTHING
             if px1 <= event.x_root <= px2 and py1 <= event.y_root <= py2:
                 return  # safe click (even month/year click)
 
-        # Click OUTSIDE popup → close
+            # Click OUTSIDE popup → close
             cleanup()
 
         def cleanup():
@@ -551,10 +569,10 @@ class AdminUI:
             popup.destroy()
             self.root.after(50, lambda: self.root.focus_force())
 
-    # Bind outside-click detection
+        # Bind outside-click detection
         self.root.bind("<Button-1>", outside_click)
  
-    # ----- POSITION BELOW BUTTON -----
+        # ----- POSITION BELOW BUTTON -----
         button_widget.update_idletasks()
 
         bx = button_widget.winfo_rootx()
@@ -565,11 +583,11 @@ class AdminUI:
         popup.update_idletasks()
         popup.geometry(f"+{bx + 120}+{by + bh + 10}")
 
-    # ----- DEFAULT DATE -----
+        # ----- DEFAULT DATE -----
         today = datetime.date.today()
         target_var.set(today.strftime("%Y-%m-%d"))  # show in entry immediately
 
-    # ----- CALENDAR WIDGET -----
+        # ----- CALENDAR WIDGET -----
         cal = Calendar(
         popup,
         selectmode="day",
@@ -578,10 +596,10 @@ class AdminUI:
         month=today.month,
         day=today.day, 
         showweeknumbers=False 
-    )
+        )
         cal.pack(padx=10, pady=10)
 
-    # ----- CONFIRM BUTTON -----
+        # ----- CONFIRM BUTTON -----
         def confirm():
             selected_date = cal.get_date()
             target_var.set(selected_date)
@@ -590,14 +608,14 @@ class AdminUI:
             self.root.unbind("<Button-1>")
         # ----- CONFIRM BUTTON -----
         confirm_btn = tk.Label(
-    popup,
-    text="Confirm",
-    font=("Arial", 12, "bold"),
-    bg="#2C3E50",
-    fg="white",
-    padx=15,
-    pady=7,
-    cursor="arrow")
+        popup,
+        text="Confirm",
+        font=("Arial", 12, "bold"),
+        bg="#2C3E50",
+        fg="white",
+        padx=15,
+        pady=7,
+        cursor="arrow")
 
         confirm_btn.pack(pady=8)
 
@@ -613,7 +631,7 @@ class AdminUI:
         confirm_btn.bind("<Leave>", on_leave)
         confirm_btn.bind("<Button-1>", lambda e: confirm())
 
-    # Popup appears above all
+        # Popup appears above all
         popup.transient(self.root)
         popup.focus_force()
         
@@ -665,50 +683,22 @@ class AdminUI:
         else:
             messagebox.showinfo(title, msg)
 
-    # ------ SCROLLABLE SCREEN WRAPPER -------
-    def create_scrollable_area(self):
-        # MAIN container (takes entire content area)
-        outer = tk.Frame(self.content, bg="#ECF0F1")
-        outer.pack(fill="both", expand=True)
-
-        # Canvas inside content
-        canvas = tk.Canvas(outer, bg="#ECF0F1", highlightthickness=0)
-        canvas.pack(side="left", fill="both", expand=True)
-
-        # Scrollbar
-        scrollbar = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
-        scrollbar.pack(side="right", fill="y")
-
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Inner frame where all widgets go
-        inner = tk.Frame(canvas, bg="#ECF0F1")
-        canvas.create_window((0, 0), window=inner, anchor="n")
-
-        # *** CENTER THE SCREEN CONTENT ***
-        inner.grid_columnconfigure(0, weight=1)
-
-        # Resize scroll region
-        def update_scroll(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
-            canvas.itemconfig("inner_window", width=canvas.winfo_width())
-
-        canvas.bind("<Configure>", update_scroll)
-
-        return inner
     
     def update_method_table(self, data):
-    # Remove old rows
+        # Remove old rows
         for row in self.method_tree.get_children():
             self.method_tree.delete(row)
 
-    # Add rows
         for row in data:
-            self.method_tree.insert("", "end", values=(
-            row["method_id"],
-            row["method_name"],
-            row["is_active"]
-        ))
+            self.method_tree.insert(
+            "",
+            "end",
+            values=(
+                row["method_id"],
+                row["method_name"],
+                row["is_active"]
+            )
+        )
     
     def show_mini_notification(self, message):
         toast = tk.Label(
@@ -723,7 +713,36 @@ class AdminUI:
         toast.place(relx=0.98, rely=0.98, anchor="se")
 
         toast.after(3000, toast.destroy)
-        
+
+    # -------------------------------------        
+    def load_fees_for_class(self, class_id):
+            import requests
+
+            try:
+                res = requests.get(
+                f"http://127.0.0.1:8000/admin/fees/class/{class_id}",
+                timeout=10
+            )
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "Unable to load fees for class", "error")
+                    return
+
+                fees = res.json()
+
+                # Build dropdown map
+                self.fee_map = {
+                f"{f['fee_type']} | ₹{f['amount']} | {f['frequency']}": f["fee_id"]
+                for f in fees
+                }
+
+                self.fee_dropdown["values"] = list(self.fee_map.keys())
+                self.fee_var.set("")   # reset selection
+
+            except Exception as e:
+                self.show_popup("Network Error", str(e), "error")    
+            
+
     # ==============================================================================
     # ==== Button to create fee ====
     def load_create_fee_screen(self):
@@ -736,61 +755,129 @@ class AdminUI:
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=20)
 
-        labels = ["class_id", "fee_type", "amount", "effective_from", "effective_to", "notes"]
+        left_col = tk.Frame(form, bg="#ECF0F1")
+        right_col = tk.Frame(form, bg="#ECF0F1")
+
+        left_col.grid(row=0, column=0, padx=30, sticky="n")
+        right_col.grid(row=0, column=1, padx=30, sticky="n")
+
+        left_fields = ["class_id", "fee_type", "amount", "billing_type", "frequency", "charge_trigger"]
+        right_fields = ["effective_from", "effective_to", "currency", "allow_proration", "is_mandatory", "notes"]
+        
         self.entries = {}
 
         # StringVar storage for auto tracking
         self.vars = {}
+        available_classes = fetch_classes()   
+        self.class_map = {
+        f"{c['class_id']} - {c['class_name']} {c['section']}": c["class_id"]
+        for c in available_classes
+        }
 
-        for i, text in enumerate(labels):
-            # Label
+        self.class_values = list(self.class_map.keys())
+
+        for i, text in enumerate(left_fields):
             tk.Label(
-                form,
-                text=text + ":",
-                bg="#ECF0F1",
-                fg="#2C3E50",
-                font=("Arial", 14)
-                ).grid(row=i, column=0, sticky="e", padx=10, pady=10)
+            left_col,
+            text=text + ":",
+            bg="#ECF0F1",
+            fg="#2C3E50",
+            font=("Arial", 14)
+        ).grid(row=i, column=0, sticky="e", padx=10, pady=6)
 
-                # StringVar
             var = tk.StringVar()
             var.trace_add("write", lambda *args: self.validate_fee_form())
+            self.vars[text] = var
 
-            # ---- SPECIAL CASE FOR DATE FIELDS ----
-            if text in ("effective_from", "effective_to"):
-                entry = tk.Entry(
-            form,
-            textvariable=var,
-            font=("Arial", 14),
-            width=20
-        )
-                entry.grid(row=i, column=1, padx=5, pady=10)
+            if text == "class_id":
+                entry = ttk.Combobox(
+                left_col,
+                textvariable=var,
+                state="readonly",
+                values=self.class_values,
+                width=23)
+                entry.bind("<<ComboboxSelected>>", lambda e: self.validate_fee_form())
 
-        # calendar button
-                tk.Button(
-            form,
-            text="Calendar",
-            font=("Arial", 12),
-            bg="white",
-            relief="flat",
-            command=lambda v=var, e=entry: self.open_calendar_popup(e, v)
-        ).grid(row=i, column=2, padx=5)
+            elif text == "billing_type":
+                entry = ttk.Combobox(
+                left_col,
+                textvariable=var,
+                values=["ONE_TIME", "RECURRING"],
+                state="readonly",
+                width=23
+                )
+
+            elif text == "frequency":
+                entry = ttk.Combobox(
+                left_col,
+                textvariable=var,
+                values=["MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY"],
+                state="readonly",
+                width=23
+                )
+
+            elif text == "charge_trigger":
+                entry = ttk.Combobox(
+                left_col,
+                 textvariable=var,
+                values=["ADMISSION", "ACADEMIC_CYCLE"],
+                state="readonly",
+                width=23)
 
             else:
-        # Normal entry
-                entry = tk.Entry(
-            form,
-            textvariable=var,
-            font=("Arial", 14),
-            width=25
-        )
-                entry.grid(row=i, column=1, padx=10, pady=10)
+                entry = tk.Entry(left_col, textvariable=var, font=("Arial", 14), width=25)
+
+            entry.grid(row=i, column=1, padx=10, pady=6)
+            self.entries[text] = entry
+
+        for i, text in enumerate(right_fields):
+            tk.Label(
+            right_col,
+            text=text + ":",
+            bg="#ECF0F1",
+            fg="#2C3E50",
+            font=("Arial", 14)
+            ).grid(row=i, column=0, sticky="e", padx=10, pady=6)
+
+            if text in ("allow_proration", "is_mandatory"):
+                var = tk.BooleanVar(value=False)
+                var.trace_add("write", lambda *args: self.validate_fee_form())  
+                entry = tk.Checkbutton(
+                right_col,
+                variable=var,
+                bg="#ECF0F1")
+                entry.grid(row=i, column=1, sticky="w", padx=10, pady=6)
+
+            else:
+                var = tk.StringVar()
+                if text in ("effective_from", "effective_to"):
+                    var.trace_add("write", lambda *args: self.validate_fee_form())
+                    entry = tk.Entry(right_col, textvariable=var, font=("Arial", 14), width=23)
+                    entry.grid(row=i, column=1, padx=5, pady=6)
+
+                    tk.Button(
+                    right_col,
+                    text="Calendar",
+                    font=("Arial", 12),
+                    relief="flat",
+                    command=lambda v=var, e=entry: self.open_calendar_popup(e, v)
+                    ).grid(row=i, column=2, padx=5)
+
+                elif text == "currency":
+                    var = tk.StringVar(value="INR")
+                    entry = tk.Entry(right_col, textvariable=var, font=("Arial", 14), width=25)
+                    entry.grid(row=i, column=1, padx=10, pady=6)
+
+                else:  # notes
+                    var.trace_add("write", lambda *args: self.validate_fee_form())
+                    entry = tk.Entry(right_col, textvariable=var, font=("Arial", 14), width=25)
+                    entry.grid(row=i, column=1, padx=10, pady=6)
 
             self.vars[text] = var
             self.entries[text] = entry
 
         btn_frame = tk.Frame(self.content, bg="#ECF0F1")
-        btn_frame.pack(pady=25)
+        btn_frame.pack(pady=20)
 
         # Back Button from global function
         self.create_back_button(
@@ -799,11 +886,9 @@ class AdminUI:
         form_frame=form                          
         )
 
-        self.content.update_idletasks()
-
         # Submit Button
         self.submit_btn = tk.Label(
-            self.content,
+            btn_frame,
             text="Submit",
             font=("Arial", 16, "bold"),
             bg="#D5D8DC",
@@ -841,91 +926,161 @@ class AdminUI:
 
     # =========================
     def validate_fee_form(self):
-        class_id = self.vars["class_id"].get().strip()
-        fee_type = self.vars["fee_type"].get().strip()
-        amount = self.vars["amount"].get().strip()
-        effective_from = self.vars["effective_from"].get().strip()
-        effective_to = self.vars["effective_to"].get().strip()
-        notes = self.vars["notes"].get().strip()
-
-        if not all([class_id, fee_type, amount, effective_from, effective_to, notes]):
-            self.disable_submit()
-            return
-    
-        if not class_id.isdigit():
-            self.disable_submit()
-            return
-
-        if not amount.isdigit():
-            self.disable_submit()
-            return
-
         import re
-        date_regex = r"^\d{4}-\d{2}-\d{2}$"
+        from datetime import datetime
 
-        if not re.match(date_regex, effective_from) or not re.match(date_regex, effective_to):
+        required_fields = [
+                "class_id", "fee_type", "billing_type", "frequency",
+                "charge_trigger", "amount", "effective_from", "effective_to"]
+
+        for field in required_fields:
+            if not self.vars[field].get():
+                self.disable_submit()
+                return
+        
+        # ---- Amount > 0 ----
+        try:
+            amount = float(self.vars["amount"].get())
+            if amount <= 0:
+                self.disable_submit()
+                return
+        except:
             self.disable_submit()
             return
 
+        # ---- Date format check ----
+        date_regex = r"^\d{4}-\d{2}-\d{2}$"
+        from_dt = self.vars["effective_from"].get().strip()
+        to_dt = self.vars["effective_to"].get().strip()
+
+        if not re.match(date_regex, from_dt) or not re.match(date_regex, to_dt):
+            self.disable_submit()
+            return
+
+        # ---- Date range check ----
+        try:
+            from_date = datetime.strptime(from_dt, "%Y-%m-%d").date()
+            to_date = datetime.strptime(to_dt, "%Y-%m-%d").date()
+            if to_date < from_date:
+                self.disable_submit()
+                return
+        except:
+            self.disable_submit()
+            return
+        
         self.enable_submit()
 
+    # --------------------------
     def submit_create_fee(self):
-        from datetime import datetime
-        payload = {
-            "class_id": int(self.entries["class_id"].get()),
-            "fee_type": str(self.entries["fee_type"].get()),
-            "amount": float(self.entries["amount"].get()),
-            "effective_from": datetime.strptime(self.entries["effective_from"].get().strip(), "%Y-%m-%d").date().isoformat(),
-            "effective_to": datetime.strptime(self.entries["effective_to"].get().strip(), "%Y-%m-%d").date().isoformat(),
-            "notes": str(self.entries["notes"].get())
-        }
-        for field, value in payload.items():
-            if value == "":
-                self.show_popup("Missing Information", f"{field} cannot be empty.", "warning")
-                return
-    
-        class_id = self.entries["class_id"].get().strip()
-        if not class_id.isdigit() or int(class_id) <= 0:
-            self.show_popup("Invalid Class ID", "Class ID must be a positive number.", "warning")
-            return
-        
-        amount = self.entries["amount"].get().strip()
-        if not amount.replace(".", "", 1).isdigit() or float(amount) <= 0:
-            self.show_popup("Invalid Amount", "Amount must be a positive number.", "warning")
-            return
-        
-        import re
-        from_dt = self.entries["effective_from"].get().strip()
-        if not re.match(r"^\d{4}-\d{2}-\d{2}$", from_dt):
-            self.show_popup("Invalid Date", "Effective From must be in YYYY-MM-DD format.", "error")
-            return
-        
-        to_dt = self.entries["effective_to"].get().strip()
-        if not re.match(r"^\d{4}-\d{2}-\d{2}$", to_dt):
-            self.show_popup("Invalid Date", "Effective To must be in YYYY-MM-DD format.", "error")
-            return
-
-        from datetime import datetime
-
-        from_date = datetime.strptime(from_dt, "%Y-%m-%d").date()
-        to_date = datetime.strptime(to_dt, "%Y-%m-%d").date()
-
-        if to_date < from_date:
-            self.show_popup("Invalid Range", "Effective To cannot be earlier than Effective From!", "error")
-            return
-
         import requests
-        requests.post("http://127.0.0.1:8000/admin/fees/create", json=payload)
-        self.show_popup("Success", "Fee Created Successfully!", "Success")
-        self.change_screen("Fee Created Successfully", 
-                        add_callback=self.load_create_fee_screen)
+        
+        class_raw = self.vars["class_id"].get().strip()
+        try:
+            class_id = self.class_map[class_raw]
+        except KeyError:
+            self.show_popup("Invalid Class", "Please select a valid class.", "error")
+            return
+ 
 
-    # ====================
+        payload = {
+            "class_id": class_id,
+            "fee_type": self.vars["fee_type"].get().strip(),
+            "billing_type": self.vars["billing_type"].get(),
+            "frequency": self.vars["frequency"].get(),
+            "charge_trigger": self.vars["charge_trigger"].get(),
+
+            "amount": self.vars["amount"].get(),
+            "currency": self.vars["currency"].get() or "INR",
+
+            "allow_proration": bool(self.vars["allow_proration"].get()),
+            "is_mandatory": bool(self.vars["is_mandatory"].get()),
+
+            "effective_from": self.vars["effective_from"].get(),
+            "effective_to": self.vars["effective_to"].get(),
+            "notes": self.vars["notes"].get() or None
+        }
+
+        try:
+            res = requests.post(
+            "http://127.0.0.1:8000/admin/fees/create",
+            json=payload,
+            timeout=10
+            )
+
+            if res.status_code == 201:
+                self.show_popup(
+                "Success",
+                "Fee Created Successfully!",
+                "success"
+                )
+                self.change_screen(
+                "Fee Created Successfully",
+                add_callback=self.load_create_fee_screen
+                )
+                return
+
+            # ---- Handle known backend errors ----
+            try:
+                msg = res.json().get("detail", "Failed to create fee")
+            except:
+                msg = "Failed to create fee"
+
+            self.show_popup("Error", msg, "error")
+
+        except requests.exceptions.RequestException as e:
+            self.show_popup(
+            "Network Error",
+            f"Unable to connect to server.\n{e}",
+            "error"
+            )
+
+    # ========================================================================
+    def fetch_student_class(self, student_var):
+            sid = student_var.get().strip()
+            if not sid.isdigit() or len(sid) < 2:
+                return
+
+            import requests
+            try:
+                res = requests.get(
+                f"http://127.0.0.1:8000/admin/fees/student/{sid}/class",
+                timeout=5
+                )
+
+                if res.status_code != 200:
+                    return
+
+                class_id = res.json()["class_id"]
+
+                # find display label from class_map
+                for label, cid in self.class_map.items():
+                    if cid == class_id:
+                        class_id_var_value = label
+                        break
+                else:
+                    return
+
+                # set class dropdown
+                self.update_class_field(class_id_var_value, class_id)
+
+            except:
+                pass
+
+    def update_class_field(self, display_value, class_id):
+            # set value
+            self.class_var.set(display_value)
+
+            # lock dropdown
+            self.class_dropdown.config(state="disabled")
+
+            # load fees for that class
+            self.load_fees_for_class(class_id)
+
     # button to assign fee
     def load_assign_fee_screen(self):
         self.clear_content()
 
-    # Title
+        # Title
         tk.Label(
         self.content,
         text="Assign Fee to Student",
@@ -933,133 +1088,191 @@ class AdminUI:
         bg="#ECF0F1"
         ).pack(pady=20)
 
-    # ==== FORM ====
+        # ==== FORM ====
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
 
-    # Variables
+        # Variables
         student_id = tk.StringVar()
-        class_id = tk.StringVar()
-        fee_id = tk.StringVar()
+        self.class_var = tk.StringVar()
         amount_due = tk.StringVar()
         due_date = tk.StringVar()
+        self.fee_var = tk.StringVar()
 
+        self.fee_map = {}        
+        self.fee_dropdown = None
+        
         fields = [
         ("Student ID:", student_id),
-        ("Class ID:", class_id),
-        ("Fee ID:", fee_id),
+        ("Class ID:", self.class_var),
+        ("Fee ID:", self.fee_var),
         ("Amount Due:", amount_due),
         ("Due Date:", due_date),
         ]
+
+        available_classes = fetch_classes() 
+        self.class_map = {
+        f"{c['class_id']} - {c['class_name']} {c['section']}": c["class_id"]
+        for c in available_classes
+        }
+
+        self.class_values = list(self.class_map.keys())
+
         for i, (label, var) in enumerate(fields):
 
-    # LABEL
+            # LABEL
             tk.Label(
-        form,
-        text=label,
-        font=("Arial", 14),
-        bg="#ECF0F1"
-    ).grid(row=i, column=0, padx=10, pady=8)
+            form,
+            text=label,
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=8)
+            
+            if label.startswith("Class ID"):
+                self.class_dropdown = ttk.Combobox(
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=23,
+                state="disabled",
+                values=self.class_values
+                )
+                self.class_dropdown.grid(row=i, column=1, padx=10, pady=8)
 
-    # ---- SPECIAL CASE: DUE DATE WITH CALENDAR ----
-            if label.startswith("Due Date"):
-                entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=20)
+                entry.bind(
+                    "<<ComboboxSelected>>",
+                    lambda e: self.load_fees_for_class(
+                    self.class_map[self.class_var.get()]
+                    )
+                )
+
+            elif label.startswith("Fee ID"):
+                self.fee_dropdown = ttk.Combobox(
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=23,
+                state="readonly",
+                values=[]
+                )
+                self.fee_dropdown.grid(row=i, column=1, padx=10, pady=8)
+
+            # ---- SPECIAL CASE: DUE DATE WITH CALENDAR ----
+            elif label.startswith("Due Date"):
+                entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=23)
                 entry.grid(row=i, column=1, padx=5, pady=8)
 
-        # Calendar Button
+               # Calendar Button
                 tk.Button(
-            form,
-            text="calendar",
-            font=("Arial", 12),
-            bg="white",
-            relief="flat",
-            command=lambda v=var, e=entry: self.open_calendar_popup(e, v)
-        ).grid(row=i, column=2, padx=5)
+                form,
+                text="calendar",
+                font=("Arial", 12),
+                bg="white",
+                relief="flat",
+                command=lambda v=var, e=entry: self.open_calendar_popup(e, v)
+                ).grid(row=i, column=2, padx=5)
 
             else:
-        # NORMAL ENTRY FIELD
+                # NORMAL ENTRY FIELD
                 entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=25)
                 entry.grid(row=i, column=1, padx=10, pady=8)
 
-    # ==== ASSIGN BACKEND CALL ====
+        student_id.trace_add("write", lambda *args: self.fetch_student_class(student_id))
+     
+        # ==== ASSIGN BACKEND CALL ====
         def assign_fee_backend():
+            import requests, re
+            from datetime import datetime
+
+            # ---------- CLASS ----------
+            class_raw = self.class_var.get().strip()
+            if class_raw not in self.class_map:
+                self.show_popup("Invalid Class", "Please select a class from dropdown!", "warning")
+                return
+            class_clean = self.class_map[class_raw]
+
+            # ---------- STUDENT ID ----------
+            sid = student_id.get().strip()
+            if not sid.isdigit() or int(sid) <= 0:
+                self.show_popup("Invalid Student ID", "Student ID must be a positive number.", "warning")
+                return
+
+            # ---------- FEE ID ----------
+            fee_label = self.fee_var.get().strip()
+            if not fee_label:
+                fid = None
+            else:
+                fid = self.fee_map.get(fee_label)
+
+            # ---------- AMOUNT ----------
+            amt = amount_due.get().strip()
             try:
-                payload = {
-                "student_id": int(student_id.get().strip()),
-                "class_id": int(class_id.get().strip()),
-                "fee_id": int(fee_id.get().strip()),
-                "amount_due": float(amount_due.get().strip()),
-                "due_date": due_date.get().strip()
-            }
-                for field, value in payload.items():
-                    if value == "":
-                        self.show_popup("Missing Information", f"{field} cannot be empty.", "warning")
-                        return
+                if float(amt) <= 0:
+                    raise ValueError
+            except:
+                self.show_popup("Invalid Amount", "Amount must be a valid positive number.", "warning")
+                return
 
-                sid = student_id.get().strip()
-                if not sid.isdigit() or int(sid) <= 0:
-                    self.show_popup("Invalid Student ID", "Student ID must be a positive number.", "warning")
-                    return
-                cid = class_id.get().strip()
-                if not cid.isdigit() or int(cid) <= 0:
-                    self.show_popup("Invalid Class ID", "Class ID must be a positive number.", "warning")
-                    return
-                fid = fee_id.get().strip()
-                if not fid.isdigit() or int(fid) <= 0:
-                    self.show_popup("Invalid Fee ID", "Fee ID must be a positive number.", "warning")
-                    return
-                amt = amount_due.get().strip()
-                if not amt.replace(".", "", 1).isdigit() or float(amt) <= 0:
-                    self.show_popup("Invalid Amount", "Amount must be a valid positive number.", "warning")
-                    return
-                import re
-                date_str = due_date.get().strip()
-                if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
-                    self.show_popup("Invalid Date", "Date must be YYYY-MM-DD format!", "error")
-                    return
+            # ---------- DATE ----------
+            date_str = due_date.get().strip()
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+                self.show_popup("Invalid Date", "Due Date must be YYYY-MM-DD format!", "error")
+                return
 
-                from datetime import datetime
-                try:
-                    datetime.strptime(date_str, "%Y-%m-%d")
-                except:
-                    self.show_popup("Invalid Date", "Please enter a valid Due Date!", "error")
-                    return
+            try:
+                datetime.strptime(date_str, "%Y-%m-%d")
+            except:
+                self.show_popup("Invalid Date", "Please enter a valid Due Date!", "error")
+                return
 
-                import requests
-                res = requests.post("http://127.0.0.1:8000/admin/fees/assign", json=payload)
+            # ---------- PAYLOAD ----------
+            payload = {
+                "student_id": int(sid),
+                "class_id": class_clean,
+                "fee_id": fid,
+                "amount_due": amt,
+                "due_date": date_str
+                }
+
+            # ---------- API CALL ----------
+            try:
+                res = requests.post(
+                "http://127.0.0.1:8000/admin/fees/assign",
+                json=payload,
+                timeout=10
+                )
 
                 if res.status_code == 201:
-                    self.show_popup("Success", "Fee Assigned Successfully", "Success")
+                    self.show_popup("Success", "Fee Assigned Successfully!", "success")
                     self.change_screen(
                     "Fee Assigned Successfully!",
                     add_callback=self.load_assign_fee_screen
-                )
-                else:
-                    error_msg = "Failed to assign fee!"
-                    try:
-                        err = res.json()
-                        if "detail" in err:
-                            error_msg = err["detail"]
-                    except:
-                            pass
-   
-                    self.show_popup("Request Failed", error_msg, "error")
-                    self.change_screen(
-                    "Failed to Assign Fees Try Again with a Valid Student ID!",
-                    add_callback=self.load_assign_fee_screen
+                    )
+                    return
+ 
+                # backend error message
+                try:
+                    msg = res.json().get("detail", "Failed to assign fee")
+                except:
+                    msg = "Failed to assign fee"
+
+                self.show_popup("Error", msg, "error")
+
+            except requests.exceptions.RequestException as e:
+                self.show_popup(
+                "Network Error",
+                f"Unable to connect to server.\n{e}",
+                "error"
                 )
 
-            except:
-                self.show_popup("Error","Error in Assigning Fees", "error")
-
-    # ==== BUTTON FRAME ====
+        # ==== BUTTON FRAME ====
         btn_frame = tk.Frame(self.content, bg="#ECF0F1")
         btn_frame.pack(pady=25)
 
-    # BACK BUTTON
+        # BACK BUTTON
         self.create_back_button(btn_frame, self.load_dashboard, form)
 
-    # ==== ASSIGN BUTTON (LABEL STYLE) ====
+        # ==== ASSIGN BUTTON (LABEL STYLE) ====
         assign_btn = tk.Label(
         btn_frame,
         text="Assign Fee",
@@ -1073,14 +1286,14 @@ class AdminUI:
         cursor="arrow"
     )
         assign_btn.pack(side="left", padx=15)
-    # ==== ACTIVATION STYLE ====
+        # ==== ACTIVATION STYLE ====
         def activate_button():
             assign_btn.config(
             bg="#000000",
             fg="white",
-            cursor="arrow",
+            cursor="hand2",
             relief="flat"
-        )
+            )
             assign_btn.bind("<Enter>", lambda e: assign_btn.config(bg="#222222"))
             assign_btn.bind("<Leave>", lambda e: assign_btn.config(bg="#000000"))
             assign_btn.bind("<Button-1>", lambda e: assign_fee_backend())
@@ -1096,75 +1309,132 @@ class AdminUI:
             assign_btn.unbind("<Leave>")
             assign_btn.unbind("<Button-1>")
 
-    # ==== VALIDATION ====
+        # ==== VALIDATION ====
         def validate(*args):
-            if all(v.get().strip() for _, v in fields):
-                activate_button()
-            else:
-                disable_button()
+            base_required = [student_id, self.class_var, amount_due, due_date]
 
-    # Trace all vars
+            if not all(v.get().strip() for v in base_required):
+                disable_button()
+                return
+
+            # agar fee options available hain, to selection required
+            if self.fee_dropdown and self.fee_dropdown["values"]:
+                if not self.fee_var.get().strip():
+                    disable_button()
+                    return
+
+            activate_button()
+
+        # Trace all vars
         for _, var in fields:
             var.trace_add("write", validate)
 
         disable_button()  # initial state
 
 
+    # ==================================================================
     # ===== button to view all fees from DB =====
     def load_view_fees_screen(self):
         self.clear_content()
 
-    # ---- Title ----
+        # ---- Title ----
         tk.Label(
         self.content, text="All Fees",
         font=("Arial", 26, "bold"), bg="#ECF0F1", fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
-    # ---- Back Button ----
+        # ---- Back Button ----
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
         back_frame.pack(anchor="w", padx=20)
         self.create_back_button(back_frame, self.load_dashboard, None)
 
-    # ---- Table Frame ----
+        # ---- Table Frame ----
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-        cols = (
-        "fee_id", "class_id", "fee_type", "amount", "currency",
-        "effective_from", "effective_to", "is_active", "notes"
-    )
+        filter_options = ["class_id", "billing_type", "is_active"]
 
-    # ====================================================
-    #     FILTER BAR (Dropdown + Entry + Black Buttons)
-    # ====================================================
         filter_frame = tk.Frame(self.content, bg="#ECF0F1")
         filter_frame.pack(pady=10)
 
-    # Label
+        # Label
         tk.Label(
         filter_frame,
         text="Sort By:",
         font=("Arial", 12, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=0, padx=5)
 
-    # Dropdown (column names)
+        # Dropdown (column names)
         filter_var = tk.StringVar()
         filter_dropdown = ttk.Combobox(
         filter_frame,
         textvariable=filter_var,
-        values=list(cols),
+        values=filter_options,
         state="readonly",
         width=18
-    )
+        )
         filter_dropdown.grid(row=0, column=1, padx=10)
 
-    # Value Entry
+        billing_type_var = tk.StringVar()
+        billing_type_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=billing_type_var,
+        values=["ONE_TIME", "RECURRING"],
+        state="readonly",
+        width=18
+        )
+        billing_type_dropdown.grid(row=0, column=2, padx=10)
+
+        # Value Entry
         filter_value_var = tk.StringVar()
         filter_value = tk.Entry(filter_frame, font=("Arial", 12), width=20, textvariable=filter_value_var)
         filter_value.grid(row=0, column=2, padx=10)
-    # ---------- BUTTON STYLE ----------
+
+        billing_type_dropdown.grid_remove()
+        filter_value.grid_remove()
+
+        def on_filter_change(event=None):
+            filter_value.grid_remove()
+            billing_type_dropdown.grid_remove()
+
+            if filter_var.get() == "billing_type":
+                billing_type_dropdown.grid(row=0, column=2, padx=10)
+            else:
+                filter_value.grid(row=0, column=2, padx=10)
+
+        filter_dropdown.bind("<<ComboboxSelected>>", on_filter_change)       
+
+        # ---- DEACTIVATE BUTTON ----
+        self.deactivate_btn = tk.Label(
+        filter_frame,
+        text="Deactivate Fee",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15,
+        pady=5,
+        width=14,
+        cursor="arrow"
+        )
+        self.deactivate_btn.grid(row=0, column=5, padx=10)
+        
+        # ------------------------
+        def on_fee_select(event):
+            selected = self.tree.selection()
+            if not selected:
+                self.deactivate_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                self.deactivate_btn.unbind("<Button-1>")
+                return
+
+            self.deactivate_btn.config(bg="#000000", fg="white", cursor="hand2")
+            self.deactivate_btn.bind(
+            "<Button-1>",
+            lambda e: self.open_delete_confirm_from_table()
+            )
+
+        # ---------- BUTTON STYLE ----------
         def style_button(btn):
             btn.config(
             bg="#000000",
@@ -1175,21 +1445,76 @@ class AdminUI:
             relief="raised",
             cursor="hand2",
             font=("Arial", 12, "bold")
-        )
+            )
             btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
             btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
 
-    # ----- LOAD BUTTON -----
+        # ----- LOAD BUTTON -----
         load_btn = tk.Label(filter_frame, text="Load")
         style_button(load_btn)
         load_btn.grid(row=0, column=3, padx=10)
 
-    # ----- LOAD ALL BUTTON -----
+        def disable_load():
+            load_btn.config(
+            bg="#D5D8DC",
+            fg="#AEB6BF",
+            cursor="arrow",
+            relief="raised"
+            )
+            load_btn.unbind("<Enter>")
+            load_btn.unbind("<Leave>")
+            load_btn.unbind("<Button-1>")
+
+        def enable_load():
+            load_btn.config(
+            bg="#000000",
+            fg="white",
+            cursor="hand2",
+            relief="raised"
+            )
+            load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+            load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+            load_btn.bind("<Button-1>", lambda e: load_filtered())
+
+        disable_load()    
+
+        # ----- LOAD ALL BUTTON -----
         load_all_btn = tk.Label(filter_frame, text="Load All")
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
 
-    # ------------------------- CALLBACKS -------------------------
+
+        # -----------------------------
+        def validate_filter(*args):
+            selected = filter_var.get()
+
+            if not selected:
+                disable_load()
+                return
+ 
+            if selected == "billing_type":
+                if billing_type_var.get():
+                    enable_load()
+                else:
+                    disable_load()
+
+            elif selected == "class_id":
+                if filter_value_var.get().isdigit():
+                    enable_load()
+                else:
+                    disable_load()
+
+            elif selected == "is_active":
+                if filter_value_var.get().lower() in ("true", "false"):
+                    enable_load()
+                else:
+                    disable_load()
+                    
+        filter_var.trace_add("write", validate_filter)            
+        filter_value_var.trace_add("write", validate_filter)
+        billing_type_var.trace_add("write", validate_filter)            
+
+        # ------------------------- CALLBACKS -------------------------
         def update_fees_table(data):
             for row in self.tree.get_children():
                 self.tree.delete(row)
@@ -1200,49 +1525,76 @@ class AdminUI:
                 row["class_id"],
                 row["fee_type"],
                 row["amount"],
-                row["currency"],
+                row.get("currency", "INR"),
                 row["effective_from"],
                 row["effective_to"],
-                row["is_active"],
-                row["notes"]
-            ))
+                "Active" if row["is_active"] else "Inactive",
+                row.get("notes", "")
+                ))
+        
+        self.deactivate_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+        self.deactivate_btn.unbind("<Button-1>")
 
         def load_filtered():
-            col = filter_var.get().strip()
-            val = filter_value_var.get().strip()
+            import requests
 
-            if not col or not val:
-                return
-            valid_list = self.column_values_fee_master.get(col, [])
-            valid_lower = [str(v).lower() for v in valid_list]
+            params = {}
+   
+            # class_id
+            class_val = filter_value_var.get().strip()
+            if filter_var.get() == "class_id" and class_val.isdigit():
+                params["class_id"] = int(class_val)
 
-            if val not in valid_lower:
-                self.show_popup(
-            "Invalid Search Value",
-            f"'{val}' not found in column '{col}'.",
-            "warning"
-        )
-                filter_value_var.set("")      # clear invalid input
-                return
-            
-            filtered = [
-                r for r in self.all_fees
-                if str(r[col]).lower() == val.lower()
-        ]
-            update_fees_table(filtered)
+            # billing_type
+            if filter_var.get() == "billing_type" and billing_type_var.get():
+                params["billing_type"] = billing_type_var.get()
+
+            if filter_var.get() == "is_active":
+                val = filter_value_var.get().lower()
+                if val not in ("true", "false"):
+                    self.show_popup("Invalid Value", "Use true or false for is_active", "warning")
+                    return
+                params["is_active"] = val == "true"
+
+            try:
+                res = requests.get(
+                "http://127.0.0.1:8000/admin/fees/all",
+                params=params,
+                timeout=10
+                )
+
+                if res.status_code == 200:
+                    self.all_fees = res.json()
+                    update_fees_table(self.all_fees)
+                else:
+                    self.show_popup("Error", "Failed to load fees", "error")
+
+            except Exception as e:
+                self.show_popup("Network Error", str(e), "error")
 
         def load_all():
-            update_fees_table(self.all_fees)
-
-        load_btn.bind("<Button-1>", lambda e: load_filtered())
+            import requests
+            try:
+                res = requests.get("http://127.0.0.1:8000/admin/fees/all", timeout=10)
+                if res.status_code == 200:
+                    self.all_fees = res.json()
+                    update_fees_table(self.all_fees)
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+ 
         load_all_btn.bind("<Button-1>", lambda e: load_all())
 
-    # =========== TABLE + SCROLLBARS =============
+        # =========== TABLE + SCROLLBARS =============
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
 
         x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
         x_scroll.pack(side="bottom", fill="x")
+
+        cols = (
+            "fee_id", "class_id", "fee_type", "amount", "currency",
+            "effective_from", "effective_to", "is_active", "notes"
+        )
 
         self.tree = ttk.Treeview(
         table_frame,
@@ -1250,41 +1602,174 @@ class AdminUI:
         show="headings",
         yscrollcommand=y_scroll.set,
         xscrollcommand=x_scroll.set
-    )
+        )
         self.tree.pack(fill="both", expand=True)
 
         y_scroll.config(command=self.tree.yview)
         x_scroll.config(command=self.tree.xview)
 
-    # Headings
+        # Headings
         for col in cols:
             self.tree.heading(col, text=col.replace("_", " ").title())
             self.tree.column(col, width=180, anchor="center")
 
-    # ====================== FETCH DATA ======================
-        import requests
-        try:
-            res = requests.get("http://127.0.0.1:8000/admin/fees")
-            self.all_fees = res.json() if res.status_code == 200 else []
-            # ------------ COLLECT VALID COLUMN VALUES FOR SEARCH ------------
-            self.column_values_fee_master = {
-    "fee_id": [str(r["fee_id"]) for r in self.all_fees],
-    "class_id": [str(r["class_id"]) for r in self.all_fees],
-    "fee_type": [r["fee_type"] for r in self.all_fees],
-    "amount": [str(r["amount"]) for r in self.all_fees],
-    "currency": [r["currency"] for r in self.all_fees],
-    "effective_from": [r["effective_from"] for r in self.all_fees],
-    "effective_to": [r["effective_to"] for r in self.all_fees],
-    "is_active": [str(r["is_active"]) for r in self.all_fees],
-    "notes": [r["notes"] for r in self.all_fees],
-}
+        self.tree.bind("<<TreeviewSelect>>", on_fee_select)
 
-        except:
+        # ====================== FETCH DATA ======================
+        import requests
+
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/fees/all")
+
+            if res.status_code == 200:
+                self.all_fees = res.json()
+
+            elif res.status_code == 404:
+                self.all_fees = []
+                self.show_popup("Info", "No fee structures found.", "info")
+
+            else:
+                self.all_fees = []
+                self.show_popup("Error", "Failed to fetch fee records.", "error")
+
+        except Exception as e:
             self.all_fees = []
+            self.show_popup("Backend Error", f"Unable to fetch fees.\n{e}", "error")
 
         update_fees_table(self.all_fees)
 
+    # ----------------------------------- 
+    def show_delete_confirm(self, data):
+        self.clear_content()
 
+        tk.Label(
+        self.content,
+        text="Confirm Delete",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#C0392B"
+        ).pack(pady=20)
+
+        info = tk.Frame(self.content, bg="#ECF0F1")
+        info.pack(pady=10)   
+
+        display_fields = [
+        "fee_id",
+        "class_id",
+        "fee_type",
+        "amount",
+        "effective_from",
+        "effective_to",
+        "notes"
+        ]
+
+        row = 0
+        for key in display_fields:
+            tk.Label(info, text=f"{key}:", font=("Arial", 14), bg="#ECF0F1")\
+                .grid(row=row, column=0, padx=10, pady=5, sticky="w")
+            tk.Label(info, text=str(data.get(key, "")), font=("Arial", 14), bg="#ECF0F1")\
+                .grid(row=row, column=1, padx=10, pady=5, sticky="w")
+            row += 1
+
+        # BUTTONS FRAME: separate frame, use pack for the buttons
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=30)
+
+        self.create_back_button(
+        btn_frame,
+        self.load_view_fees_screen,
+        info
+        )
+
+        # Delete button — PACK here (because btn_frame is packed)
+        self.delete_btn = tk.Label(
+        btn_frame,
+        text="Deactivate",
+        font=("Arial", 14, "bold"),
+        bg="#000000",
+        fg="white",
+        padx=15, pady=8,
+        width=12,
+        cursor="hand2",
+        relief="ridge"
+        )
+        self.delete_btn.pack()  
+        self.delete_btn.bind("<Enter>", lambda e: self.delete_btn.config(bg="#222222"))
+        self.delete_btn.bind("<Leave>", lambda e: self.delete_btn.config(bg="#000000"))
+        self.delete_btn.bind("<Button-1>", lambda e: self.perform_fee_delete(data["fee_id"]))
+
+    # ------------------------------------
+    def perform_fee_delete(self, fee_id):
+        import requests
+        self.delete_btn.config(
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        cursor="arrow"
+        )
+        self.delete_btn.unbind("<Button-1>")
+
+        try:
+            res = requests.delete(f"http://127.0.0.1:8000/admin/fees/delete/{fee_id}")
+
+            if res.status_code == 200:
+                self.show_popup("Success", "Fee deactivated successfully!", "info")
+                self.change_screen(
+                "Fee Deactivated Successfully!",
+                add_callback=self.load_view_fees_screen
+                )
+                return
+            
+            try:
+                msg = res.json().get("detail", "Action failed.")
+            except:
+                msg = "Action failed."
+
+            self.show_popup(
+            "Cannot Deactivate Fee",
+            msg,
+            "warning")
+
+        except Exception as e:
+            self.show_popup("Backend Error", str(e), "error")    
+
+    # --------------------------------------
+    def open_delete_confirm_from_table(self):
+        selected = self.tree.selection()
+        if not selected:
+            return
+        values = self.tree.item(selected[0], "values")
+        fee_id = values[0]   # first column = fee_id
+
+        self.fetch_fee_for_delete(fee_id)    
+
+    # ----------------------------------------
+    def fetch_fee_for_delete(self, fee_id):
+        fee_id = str(fee_id).strip()
+
+        if not fee_id.isdigit() or int(fee_id)<=0:
+            self.show_popup("Invalid Fee ID", "Fee ID should be a positive number", "warning")
+            return
+
+        import requests
+
+        try:
+            res = requests.get(f"http://127.0.0.1:8000/admin/fees/get/{fee_id}")
+
+            if res.status_code != 200:
+                self.show_popup("Not Found", "Fee record not found.", "error")
+                self.change_screen("Fee Not Found",
+                                    add_callback=self.load_view_fees_screen)
+                return
+
+            data = res.json()
+            self.show_delete_confirm(data)
+
+        except Exception as e:
+            self.show_popup("Backend Error", str(e), "error")
+            return         
+
+
+    # ==================================================================
     # ===== button to update fee =====
     def load_update_fee_screen(self):
         self.clear_content()
@@ -1332,9 +1817,6 @@ class AdminUI:
 
         fid_var.trace_add("write", lambda *args: self.enable_disable_button(fid_var, search_btn))
 
-        # Binding the button click later when enabled
-        search_btn.bind("<Button-1>", lambda e: self.fetch_fee_details(fid_var.get()))
-
     # =========================
     def enable_disable_button(self, variable, btn):
         if variable.get().strip():
@@ -1342,6 +1824,11 @@ class AdminUI:
 
             btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
             btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+            btn.bind(
+            "<Button-1>",
+            lambda e: self.fetch_fee_details(variable.get())
+            )
+
         else:
             btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
 
@@ -1364,6 +1851,7 @@ class AdminUI:
                 return
 
             data = res.json()
+            self.current_fee_id = data["fee_id"]
             self.show_update_form(data)
 
         except:
@@ -1381,6 +1869,22 @@ class AdminUI:
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
 
+        available_classes = fetch_classes()
+        self.class_map = {
+            f"{c['class_name']} - {c['section']}": c["class_id"]
+            for c in available_classes
+        }
+
+        self.class_values = list(self.class_map.keys())
+
+        # current fee ka class display value
+        current_class_display = None
+        for label, cid in self.class_map.items():
+            if cid == data["class_id"]:
+                current_class_display = label
+                break
+
+
         labels = ["class_id", "fee_type", "amount", "effective_from", "effective_to", "notes"]
         fields = ["class_id", "fee_type", "amount", "effective_from", "effective_to", "notes"]
 
@@ -1389,34 +1893,45 @@ class AdminUI:
 
         for i, field in enumerate(fields):
 
-    # LABEL
+            # LABEL
             tk.Label(
-        form,
-        text=labels[i] + ":",
-        font=("Arial", 14),
-        bg="#ECF0F1"
-    ).grid(row=i, column=0, padx=10, pady=10)
+            form,
+            text=labels[i] + ":",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=10)
 
-    # VARIABLE
+            # VARIABLE
             var = tk.StringVar(value=str(data[field]))
+            if field == "class_id":
+                var.set(current_class_display)
 
-    # --- DATE FIELDS ---
-            if field in ("effective_from", "effective_to"):
+                entry = ttk.Combobox(
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=23,
+                state="disabled" 
+                )
+                entry.grid(row=i, column=1, padx=10, pady=10)
+
+            # --- DATE FIELDS ---
+            elif field in ("effective_from", "effective_to"):
                 entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=20)
                 entry.grid(row=i, column=1, padx=5, pady=10)
 
-        # Calendar button
+                # Calendar button
                 tk.Button(
-            form,
-            text="Calendar",
-            font=("Arial", 12),
-            bg="white",
-            relief="flat",
-            command=lambda v=var, e=entry: self.open_calendar_popup(e, v)
-        ).grid(row=i, column=2, padx=5)
+                form,
+                text="Calendar",
+                font=("Arial", 12),
+                bg="white",
+                relief="flat",
+                command=lambda v=var, e=entry: self.open_calendar_popup(e, v)
+                ).grid(row=i, column=2, padx=5)
 
             else:
-        # NORMAL ENTRY FIELD
+                # NORMAL ENTRY FIELD
                 entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=25)
                 entry.grid(row=i, column=1, padx=10, pady=10)
 
@@ -1453,21 +1968,47 @@ class AdminUI:
 
     # ===========================
     def validate_update_form(self):
-        if all(v.get().strip() for v in self.update_vars.values()):
-            self.enable_disable_button(self.update_vars["class_id"], self.update_btn)
+        data = {k: v.get().strip() for k, v in self.update_vars.items()}
 
-            self.update_btn.bind(
-            "<Button-1>",
-            lambda e: self.submit_fee_update()
-            )
-        else:
+        # class_id ignored (readonly)
+        data.pop("class_id", None)
+
+        if not all(data.values()):
             self.update_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
             self.update_btn.unbind("<Button-1>")
+            return
+
+        # Amount check
+        try:
+            if float(data["amount"]) <= 0:
+                return
+        except:
+            return
+
+        # Date format check
+        import re
+        for d in ("effective_from", "effective_to"):
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", data[d]):
+                return
+            
+        from datetime import datetime
+
+        try:
+            from_date = datetime.strptime(data["effective_from"], "%Y-%m-%d").date()
+            to_date = datetime.strptime(data["effective_to"], "%Y-%m-%d").date()
+            if to_date < from_date:
+                return
+        except:
+            return
+    
+        self.update_btn.config(bg="#000000", fg="white", cursor="hand2")
+        self.update_btn.bind("<Enter>", lambda e: self.update_btn.config(bg="#222222"))
+        self.update_btn.bind("<Leave>", lambda e: self.update_btn.config(bg="#000000"))
+        self.update_btn.bind("<Button-1>", lambda e: self.submit_fee_update(self.current_fee_id))
     
     # =========================
     def submit_fee_update(self, fee_id):
         payload = {
-        "class_id": int(self.update_vars["class_id"].get().strip()),
         "fee_type": str(self.update_vars["fee_type"].get().strip()),
         "amount": float(self.update_vars["amount"].get().strip()),
         "effective_from": self.update_vars["effective_from"].get().strip(),
@@ -1479,223 +2020,46 @@ class AdminUI:
                 self.show_popup("Missing Information", f"{field} cannot be empty.", "warning")
                 return
 
-        cid = self.update_vars["class_id"].get().strip()
-        if not cid.isdigit() or int(cid) <= 0:
-            self.show_popup("Invalid Class ID", "Class ID must be a positive number.", "warning")
-            return
-
-        amt = self.update_vars["amount"].get().strip()
-        try:
-            amt_f = float(amt)
-            if amt_f <= 0:
-                self.show_popup("Invalid Amount", "Amount must be greater than zero.", "warning")
-                return
-        except:
-            self.show_popup("Invalid Amount", "Amount must be a number.", "error")
-            return
-        import re
-        date_pattern = r"^\d{4}-\d{2}-\d{2}$"
-
-        for field_name, date_val in [
-        ("effective_from", self.update_vars["effective_from"]),
-        ("effective_to", self.update_vars["effective_to"])
-    ]:
-            if not re.match(date_pattern, date_val):
-                self.show_popup("Invalid Date",
-                            f"{field_name} must be YYYY-MM-DD.",
-                            "error")
-                return
-
         import requests
-        requests.put(f"http://127.0.0.1:8000/admin/fees/update/{fee_id}", json=payload)
-        
-        self.show_popup("Success", " Fee Updated Successfully", "success")
-        self.change_screen("Fee Updated Successfully!",
-                        add_callback=self.load_update_fee_screen)
-
-
-    # ===== button to delete a fee using fee_id =====
-    def load_delete_fee_screen(self):
-        self.clear_content()
-
-        tk.Label(
-        self.content,
-        text="Delete Fee",
-        font=("Arial", 26, "bold"),
-        bg="#ECF0F1",
-        fg="#2C3E50"
-        ).pack(pady=25)
-
-        form = tk.Frame(self.content, bg="#ECF0F1")
-        form.pack(pady=20)
-
-        tk.Label(
-        form, text="Enter Fee ID:", font=("Arial", 16), bg="#ECF0F1"
-        ).grid(row=0, column=0, padx=10, pady=10)
-
-        fee_id_var = tk.StringVar()
-        entry = tk.Entry(form, textvariable=fee_id_var, font=("Arial", 14), width=25)
-        entry.grid(row=0, column=1, padx=10)
-
-        # Back Button
-        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
-        btn_frame.pack(pady=25)
-        self.create_back_button(btn_frame, self.load_dashboard, form)
-        self.content.update_idletasks()
-
-        # SEARCH BUTTON
-        search_btn = tk.Label(
-        form,
-        text="Search",
-        font=("Arial", 14, "bold"),
-        bg="#D5D8DC",
-        fg="#AEB6BF",
-        padx=20,
-        pady=10,
-        width=10,
-        cursor="arrow"
-        )
-        search_btn.grid(row=1, columnspan=2, pady=15)
-
-        # Enable when user types Fee ID
-        def validate(*args):
-            if fee_id_var.get().strip():
-                search_btn.config(bg="#000", fg="white", cursor="hand2")
-                search_btn.bind("<Enter>", lambda e: search_btn.config(bg="#222"))
-                search_btn.bind("<Leave>", lambda e: search_btn.config(bg="#000"))
-                search_btn.bind("<Button-1>",
-                    lambda e: self.fetch_fee_for_delete(fee_id_var.get().strip())
-                )
-            else:
-                search_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                search_btn.unbind("<Enter>")
-                search_btn.unbind("<Leave>")
-                search_btn.unbind("<Button-1>")
-
-        fee_id_var.trace_add("write", validate)
-
-    # ----- Fetch Fee Details -----
-    def fetch_fee_for_delete(self, fee_id):
-        self.clear_content()
-
-        tk.Label(
-        self.content,
-        text="Confirm Delete",
-        font=("Arial", 26, "bold"),
-        bg="#ECF0F1",
-        fg="red"
-    ).pack(pady=20)
-
-        form = tk.Frame(self.content, bg="#ECF0F1")
-        form.pack(pady=10)
-
-        fee_id = str(fee_id).strip()
-
-        if not fee_id.isdigit() or int(fee_id)<=0:
-            self.show_popup("Invalid Fee ID", "Fee ID should be a positive number", "warning")
-            return
-
-        import requests
-
         try:
-            res = requests.get(f"http://127.0.0.1:8000/admin/fees/get/{fee_id}")
-
-            if res.status_code != 200:
-                self.show_popup("Not Found", "Fee record not found.", "error")
-                self.change_screen("Fee Not Found",
-                                   add_callback=self.load_delete_fee_screen)
-                return
-
-            data = res.json()
-            self.show_delete_confirm(data)
-
-        except Exception as e:
-            self.show_popup("Backend Error", str(e), "error")
-            return
-
-
-    def show_delete_confirm(self, data):
-        self.clear_content()
-
-        tk.Label(
-        self.content,
-        text="Confirm Delete",
-        font=("Arial", 26, "bold"),
-        bg="#ECF0F1",
-        fg="#C0392B"
-    ).pack(pady=20)
-
-    # info_frame will contain ONLY grid-managed widgets (labels + values)
-        info = tk.Frame(self.content, bg="#ECF0F1")
-        info.pack(pady=10)   # packing the frame itself is fine
-
-    # Put all label/value rows using grid (consistent inside this frame)
-        row = 0
-        for key, value in data.items():
-            tk.Label(info, text=f"{key}:", font=("Arial", 14), bg="#ECF0F1")\
-            .grid(row=row, column=0, padx=10, pady=5, sticky="w")
-            tk.Label(info, text=str(value), font=("Arial", 14), bg="#ECF0F1")\
-            .grid(row=row, column=1, padx=10, pady=5, sticky="w")
-            row += 1
-
-    # BUTTONS FRAME: separate frame, use pack for the buttons
-        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
-        btn_frame.pack(pady=30)
-
-    # back button (your helper probably packs into parent; pass btn_frame NOT info)
-        self.create_back_button(btn_frame, self.load_dashboard, info)
-
-    # Delete button — PACK here (because btn_frame is packed)
-        delete_btn = tk.Label(
-        btn_frame,
-        text="Delete",
-        font=("Arial", 14, "bold"),
-        bg="#000000",
-        fg="white",
-        padx=15, pady=8,
-        width=12,
-        cursor="hand2",
-        relief="ridge"
-    )
-        delete_btn.pack()   # <-- pack, not grid
-        delete_btn.bind("<Enter>", lambda e: delete_btn.config(bg="#222"))
-        delete_btn.bind("<Leave>", lambda e: delete_btn.config(bg="#000"))
-        delete_btn.bind("<Button-1>", lambda e: self.perform_fee_delete(data["fee_id"]))
-
-
-    def perform_fee_delete(self, fee_id):
-        import requests
-
-        try:
-            res = requests.delete(f"http://127.0.0.1:8000/admin/fees/delete/{fee_id}")
+            res = requests.put(
+            f"http://127.0.0.1:8000/admin/fees/update/{fee_id}",
+            json=payload
+            )
 
             if res.status_code == 200:
-                self.show_popup("Success", "Fee deleted successfully!", "info")
-                self.change_screen("Fee Deleted Successfully!",
-                                add_callback=self.load_delete_fee_screen)
+                self.show_popup("Success", "Fee Updated Successfully!", "success")
+                self.change_screen(
+                "Fee Updated Successfully",
+                add_callback=self.load_update_fee_screen
+                )
             else:
-                msg = res.json().get("detail", "Delete failed.")
+                msg = res.json().get("detail", "Update failed")
                 self.show_popup("Error", msg, "error")
 
-        except Exception as e:
-            self.show_popup("Backend Error", str(e), "error")
+        except requests.exceptions.RequestException as e:
+            self.show_popup(
+            "Network Error",
+            f"Unable to connect to server.\n{e}",
+            "error"
+            )
+            return       
 
-
+    # ===========================================================================
     # ===== Button to Fetch History =====
     def load_fee_history_screen(self):
-        import requests
         self.clear_content()
 
-    # ---- TITLE ----
+        # ---- TITLE ----
         tk.Label(
         self.content,
         text="Fee History",
         font=("Arial", 26, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=25)
+        ).pack(pady=25)
 
-    # ---- BACK BUTTON ----
+        # ---- BACK BUTTON ----
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
         back_frame.pack(anchor="w", padx=20)
 
@@ -1703,94 +2067,109 @@ class AdminUI:
         parent=back_frame,
         go_back_callback=self.load_dashboard,
         form_frame=None
-    )
+        )
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=10)
+        filter_frame.pack_propagate(False)
 
-    # ---- COLUMN DEFINITIONS ----
+        # ---- TABLE CONTAINER ----
+        table_frame = tk.Frame(self.content)
+        table_frame.pack(fill="both", expand=True, pady=(0, 10))
+
+        # ---- COLUMN DEFINITIONS ----
         columns = (
         "invoice_id", "student_id", "class_id", "fee_id",
         "amount_due", "amount_paid", "due_date",
         "status", "receipt_path"
-    )
+        )
 
-    # ---- FETCH ALL FEE HISTORY ----
+        # ---- FETCH ALL FEE HISTORY ----
         try:
-            res = requests.get("http://127.0.0.1:8000/admin/fees/all")
+            res = requests.get("http://127.0.0.1:8000/admin/fees/all/history")
             self.all_fee_history = res.json() if res.status_code == 200 else []
         except:
             self.all_fee_history = []
         # ------------ COLLECT VALID COLUMN VALUES ------------
         self.column_values_fee = {
-    "invoice_id": [str(r["invoice_id"]) for r in self.all_fee_history],
-    "student_id": [str(r["student_id"]) for r in self.all_fee_history],
-    "class_id": [str(r["class_id"]) for r in self.all_fee_history],
-    "fee_id": [str(r["fee_id"]) for r in self.all_fee_history],
-    "amount_due": [str(r["amount_due"]) for r in self.all_fee_history],
-    "amount_paid": [str(r["amount_paid"]) for r in self.all_fee_history],
-    "due_date": [r["due_date"] for r in self.all_fee_history],
-    "status": [r["status"] for r in self.all_fee_history],
-    "receipt_path": [r.get("receipt_path", "None") for r in self.all_fee_history],
-}
+                "invoice_id": [str(r["invoice_id"]) for r in self.all_fee_history],
+                "student_id": [str(r["student_id"]) for r in self.all_fee_history],
+                "class_id": [str(r["class_id"]) for r in self.all_fee_history],
+                "fee_id": [str(r["fee_id"]) for r in self.all_fee_history],
+                "amount_due": [str(r["amount_due"]) for r in self.all_fee_history],
+                "amount_paid": [str(r["amount_paid"]) for r in self.all_fee_history],
+                "due_date": [r["due_date"] for r in self.all_fee_history],
+                "status": [r["status"] for r in self.all_fee_history],
+                "receipt_path": [
+                    str(r.get("receipt_path")) if r.get("receipt_path") else "-"
+                    for r in self.all_fee_history
+                ]
 
-    # ---- TABLE CONTAINER ----
-        table_frame = tk.Frame(self.content)
-        table_frame.pack(fill="both", expand=True, padx=20, pady=20)
+            }
 
-    # ---- TABLE WIDGET ----
+        # ---- TABLE WIDGET ----
         self.history_tree = ttk.Treeview(
         table_frame, columns=columns, show="headings"
-    )
+        )
         self.history_tree.pack(fill="both", expand=True, side="left")
 
-    # ---- SCROLLBAR ----
+        # ---- SCROLLBAR ----
         y_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=self.history_tree.yview)
         self.history_tree.configure(yscrollcommand=y_scroll.set)
         y_scroll.pack(side="right", fill="y")
 
-    # ---- HEADERS ----
+        # ---- HEADERS ----
         for col in columns:
             self.history_tree.heading(col, text=col.replace("_", " ").title())
             self.history_tree.column(col, width=150, anchor="center")
 
-    # ====================================================
-    #               FILTER BAR (DROPDOWN + ENTRY)
-    # ====================================================
-
-        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
-        filter_frame.pack(pady=10)
-
-    # Sort by label
+        # Sort by label
         tk.Label(
         filter_frame,
         text="Sort By:",
         font=("Arial", 12, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=0, padx=5)
 
-    # Dropdown
+        # Dropdown
         filter_var = tk.StringVar()
         filter_dropdown = ttk.Combobox(
         filter_frame,
         textvariable=filter_var,
-        values=list(columns),
+        values=["student_id", "status"],
         state="readonly",
         width=18
-    )
+        )
         filter_dropdown.grid(row=0, column=1, padx=10)
 
         # Value entry
         filter_value_var = tk.StringVar()
-        # Value Entry (ONLY ONE ENTRY)
         filter_value = tk.Entry(
-    filter_frame,
-    textvariable=filter_value_var,
-    font=("Arial", 12),
-    width=20
-)
+        filter_frame,
+        textvariable=filter_value_var,
+        font=("Arial", 12),
+        width=20
+        )
         filter_value.grid(row=0, column=2, padx=10)
 
-
-    # ---------- BLACK BUTTON STYLE ----------
+        status_var = tk.StringVar()
+        status_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=status_var,
+        values=[
+        "PENDING",
+        "PAID",
+        "PARTIALLY_PAID",
+        "CANCELLED",
+        "DEACTIVATED"],
+        state="readonly",
+        width=20
+        )
+        status_dropdown.grid(row=0, column=2, padx=10)
+        filter_value.grid_remove()
+        status_dropdown.grid_remove()
+    
+        # ---------- BLACK BUTTON STYLE ----------
         def style_button(btn):
             btn.config(
             bg="#000000",
@@ -1801,25 +2180,74 @@ class AdminUI:
             relief="raised",
             cursor="arrow",
             font=("Arial", 12, "bold")
-        )
+            )
 
             btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
             btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
 
-    # ---- LOAD BUTTON ----
+        # ---- LOAD BUTTON ----
         load_btn = tk.Label(filter_frame, text="Load")
         style_button(load_btn)
         load_btn.grid(row=0, column=3, padx=10)
 
-    # ---- LOAD ALL BUTTON ----
+        # ---- LOAD ALL BUTTON ----
         load_all_btn = tk.Label(filter_frame, text="Load All")
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
 
-    # ====================================================
-    #                LOAD / FILTER FUNCTIONS
-    # ====================================================
-    
+        # ---------------------
+        def disable_load():
+            load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow", relief="raised")
+            load_btn.unbind("<Enter>")
+            load_btn.unbind("<Leave>")
+            load_btn.unbind("<Button-1>")
+
+        def enable_load():
+            load_btn.config(bg="#000000", fg="white", cursor="hand2", relief="raised")
+            load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+            load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+            load_btn.bind("<Button-1>", lambda e: load_filtered())
+
+        disable_load()  # initial state
+ 
+        # ----------------------------
+        def validate_filter(*args):
+            col = filter_var.get()
+            if col == "student_id":
+                if filter_value_var.get().isdigit():
+                    enable_load()
+                else:
+                    disable_load()
+
+            elif col == "status":
+                if status_var.get():
+                    enable_load()
+                else:
+                    disable_load()
+ 
+            else:
+                disable_load()
+
+        filter_var.trace_add("write", validate_filter)
+        filter_value_var.trace_add("write", validate_filter)
+        status_var.trace_add("write", validate_filter)
+        
+        # -----------------------------
+        def on_filter_change(event=None):
+            filter_value_var.set("")
+            status_var.set("")
+
+            filter_value.grid_remove()
+            status_dropdown.grid_remove()
+
+            if filter_var.get() == "status":
+                status_dropdown.grid(row=0, column=2, padx=10)
+            else:
+                filter_value.grid(row=0, column=2, padx=10)
+
+        filter_dropdown.bind("<<ComboboxSelected>>", on_filter_change)
+        
+
         def update_fee_history_table(data):
             for row in self.history_tree.get_children():
                 self.history_tree.delete(row)
@@ -1834,34 +2262,50 @@ class AdminUI:
                 row["amount_paid"],
                 row["due_date"],
                 row["status"],
-                row.get("receipt_path", "None")
+                row.get("receipt_path") or "-"
             ))
 
         def load_filtered():
+            import requests
+
+            params = {}
             col = filter_var.get().strip()
-            val = filter_value.get().strip()
 
-            if not col or not val:
-                return
-            
-            valid_list = self.column_values_fee.get(col, [])
-            valid_lower = [str(v).lower() for v in valid_list]
+            if col == "student_id":
+                val = filter_value_var.get().strip()
+                if not val.isdigit():
+                    return
+                params["student_id"] = int(val)
 
-            if val not in valid_lower:
+            elif col == "status":
+                val = status_var.get().strip()
+                if not val:
+                    return
+                params["status"] = val
+
+            else:
                 self.show_popup(
-            "Invalid Search Value",
-            f"'{val}' not found in column '{col}'.",
-            "warning"
-        )
-                filter_value_var.set("")      # clear invalid input
-                return
-            
-            filtered = [
-            row for row in self.all_fee_history
-            if str(row[col]).lower() == val.lower()
-        ]
+                "Invalid Filter",
+                "Only Student ID or Status can be filtered.",
+                "warning"
+                )
+                return    
 
-            update_fee_history_table(filtered)
+            try:
+                res = requests.get(
+                "http://127.0.0.1:8000/admin/fees/all/history",
+                params=params,
+                timeout=10
+                )
+
+                if res.status_code == 200:
+                    update_fee_history_table(res.json())
+                else:
+                    self.show_popup("Error", "Failed to load fee history", "error")
+
+            except Exception as e:
+                self.show_popup("Network Error", str(e), "error")
+ 
 
         def load_all():
             update_fee_history_table(self.all_fee_history)
@@ -1869,10 +2313,11 @@ class AdminUI:
         load_btn.bind("<Button-1>", lambda e: load_filtered())
         load_all_btn.bind("<Button-1>", lambda e: load_all())
 
-    # ---- DEFAULT LOAD ----
+        # ---- DEFAULT LOAD ----
         update_fee_history_table(self.all_fee_history)
 
-
+    
+    # ========================================================================
     # ====== Add Payment Methods ======
     def load_add_payment_method_screen(self):
         self.clear_content()
@@ -1890,7 +2335,6 @@ class AdminUI:
 
         # --------- INPUT VARS ----------
         name_var = tk.StringVar()
-        desc_var = tk.StringVar()
 
         # --------- FORM LABELS + ENTRIES ----------
         tk.Label(form, text="Method Name:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=0, padx=10, pady=10)
@@ -1907,6 +2351,7 @@ class AdminUI:
         form_frame=form                          
         )
         self.content.update_idletasks()
+
         # ---- DISABLED BUTTON (initial) ----
         add_btn = tk.Label(
         self.content,
@@ -1925,84 +2370,88 @@ class AdminUI:
 
         # ------ VALIDATION ------
         def validate_add_method(*args):
-            if name_var.get().strip() and desc_var.get().strip():
-                add_btn.config(bg="#000000", fg="white", cursor="hand2")
+            add_btn.unbind("<Button-1>")
+            add_btn.unbind("<Enter>")
+            add_btn.unbind("<Leave>")
 
+            if name_var.get().strip():
+                add_btn.config(bg="#000000", fg="white", cursor="hand2")
+ 
                 add_btn.bind("<Enter>", lambda e: add_btn.config(bg="#222222"))
                 add_btn.bind("<Leave>", lambda e: add_btn.config(bg="#000000"))
                 add_btn.bind("<Button-1>", lambda e: submit_method())
             else:
                 add_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                add_btn.unbind("<Enter>")
-                add_btn.unbind("<Leave>")
-                add_btn.unbind("<Button-1>")
 
-        # Track input changes
         name_var.trace_add("write", validate_add_method)
-        desc_var.trace_add("write", validate_add_method)
+
 
         # ---------- SUBMIT FUNCTION ----------
         def submit_method():
             method_name = name_var.get().strip()
+
             if not method_name:
                 self.show_popup("Missing Input", "Method Name cannot be empty!", "warning")
                 return
-            method_name = method_name.title()
-            payload = {
-            "method_name": method_name
-            }
-            try:
-                import requests
-                res = requests.post("http://127.0.0.1:8000/admin/payment-methods/add", json=payload)
 
-                if res.status_code == 200:
-                    self.change_screen("Payment Method Added!",
-                                    add_callback=self.load_add_payment_method_screen)
+            payload = {"method_name": method_name.upper()}
+
+            import requests
+            try:
+                res = requests.post(
+                "http://127.0.0.1:8000/admin/payment-methods/add",
+                json=payload
+                )
+
+                if res.status_code == 201:
+                    self.show_popup("Success", "Payment Method Added Successfully!", "success")
+                    self.change_screen(
+                    "Payment Method Added",
+                    add_callback=self.load_add_payment_method_screen
+                    )
                 else:
-                    self.change_screen("Error Adding Method!")
+                    msg = res.json().get("detail", "Failed to add payment method")
+                    self.show_popup("Error", msg, "error")
 
             except Exception as e:
-                print("UPLOAD ERROR:", e)
-                self.change_screen("Backend Error!")
+                self.show_popup("Backend Error", str(e), "error")
 
 
+    # ======================================================================
     # ===== Button to View Payment Methods =====
     def load_view_methods_screen(self):
         self.clear_content()
 
-    # ---- Title ----
+        # ---- Title ----
         tk.Label(
         self.content, text="Payment Methods",
         font=("Arial", 26, "bold"), bg="#ECF0F1", fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
-    # ---- Back button ----
+        # ---- Back button ----
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
         back_frame.pack(anchor="w", padx=20)
         self.create_back_button(back_frame, self.load_dashboard, None)
 
-    # ----- TABLE FRAME -----
+        # ----- TABLE FRAME -----
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
         cols = ("method_id", "method_name", "is_active")
 
-    # ====================================================
-    #     FILTER BAR (Dropdown + Entry + Black Buttons)
-    # ====================================================
         filter_frame = tk.Frame(self.content, bg="#ECF0F1")
         filter_frame.pack(pady=10)
 
-    # Label
+        # Label
         tk.Label(
         filter_frame,
         text="Sort By:",
         font=("Arial", 12, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=0, padx=5)
 
-    # Dropdown
+        # Dropdown
         filter_var = tk.StringVar()
         filter_dropdown = ttk.Combobox(
         filter_frame,
@@ -2010,22 +2459,22 @@ class AdminUI:
         values=["method_id", "method_name", "is_active"],
         state="readonly",
         width=18
-    )
+        )
         filter_dropdown.grid(row=0, column=1, padx=10)
 
-    # Value Entry
+        # Value Entry
         filter_value_var = tk.StringVar()
 
-# Value Entry (ONLY ONE ENTRY)
+        # Value Entry (ONLY ONE ENTRY)
         filter_value = tk.Entry(
-    filter_frame,
-    textvariable=filter_value_var,
-    font=("Arial", 12),
-    width=20
-)
+        filter_frame,
+        textvariable=filter_value_var,
+        font=("Arial", 12),
+        width=20
+        )
         filter_value.grid(row=0, column=2, padx=10)
 
-    # ---------- BUTTON STYLE ----------
+        # ---------- BUTTON STYLE ----------
         def style_button(btn):
             btn.config(
             bg="#000000",
@@ -2036,24 +2485,24 @@ class AdminUI:
             relief="raised",
             cursor="hand2",
             font=("Arial", 12, "bold")
-        )
+            )
             btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
             btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
 
-    # ----- LOAD BUTTON -----
+        # ----- LOAD BUTTON -----
         load_btn = tk.Label(filter_frame, text="Load")
         style_button(load_btn)
         load_btn.grid(row=0, column=3, padx=10)
 
-    # ----- LOAD ALL BUTTON -----
+        # ----- LOAD ALL BUTTON -----
         load_all_btn = tk.Label(filter_frame, text="Load All")
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
 
-    # ------------------------- CALLBACKS -------------------------
+        # ------------------------- CALLBACKS -------------------------
         def load_filtered():
             col = filter_var.get().strip()
-            val = filter_value.get().strip()
+            val = filter_value.get().strip().lower()
 
             if not col or not val:
                 return
@@ -2062,10 +2511,10 @@ class AdminUI:
 
             if val not in valid_lower:
                 self.show_popup(
-            "Invalid Search Value",
-            f"'{val}' not found in column '{col}'.",
-            "warning"
-        ) 
+                "Invalid Search Value",
+                f"'{val}' not found in column '{col}'.",
+                "warning"
+            ) 
                 filter_value_var.set("")
                 return
             filtered = [
@@ -2080,14 +2529,14 @@ class AdminUI:
         load_btn.bind("<Button-1>", lambda e: load_filtered())
         load_all_btn.bind("<Button-1>", lambda e: load_all())
 
-    # ---------- SCROLLBARS ----------
+        # ---------- SCROLLBARS ----------
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
 
         x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
         x_scroll.pack(side="bottom", fill="x")
 
-    # ----------- TABLE -----------
+        # ----------- TABLE -----------
         self.method_tree = ttk.Treeview(
             table_frame, columns=cols, show="headings",
             yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set
@@ -2101,23 +2550,29 @@ class AdminUI:
             self.method_tree.heading(col, text=col)
             self.method_tree.column(col, width=200, anchor="center")
 
-    # ====================== FETCH INITIAL DATA ======================
+        # ====================== FETCH INITIAL DATA ======================
         import requests
         try:
-            res = requests.get("http://127.0.0.1:8000/admin/payment-methods")
-            self.all_methods = res.json() if res.status_code == 200 else []
-            # ------------ COLLECT VALID COLUMN VALUES FOR SEARCH ------------
+            res = requests.get("http://127.0.0.1:8000/admin/payment-methods/")
+            if res.status_code == 200:
+                self.all_methods = res.json()
+            else:
+                self.all_methods = []
+
             self.column_values_payment_methods = {
-    "method_id": [str(r["method_id"]) for r in self.all_methods],
-    "method_name": [r["method_name"] for r in self.all_methods],
-    "is_active": [str(r["is_active"]) for r in self.all_methods],
-}
-        except:
+                "method_id": [str(r["method_id"]) for r in self.all_methods],
+                "method_name": [r["method_name"].lower() for r in self.all_methods],
+                "is_active": [str(r["is_active"]).lower() for r in self.all_methods],
+            }
+
+        except Exception as e:
             self.all_methods = []
+            self.show_popup("Backend Error", str(e), "error")
 
         self.update_method_table(self.all_methods)
 
-
+    
+    # ================================================================
     # ===== View method by IDs =====
     def load_view_method_by_id_screen(self):
         self.clear_content()
@@ -2163,16 +2618,17 @@ class AdminUI:
 
         # Enable / Disable search button
         def validate(*args):
-            if method_id_var.get().strip():
-                search_btn.config(bg="#000", fg="white", cursor="hand2")
-                search_btn.bind("<Enter>", lambda e: search_btn.config(bg="#222"))
-                search_btn.bind("<Leave>", lambda e: search_btn.config(bg="#000"))
+            search_btn.unbind("<Button-1>")
+            search_btn.unbind("<Enter>")
+            search_btn.unbind("<Leave>")
+
+            if method_id_var.get().strip().isdigit():
+                search_btn.config(bg="#000000", fg="white", cursor="hand2")
+                search_btn.bind("<Enter>", lambda e: search_btn.config(bg="#222222"))
+                search_btn.bind("<Leave>", lambda e: search_btn.config(bg="#000000"))
                 search_btn.bind("<Button-1>", lambda e: self.fetch_method_details(method_id_var.get().strip()))
             else:
                 search_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                search_btn.unbind("<Enter>")
-                search_btn.unbind("<Leave>")
-                search_btn.unbind("<Button-1>")
 
         method_id_var.trace_add("write", validate)
 
@@ -2190,9 +2646,27 @@ class AdminUI:
             info = tk.Frame(self.content, bg="#ECF0F1")
             info.pack(pady=20)
 
-            for i, (key, value) in enumerate(data.items()):
-                tk.Label(info, text=f"{key}:", font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=0, padx=10, pady=8)
-                tk.Label(info, text=str(value), font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=1, padx=10, pady=8)
+            fields = ["method_id", "method_name", "is_active"]
+
+            for i, key in enumerate(fields):
+                if key == "is_active":
+                    value = "Active" if data["is_active"] else "Inactive"
+                else:
+                    value = data.get(key)
+
+                tk.Label(
+                info,
+                text=f"{key}:",
+                font=("Arial", 14),
+                bg="#ECF0F1"
+                ).grid(row=i, column=0, padx=10, pady=8, sticky="w")
+
+                tk.Label(
+                info,
+                text=str(value),
+                font=("Arial", 14),
+                bg="#ECF0F1"
+                ).grid(row=i, column=1, padx=10, pady=8, sticky="w")
 
             # Back button
             btn_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -2200,17 +2674,20 @@ class AdminUI:
         
             self.create_back_button(
             parent=btn_frame,
-            go_back_callback=self.load_dashboard,
-            form_frame=None     # table screen : no form entries
+            go_back_callback=self.load_view_methods_screen,
+            form_frame=None    
             )
             
     def fetch_method_details(self, method_id):
         if not method_id.strip():
             self.show_popup("Missing Input", "Method ID cannot be empty!", "warning")
             return
+        
         if not method_id.isdigit() or int(method_id) <= 0:
             self.show_popup("Invalid Method ID", "Method ID must be a positive number!", "warning")
             return 
+        
+        # ---------------------
         import requests
         try:
             res = requests.get(f"http://127.0.0.1:8000/admin/payment-methods/{method_id}")
@@ -2230,7 +2707,8 @@ class AdminUI:
             self.show_popup("Backend Error", str(e), "error")
             return
 
-
+    
+    # ===========================================================
     # ===== Button to Update Payment Method =====
     def load_update_method_screen(self):
         self.clear_content()
@@ -2259,7 +2737,7 @@ class AdminUI:
         # Back Button from global function
         self.create_back_button(
         parent=btn_frame,
-        go_back_callback=self.load_dashboard,    
+        go_back_callback=self.load_view_methods_screen,
         form_frame=form                          
         )
         self.content.update_idletasks()
@@ -2285,7 +2763,18 @@ class AdminUI:
 
         tk.Label(form, text="Is_Active:", font=("Arial", 14), bg="#ECF0F1").grid(row=2, column=0, padx=10, pady=8)
         details_var = tk.StringVar()
-        details_entry = tk.Entry(form, textvariable=details_var, font=("Arial", 14), width=25, state="disabled")
+
+        from tkinter.ttk import Combobox
+
+        details_var = tk.StringVar()
+        details_entry = Combobox(
+        form,
+        textvariable=details_var,
+        values=["True", "False"],
+        font=("Arial", 14),
+        width=22,
+        state="disabled"
+        )
         details_entry.grid(row=2, column=1, padx=10, pady=8)
 
         # ----- Update Button -----
@@ -2300,13 +2789,16 @@ class AdminUI:
 
         # ====== VALIDATE LOAD BUTTON ======
         def validate_load_btn(*args):
-            if method_id_var.get().strip():
-               load_btn.config(bg="#000000", fg="white", cursor="hand2")
-               load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
-               load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
-               load_btn.bind("<Button-1>", lambda e: self.load_method_details(
-                    method_id_var.get(), name_entry, details_entry, name_var, details_var, update_btn
-                ))
+            mid = method_id_var.get().strip()
+            if mid.isdigit() and int(mid) > 0:
+                load_btn.config(bg="#000000", fg="white", cursor="hand2")
+                load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+                load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+                load_btn.bind("<Button-1>", lambda e: self.load_method_details(
+                                                    mid, name_entry, details_entry,
+                                                    name_var, details_var, update_btn
+                                                )
+                            )
             else:
                 load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
                 load_btn.unbind("<Enter>")
@@ -2315,43 +2807,38 @@ class AdminUI:
 
         method_id_var.trace_add("write", validate_load_btn)
         
-    def load_method_details(self, method_id, name_entry, details_entry, name_var, details_var, update_btn):
-    
+    def load_method_details(self, method_id, name_entry, details_entry,
+                        name_var, details_var, update_btn):
         import requests
 
         try:
-            url = f"http://127.0.0.1:8000/admin/payment-methods/{method_id}"
-            response = requests.get(url)
-
-            if response.status_code == 200:
-                if response.status_code != 200:
-                    self.show_popup("Not Found", "Payment Method not found!", "error")
-                    return
-                data = response.json()
-
-                name_entry.config(state="normal")
-                details_entry.config(state="normal")
-
-                name_var.set(data["method_name"])
-                details_var.set(data["details"])
-
-                print("Loaded:", data)
-            else:
-                self.show_popup("Backend Error", str(e), "error")
+            res = requests.get(
+            f"http://127.0.0.1:8000/admin/payment-methods/{method_id}"
+            )
+ 
+            if res.status_code != 200:
+                self.show_popup("Not Found", "Payment Method not found!", "error")
                 return
 
+            data = res.json()
+
+            name_entry.config(state="normal")
+            details_entry.config(state="readonly")
+
+            name_var.set(data["method_name"])
+            details_var.set("True" if data["is_active"] else "False")
+
         except Exception as e:
-            print("Error loading method details:", e)
+            self.show_popup("Backend Error", str(e), "error")
             return
 
         # ===== VALIDATE & ENABLE UPDATE BUTTON =====
         def validate_update(*args):
-            if name_var.get().strip() and details_var.get().strip():
+            if name_var.get().strip() and details_var.get() in ("True", "False"):
                 update_btn.config(
                 state="normal",
-                bg="#000000", fg="white",
-                activebackground="#111111",
-                activeforeground="white",
+                bg="#000000",
+                fg="white",
                 cursor="hand2"
                 )
                 update_btn.bind("<Enter>", lambda e: update_btn.config(bg="#222222"))
@@ -2359,53 +2846,50 @@ class AdminUI:
             else:
                 update_btn.config(
                 state="disabled",
-                bg="#D5D8DC", fg="#AEB6BF",
+                bg="#D5D8DC",
+                fg="#AEB6BF",
                 cursor="arrow"
                 )
 
         name_var.trace_add("write", validate_update)
         details_var.trace_add("write", validate_update)
+        details_entry.bind("<<ComboboxSelected>>", lambda e: validate_update())
 
         # ===== SUBMIT UPDATE =====
         def update_method():
             method_name = name_var.get().strip()
             details = details_var.get().strip()
 
-    # ---------- VALIDATION: METHOD NAME ----------
+            # ---------- VALIDATION: METHOD NAME ----------
             if not method_name:
                 self.show_popup("Missing Input", "Method Name cannot be empty!", "warning")
                 return
 
-    # Title case name
-            method_name = method_name.title()
-
-            allowed_values = ["true", "false"]
-            if details.lower() not in allowed_values:
+            if details not in ("True", "False"):
                 self.show_popup(
-            "Invalid Value",
-            "Details must be either 'True' or 'False' only.",
-            "warning"
-        )
+                "Invalid Value",
+                "Details must be either 'True' or 'False' only.",
+                "warning"
+                )
                 return
 
-            details = "True" if details.lower() == "true" else "False"
-
             payload = {
-        "method_name": method_name,
-        "details": details
-    }       
+                "method_name": method_name,
+                "is_active": details == "True"
+                }
+
             try:
                 res = requests.put(
-            f"http://127.0.0.1:8000/admin/payment-methods/update/{method_id}",
-            json=payload
-        )
+                    f"http://127.0.0.1:8000/admin/payment-methods/update/{method_id}",
+                    json=payload
+                )
 
                 if res.status_code == 200:
                     self.show_popup("Success", "Payment Method Updated Successfully!", "info")
                     self.change_screen(
-                "Payment Method Updated!",
-                add_callback=self.load_update_method_screen
-            )
+                        "Payment Method Updated!",
+                        add_callback=self.load_update_method_screen
+                    )
                 else:
                     msg = res.json().get("detail", "Update failed!")
                     self.show_popup("Error", msg, "error")
@@ -2415,7 +2899,8 @@ class AdminUI:
                 return
 
         update_btn.config(command=update_method)
-   
+
+    # ===========================================================
     # ==== Button to delete any payment method ====
     def load_delete_method_screen(self):
         self.clear_content()
@@ -2492,7 +2977,12 @@ class AdminUI:
         def perform_delete():
             mid = method_id_var.get().strip()
             if not mid.isdigit() or int(mid) <= 0:
-                self.show_popup("Invalid ID", "Method ID should be a Positve Number!", "warning")
+                self.show_popup(
+                "Invalid ID",
+                "Method ID should be a positive number!",
+                "warning"
+                )
+                return
 
             import requests
             try:
@@ -2505,8 +2995,13 @@ class AdminUI:
                     self.change_screen("Payment Method Deactivated Successfully",
                                     add_callback=self.load_delete_method_screen)
                 else:
-                    self.show_popup("Failure", "Dactivation Failed", "error")
-                    self.change_screen("Failed to Delete Payment Method")
+                    msg = "Deactivation failed"
+                    try:
+                        msg = res.json().get("detail", msg)
+                    except:
+                        pass
+
+                    self.show_popup("Failure", msg, "error")
 
             except:
                 self.show_popup("Error", "Backend Error", "error")
@@ -2518,45 +3013,44 @@ class AdminUI:
     def load_view_all_student_attendance(self):
         self.clear_content()
 
-    # ---- Page Title ----
+        # ---- Page Title ----
         tk.Label(
         self.content,
         text="All Student Attendance Records",
         font=("Arial", 24, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
-    # ---- Back Button ----
+        # ---- Back Button ----
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
         back_frame.pack(anchor="w", padx=20)
         self.create_back_button(back_frame, self.load_dashboard, None)
 
-    # ---- Table Frame ----
+        # ---- Table Frame ----
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-    # ---- FILTER BAR ----
+        # ---- FILTER BAR ----
         filter_frame = tk.Frame(self.content, bg="#ECF0F1")
         filter_frame.pack(pady=10)
 
-    # Columns available for filtering
+        # Columns available for filtering
         cols = (
-        "attendance_id", "student_id", "student_name", "subject_id",
-        "subject_name", "class_id", "teacher_id",
+        "attendance_id", "student_id", "subject_id", "class_id",
         "lecture_date", "status", "remarks"
-    )
+        )
 
-    # Label
+        # Label
         tk.Label(
         filter_frame,
         text="Sort By:",
         font=("Arial", 12, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=0, padx=5)
 
-    # Dropdown
+        # Dropdown
         filter_var = tk.StringVar()
         filter_dropdown = ttk.Combobox(
         filter_frame,
@@ -2564,21 +3058,21 @@ class AdminUI:
         values=list(cols),
         state="readonly",
         width=18
-    )
+        )
         filter_dropdown.grid(row=0, column=1, padx=10)
 
-    # Entry for filter value
+        # Entry for filter value
         filter_value_var = tk.StringVar()
         filter_value = tk.Entry(
-    filter_frame,
-    textvariable=filter_value_var,
-    font=("Arial", 12),
-    width=20
-)
+        filter_frame,
+        textvariable=filter_value_var,
+        font=("Arial", 12),
+        width=20
+        )
         filter_value.grid(row=0, column=2, padx=10)
 
 
-    # ---- Button Styler ----
+        # ---- Button Styler ----
         def style_button(btn):
             btn.config(
             bg="#000000", fg="white",
@@ -2589,24 +3083,24 @@ class AdminUI:
             btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
             btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
 
-    # Load Button
+        # Load Button
         load_btn = tk.Label(filter_frame, text="Load")
         style_button(load_btn)
         load_btn.grid(row=0, column=3, padx=10)
 
-    # Load All Button
+        # Load All Button
         load_all_btn = tk.Label(filter_frame, text="Load All")
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
 
-    # ---- Scrollbars ----
+        # ---- Scrollbars ----
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
 
         x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
         x_scroll.pack(side="bottom", fill="x")
 
-    # ---- Table Widget ----
+        # ---- Table Widget ----
         self.att_tree = ttk.Treeview(
         table_frame,
         columns=cols,
@@ -2614,57 +3108,60 @@ class AdminUI:
         yscrollcommand=y_scroll.set,
         xscrollcommand=x_scroll.set,
         height=18
-    )
+        )
         self.att_tree.pack(fill="both", expand=True)
 
         y_scroll.config(command=self.att_tree.yview)
         x_scroll.config(command=self.att_tree.xview)
 
-    # Column widths
+        # Column widths
         col_widths = {
         "attendance_id": 120,
         "student_id": 100,
-        "student_name": 180,
         "subject_id": 100,
-        "subject_name": 180,
         "class_id": 100,
-        "teacher_id": 100,
         "lecture_date": 150,
         "status": 80,
         "remarks": 200
-    }
+        }
 
-    # Table headers
+        # Table headers
         for col in cols:
             self.att_tree.heading(col, text=col.replace("_", " ").title())
             self.att_tree.column(col, width=col_widths[col], anchor="center")
 
-    # ---- Fetch backend data ----
+        # ---- Fetch backend data ----
         import requests
         try:
             res = requests.get("http://127.0.0.1:8000/admin/attendance/student")
             self.all_attendance = res.json() if res.status_code == 200 else []
+
             # ====== VALIDATION DICT FOR ATTENDANCE TABLE ======
             self.column_values_attendance = {
-    "attendance_id": [str(r["attendance_id"]) for r in self.all_attendance],
-    "student_id":     [str(r["student_id"]) for r in self.all_attendance],
-    "student_name":   [r["student_name"] for r in self.all_attendance],
-    "subject_id":     [str(r["subject_id"]) for r in self.all_attendance],
-    "subject_name":   [r["subject_name"] for r in self.all_attendance],
-    "class_id":       [str(r["class_id"]) for r in self.all_attendance],
-    "teacher_id":     [str(r["teacher_id"]) for r in self.all_attendance],
-    "lecture_date":   [r["lecture_date"] for r in self.all_attendance],
-    "status":         [r["status"] for r in self.all_attendance],
-    "remarks":        [r["remarks"] for r in self.all_attendance],
-}
+                "attendance_id": [str(r["attendance_id"]) for r in self.all_attendance],
+                "student_id":     [str(r["student_id"]) for r in self.all_attendance],
+                "subject_id":     [str(r["subject_id"]) for r in self.all_attendance],
+                "class_id":       [str(r["class_id"]) for r in self.all_attendance],
+                "lecture_date":   [r["lecture_date"] for r in self.all_attendance],
+                "status":         [r["status"] for r in self.all_attendance],
+                "remarks":        [r["remarks"] for r in self.all_attendance],
+                }
 
-        except:
+        except Exception as e:
             self.all_attendance = []
+            self.show_popup("Error", f"Failed to load attendance: {e}", "error")
 
-    # ---- Update table ----
+        # ---- Update table ----
         def update_att_table(data):
             for row in self.att_tree.get_children():
                 self.att_tree.delete(row)
+
+            status_map = {
+                "P": "Present",
+                "A": "Absent",
+                "L": "Late",
+                "LE": "Leave"
+            }
 
             for r in data:
                 self.att_tree.insert(
@@ -2672,21 +3169,18 @@ class AdminUI:
                 values=(
                     r["attendance_id"],
                     r["student_id"],
-                    r["student_name"],
                     r["subject_id"],
-                    r["subject_name"],
                     r["class_id"],
-                    r["teacher_id"],
                     r["lecture_date"],
-                    r["status"],
+                    status_map.get(r["status"], r["status"]),
                     r["remarks"]
                 )
             )
 
-    # ---- FILTER LOGIC ----
+        # ---- FILTER LOGIC ----
         def load_filtered():
             col = filter_var.get().strip()
-            val = filter_value.get().strip()
+            val = filter_value.get().strip().lower()
 
             if not col or not val:
                 return
@@ -2695,17 +3189,17 @@ class AdminUI:
 
             if val not in valid_lower:
                 self.show_popup(
-            "Invalid Search Value",
-            f"'{val}' not found in column '{col}'.",
-            "warning"
-        )
+                    "Invalid Search Value",
+                    f"'{val}' not found in column '{col}'.",
+                    "warning"
+                )
                 filter_value_var.set("")
                 return
             
             filtered = [
             row for row in self.all_attendance
             if str(row[col]).lower() == val.lower()
-        ]
+            ]
 
             update_att_table(filtered)
 
@@ -2715,7 +3209,7 @@ class AdminUI:
         load_btn.bind("<Button-1>", lambda e: load_filtered())
         load_all_btn.bind("<Button-1>", lambda e: load_all())
 
-    # INITIAL LOAD
+        # INITIAL LOAD
         update_att_table(self.all_attendance)
 
 
@@ -2767,7 +3261,7 @@ class AdminUI:
 
         # Enable dark mode on typing
         def validate_load(*args):
-            if att_id_var.get().strip():
+            if att_id_var.get().isdigit():
                 load_btn.config(bg="#000000", fg="white", cursor="hand2")
                 load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
                 load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
@@ -2799,20 +3293,23 @@ class AdminUI:
         # ------ BACKEND FETCH ------
         def load_attendance():
             att_id = att_id_var.get().strip()
+
+            result_box.config(state="normal")
             result_box.delete("1.0", "end")
+
             if not att_id:
                 self.show_popup("Missing Input", "Attendance ID cannot be empty!", "warning")
                 return
-            import requests
 
             if not att_id.isdigit() or int(att_id) <= 0:
                 self.show_popup(
-            "Invalid ID",
-            "Attendance ID must be a positive number!",
-            "warning"
-        )
+                    "Invalid ID",
+                    "Attendance ID must be a positive number!",
+                    "warning"
+                )
                 return
-
+            
+            import requests
             try:
                 res = requests.get(f"http://127.0.0.1:8000/admin/attendance/student/{att_id}")
 
@@ -2820,30 +3317,35 @@ class AdminUI:
                     result_box.insert("end", "Attendance record not found")
                     return
 
+                if res.status_code != 200:
+                    result_box.insert("end", "Failed to fetch attendance record")
+                    return
+
                 data = res.json()
+                status_map = {"P": "Present", "A": "Absent", "L": "Late"}
+                status = status_map.get(data["status"], data["status"])
 
                 formatted = f"""
                     Attendance ID : {data['attendance_id']}
                     Student ID    : {data['student_id']}
-                    Student Name  : {data['student_name']}
                     Subject ID    : {data['subject_id']}
-                    Subject Name  : {data['subject_name']}
                     Class ID      : {data['class_id']}
-                    Teacher ID    : {data['teacher_id']}
                     Lecture Date  : {data['lecture_date']}
-                    Status        : {data['status']}
+                    Status        : {status}
                     Remarks       : {data['remarks']}
                     """
                 result_box.insert("end", formatted)
+                result_box.config(state="disabled")
 
             except Exception as e:
                 result_box.insert("end", f"Error fetching data: {e}")
+                result_box.config(state="disabled")
 
     # ==== Button to view student's attendance with date filters ====
     def load_filter_student_attendance_screen(self):
         self.clear_content()
 
-    # ---------------- PAGE HEADER ----------------
+        # ---------------- PAGE HEADER ----------------
         tk.Label(
         self.content,
         text="Filter Student Attendance by Date",
@@ -2856,31 +3358,48 @@ class AdminUI:
         form.pack(pady=10)
 
         # ---- FORM INPUTS -----
+        subjects_data = fetch_subjects()  # <-- backend call
+        subject_options = ["None"] + [f"{s['subject_id']} - {s['subject_name']}" for s in subjects_data]
+
         labels = ["Student ID:", "Date From (YYYY-MM-DD):", "Date To (YYYY-MM-DD):", "Subject ID (optional):"]
         vars_list = [tk.StringVar(), tk.StringVar(), tk.StringVar(), tk.StringVar()]
-    
+
         entries = []
 
-        # DATE PICKER ENABLED VERSION
         for i, label in enumerate(labels):
 
-            tk.Label(form, text=label, font=("Arial", 14), bg="#ECF0F1").grid(row=i, column=0, padx=10, pady=8)
+            tk.Label(form, text=label, font=("Arial", 14), bg="#ECF0F1")\
+            .grid(row=i, column=0, padx=10, pady=8)
 
             var = vars_list[i]
 
             if label.startswith("Date From") or label.startswith("Date To"):
 
-                entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=20)
+                entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=22)
                 entry.grid(row=i, column=1, padx=5, pady=8)
 
                 tk.Button(
-            form,
-            text="calendar",
-            font=("Arial", 12),
-            bg="white",
-            relief="flat",
-            command=lambda v=var, e=entry: self.open_calendar_popup(e, v)
-        ).grid(row=i, column=2, padx=5)
+                    form,
+                    text="calendar",
+                    font=("Arial", 12),
+                    bg="white",
+                    relief="flat",
+                   command=lambda v=var, e=entry: self.open_calendar_popup(e, v)
+                ).grid(row=i, column=2, padx=5)
+
+            elif label.startswith("Subject"):
+                from tkinter.ttk import Combobox
+                var.set("None")
+
+                entry = Combobox(
+                form, 
+                textvariable=var, 
+                values=subject_options,
+                state="readonly",
+                font=("Arial",14),
+                width=22
+            )
+                entry.grid(row=i, column=1, padx=10, pady=8)
 
             else:
                 entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=25)
@@ -2888,9 +3407,6 @@ class AdminUI:
 
             entries.append(entry)
 
-# -------------------------------------
-#  LOOP FINISH → NOW unpack variables
-# -------------------------------------
         student_var = vars_list[0]
         from_var    = vars_list[1]
         to_var      = vars_list[2]
@@ -2921,6 +3437,10 @@ class AdminUI:
 
         # --------- VALIDATION FOR DARK MODE ----------
         def validate_load(*args):
+            load_btn.unbind("<Button-1>")
+            load_btn.unbind("<Enter>")
+            load_btn.unbind("<Leave>")
+
             if student_var.get().strip() and from_var.get().strip() and to_var.get().strip():
                 load_btn.config(bg="#000000", fg="white", cursor="hand2")
 
@@ -2929,9 +3449,6 @@ class AdminUI:
                 load_btn.bind("<Button-1>", lambda e: load_attendance())
             else:
                 load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                load_btn.unbind("<Enter>")
-                load_btn.unbind("<Leave>")
-                load_btn.unbind("<Button-1>")
 
         student_var.trace_add("write", validate_load)
         from_var.trace_add("write", validate_load)
@@ -2944,10 +3461,18 @@ class AdminUI:
         # ---------- BACKEND FUNCTION ----------
         def load_attendance():
             import requests
+            from datetime import datetime
+
             student_id = student_var.get().strip()
             date_from = from_var.get().strip()
             date_to = to_var.get().strip()
-            subject_id_raw = subject_var.get().strip()
+            subject_val = subject_var.get().strip()
+
+            if subject_val == "" or subject_val == "None":
+                subject_id = None
+            else:
+                subject_id = int(subject_val.split(" - ")[0])
+
 
             if not student_id or not student_id.isdigit() or int(student_id) <= 0:
                 self.show_popup("Invalid Student ID", "Student ID must be a positive number.", "warning")
@@ -2975,19 +3500,12 @@ class AdminUI:
                 self.show_popup("Invalid Range", "Date From cannot be greater than Date To.", "warning")
                 return
 
-            if subject_id_raw:
-                if not subject_id_raw.isdigit() or int(subject_id_raw) <= 0:
-                    self.show_popup("Invalid Subject ID", "Subject ID must be a positive number.", "warning")
-                    return
-                subject_id = int(subject_id_raw)
-            else:
-                subject_id = None      
             try:
                 payload = {
                     "student_id": int(student_id),
                     "date_from": date_from,
                     "date_to": date_to,
-                    "subject_id": (int(subject_id) if subject_id.get().strip() else None)
+                    "subject_id": subject_id
                 }
 
                 # Clear old results
@@ -3029,25 +3547,32 @@ class AdminUI:
 
                 tree = ttk.Treeview(table_frame, columns=cols, show="headings", height=12)
 
-        # scroll
+                # scroll
                 y_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
                 tree.configure(yscroll=y_scroll.set)
                 y_scroll.pack(side="right", fill="y")
 
-        # headings
+                x_scroll = ttk.Scrollbar(table_frame, orient="horizontal", command=tree.xview)
+                tree.configure(xscroll=x_scroll.set)
+                x_scroll.pack(side="bottom", fill="x")
+
+                # headings
                 for col in cols:
                     tree.heading(col, text=col.replace("_", " ").title())
                     tree.column(col, width=150, anchor="center")
 
-        # insert rows
+                status_map = {"P": "Present", "A": "Absent", "L": "Late"}    
+
+                # insert rows
                 for r in records:
+                    status = status_map.get(r["status"], r["status"])
                     tree.insert("", "end", values=(
                         r["attendance_id"],
                         r["student_id"],
                         r["subject_id"],
                         r["class_id"],
                         r["lecture_date"],
-                        r["status"],
+                        status,
                         r["remarks"]
                     ))
 
@@ -3055,13 +3580,6 @@ class AdminUI:
 
             except Exception as e:
                 self.show_popup("Backend Error", str(e), "error")
-                tk.Label(
-            table_frame,
-            text=f"Error: {e}",
-            font=("Arial", 14),
-            fg="red",
-            bg="#ECF0F1"
-                ).pack()
 
 
     # ==== Button to View attendance summary of any student ====
@@ -3102,12 +3620,9 @@ class AdminUI:
         font=("Arial", 14)
     ).grid(row=i, column=0, padx=10, pady=8)
 
-    # -------------------------
-    # DATE PICKER FIELDS
-    # -------------------------
             if label_text.startswith("Date From") or label_text.startswith("Date To"):
         # entry box
-                entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=20)
+                entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=23)
                 entry.grid(row=i, column=1, padx=5, pady=8)
 
         # calendar button
@@ -3154,16 +3669,18 @@ class AdminUI:
 
         # ---------------- ENABLE/DISABLE BUTTON ----------------
         def validate_load(*args):
+            load_btn.unbind("<Button-1>")
+            load_btn.unbind("<Enter>")
+            load_btn.unbind("<Leave>")
+
             if student_var.get().strip() and from_var.get().strip() and to_var.get().strip():
                 load_btn.config(bg="#000000", fg="white", cursor="hand2")
+
                 load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
                 load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
                 load_btn.bind("<Button-1>", lambda e: load_summary())
             else:
                 load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                load_btn.unbind("<Enter>")
-                load_btn.unbind("<Leave>")
-                load_btn.unbind("<Button-1>")
 
         student_var.trace_add("write", validate_load)
         from_var.trace_add("write", validate_load)
@@ -3175,7 +3692,7 @@ class AdminUI:
 
         # ---------------- CALL BACKEND ----------------
         def load_summary():
-    # Clear previous result
+            # Clear previous result
             from datetime import datetime
             for w in result_frame.winfo_children():
                 w.destroy()
@@ -3191,12 +3708,12 @@ class AdminUI:
             date_from = from_var.get().strip()
             date_to = to_var.get().strip()
 
-    # Empty date check
+            # Empty date check
             if not date_from or not date_to:
                 self.show_popup("Missing Dates", "Both Date From and Date To are required!", "warning")
                 return
 
-    # Format check
+            # Format check
             def is_valid_date(d):
                 try:
                     datetime.strptime(d, "%Y-%m-%d")
@@ -3212,21 +3729,8 @@ class AdminUI:
                 self.show_popup("Invalid Date", "Date To must be in YYYY-MM-DD format!", "warning")
                 return
 
-            # From ≤ To check
             if datetime.strptime(date_from, "%Y-%m-%d") > datetime.strptime(date_to, "%Y-%m-%d"):
                 self.show_popup("Invalid Range", "Date From cannot be greater than Date To.", "warning")
-                return
-    # ---- SAFE student_id ----
-            try:
-                student_id = int(student_var.get().strip())
-            except:
-                tk.Label(
-            result_frame,
-            text="Invalid Student ID!",
-            bg="#ECF0F1",
-            fg="red",
-            font=("Arial", 14)
-            ).pack()
                 return
 
             url = (
@@ -3238,32 +3742,32 @@ class AdminUI:
             try:
                 res = requests.get(url)
 
-        # ---- If backend error or student doesn't exist ----
+                # ---- If backend error or student doesn't exist ----
                 if res.status_code != 200:
                     self.show_popup("Not Found", "Student not found or no summary available!", "warning")
                     tk.Label(
-                result_frame,
-                text="Student not found or no summary available!",
-                bg="#ECF0F1",
-                fg="red",
-                font=("Arial", 14)
-                ).pack()
+                    result_frame,
+                    text="Student not found or no summary available!",
+                    bg="#ECF0F1",
+                    fg="red",
+                    font=("Arial", 14)
+                    ).pack()
                     return
 
                 data = res.json()
 
-        # ------- Summary Card -------
+                # ------- Summary Card -------
                 card = tk.Frame(result_frame, bg="white", bd=2, relief="groove", padx=30, pady=30)
                 card.pack(pady=20)
 
                 items = [
-            ("Student ID", data["student_id"]),
-            ("Total Lectures", data["total_lectures"]),
-            ("Present", data["present"]),
-            ("Absent", data["absent"]),
-            ("Late", data["late"]),
-            ("Attendance %", f"{data['percentage']}%"),
-            ]
+                ("Student ID", data["student_id"]),
+                ("Total Lectures", data["total_lectures"]),
+                ("Present", data["present"]),
+                ("Absent", data["absent"]),
+                ("Late", data["late"]),
+                ("Attendance %", f"{data['percentage']}%"),
+                ]
 
                 for idx, (label_text, value) in enumerate(items):
                     tk.Label(card, text=f"{label_text}: ", font=("Arial", 14, "bold"), bg="white")\
@@ -3273,335 +3777,274 @@ class AdminUI:
 
             except Exception as e:
                 self.show_popup("Backend Error", str(e), "error")
-                tk.Label(
-            result_frame,
-            text=f"Error: {e}",
-            bg="#ECF0F1",
-            fg="red",
-            font=("Arial", 14)
-            ).pack()
 
 
-    # ==== Button to update attendance of any student using attendance_id ====
+    # ==========================================================================
+    # ===== Button to Update Student Attendance =====
     def load_update_student_attendance_screen(self):
         self.clear_content()
 
-    # ===== HEADER =====    
+        # ===== TITLE =====
         tk.Label(
         self.content,
         text="Update Student Attendance",
         font=("Arial", 26, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
+        # ===== FORM =====
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
 
-    # ERROR MESSAGE HOLDER
-        self.update_error_label = None
+        # Attendance ID
+        tk.Label(form, text="Attendance ID:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=10)
 
-    # ===== ATTENDANCE ID INPUT =====
-        tk.Label(form, text="Attendance ID:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=0, pady=8)
         att_id_var = tk.StringVar()
+        tk.Entry(form, textvariable=att_id_var, font=("Arial", 14), width=25)\
+        .grid(row=0, column=1, padx=10, pady=10)
 
-        tk.Entry(
-        form, textvariable=att_id_var,
-        font=("Arial", 14), width=25
-    ).grid(row=0, column=1, padx=10, pady=8)
-
-    # Load Button (Label Style)
+        # ===== LOAD BUTTON =====
         load_btn = tk.Label(
-        form, text="Load", font=("Arial", 12, "bold"),
-        bg="#D5D8DC", fg="#AEB6BF",
-        padx=15, pady=7, width=12,
-        relief="ridge", cursor="arrow"
-    )
+        form,
+        text="Load",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15, pady=5,
+        width=10,
+        cursor="arrow"
+        )
         load_btn.grid(row=0, column=2, padx=10)
 
-    # ===== FORM FIELDS =====
+        # INFO FIELDS
         labels = [
-    "Student ID", "Class ID", "Subject ID", "Teacher ID",
-    "Date (YYYY-MM-DD)", "Status (P/A/L)", "Remarks"
-]
+        ("Student ID", "student_id"),
+        ("Subject ID", "subject_id"),
+        ("Class ID", "class_id"),
+        ("Lecture Date (YYYY-MM-DD)", "lecture_date"),
+        ("Status (P/A/L)", "status"),
+        ("Remarks", "remarks")
+        ]
+
         self.update_vars = {}
-        self.update_fields = {}
+        self.update_entries = {}
+        from tkinter.ttk import Combobox
 
-        for i, t in enumerate(labels, start=1):
+        # ===== FETCH CLASSES & SUBJECTS =====
+        subjects = fetch_subjects()
+        classes = fetch_classes()
 
-    # Label
+        self.subject_map = {
+            f"{s['subject_name']}": s["subject_id"]
+            for s in subjects
+            }
+
+        self.class_map = {
+            f"{c['class_name']} - {c['section']}": c["class_id"]
+            for c in classes
+            }
+
+        subject_values = list(self.subject_map.keys())
+        class_values = list(self.class_map.keys())
+        status_values = ["P", "A", "L"]
+
+        row_index = 1
+        for text, key in labels:
             tk.Label(
-        form,
-        text=f"{t}:",
-        font=("Arial", 14),
-        bg="#ECF0F1"
-    ).grid(row=i, column=0, pady=8)
+            form,
+            text=text + ":",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=row_index, column=0, padx=10, pady=10, sticky="e")
 
-    # Create Var
             var = tk.StringVar()
 
-    # -----------------------------
-    # SPECIAL CASE: DATE FIELD
-    # -----------------------------
-            if t == "Date (YYYY-MM-DD)":
+            if key == "subject_id":
+                entry = Combobox(
+                form,
+                textvariable=var,
+                values=subject_values,
+                state="disabled",
+                font=("Arial", 14),
+                width=23
+                )
 
-        # ENABLED entry (editable)
-                entry = tk.Entry(
-            form,
-            textvariable=var,
-            font=("Arial", 14),
-            width=20,
-        )
-                entry.grid(row=i, column=1, padx=5, pady=8)
+            elif key == "class_id":
+                entry = Combobox(
+                form,
+                textvariable=var,
+                values=class_values,
+                state="disabled",
+                font=("Arial", 14),
+                width=23
+                )
 
-        # Add Calendar Button
-                tk.Button(
-            form,
-            text="Calendar",
-            font=("Arial", 12),
-            bg="white",
-            relief="flat",
-            command=lambda v=var, e=entry: self.open_calendar_popup(e, v)
-        ).grid(row=i, column=2, padx=5)
+            elif key == "status":
+                entry = Combobox(
+                form,
+                textvariable=var,
+                values=status_values,
+                state="disabled",
+                font=("Arial", 14),
+                width=23
+                )
 
             else:
-        # OTHER FIELDS → DISABLED
                 entry = tk.Entry(
-            form,
-            textvariable=var,
-            font=("Arial", 14),
-            width=25,
-            state="disabled"
-        )
-                entry.grid(row=i, column=1, padx=10, pady=8)
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=25,
+                state="disabled"
+                )
 
-            self.update_vars[t] = var
-            self.update_fields[t] = entry
+            entry.grid(row=row_index, column=1, padx=10)
+            self.update_vars[key] = var
+            self.update_entries[key] = entry
+            row_index += 1
 
-    # ===== BUTTON FRAME =====
+        # ===== BUTTON ROW =====
         btn_frame = tk.Frame(self.content, bg="#ECF0F1")
         btn_frame.pack(pady=20)
 
-        self.create_back_button(btn_frame, self.load_dashboard, form)
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
 
-    # ===== UPDATE BUTTON (LABEL STYLE) =====
+        # ===== UPDATE BUTTON =====
         update_btn = tk.Label(
         self.content,
         text="Update Attendance",
         font=("Arial", 14, "bold"),
-        bg="#D5D8DC", fg="#AEB6BF",
+        bg="#D5D8DC",
+        fg="#AEB6BF",
         padx=20, pady=10,
         width=18,
-        relief="ridge",
         cursor="arrow"
-    )
-        update_btn.pack(pady=20)
-
-
-    # ===== SUBMIT FUNCTION (must be defined before activation!) =====
-        def submit_update():
-            from datetime import datetime
-            import requests
-
-            att_id = att_id_var.get().strip()
-            att_id = att_id_var.get().strip()
-            if not att_id.isdigit() or int(att_id) <= 0:
-                self.show_popup("Invalid Attendance ID",
-                        "Attendance ID must be a positive number.",
-                        "warning")
-                return
-            def safe_int(value, field_name):
-                v = value.strip()
-                if not v.isdigit():
-                    self.show_popup("Invalid Input",
-                            f"{field_name} must be a valid number.",
-                            "warning")
-                    return None
-                if int(v) <= 0:
-                    self.show_popup("Invalid Value",
-                            f"{field_name} must be greater than 0.",
-                            "warning")
-                    return None
-                return int(v)
-            
-            sid = safe_int(self.update_vars["Student ID"].get(), "Student ID")
-            if sid is None: return
-
-            cid = safe_int(self.update_vars["Class ID"].get(), "Class ID")
-            if cid is None: return
-
-            subid = safe_int(self.update_vars["Subject ID"].get(), "Subject ID")
-            if subid is None: return
-
-        # Teacher ID safe convert
-            teacher_raw = self.update_vars["Teacher ID"].get().strip()
-            if teacher_raw == "":
-                teacher_conv = None
-            elif teacher_raw.isdigit() and int(teacher_raw) > 0:
-                teacher_conv = int(teacher_raw)
-            else:
-                self.show_popup("Invalid Teacher ID",
-                        "Teacher ID must be a positive number or empty.",
-                        "warning")
-                return
-            
-            date_raw = self.update_vars["Date (YYYY-MM-DD)"].get().strip()
-
-            def valid_date(d):
-                try:
-                    datetime.strptime(d, "%Y-%m-%d")
-                    return True
-                except:
-                    return False
-
-            if not valid_date(date_raw):
-                self.show_popup("Invalid Date Format",
-                        "Date must be in YYYY-MM-DD format.",
-                        "warning")
-                return
-            status = self.update_vars["Status (P/A/L)"].get().strip().upper()
-            if status not in ("P", "A", "L"):
-                self.show_popup("Invalid Status",
-                        "Status must be P (Present), A (Absent), or L (Leave).",
-                        "warning")
-                return
-            remarks = self.update_vars["Remarks"].get().strip()
-
-            payload = {
-        "student_id": sid,
-        "class_id": cid,
-        "subject_id": subid,
-        "teacher_id": teacher_conv,
-        "lecture_date": date_raw,
-        "status": status,
-        "remarks": remarks
-    }
-            try: 
-                res= requests.put(
-            f"http://127.0.0.1:8000/admin/attendance/student/update/{att_id}",
-            json=payload
         )
-                if res.status_code == 200:
-                    self.show_popup("Success",
-                            "Student attendance updated successfully!",
-                            "info")
-                    self.change_screen(
-            "Student Attendance Updated Successfully!",
-            add_callback=self.load_update_student_attendance_screen
-        )
-                else:
-                    msg = res.json().get("detail", "Update failed.")
-                    self.show_popup("Error", msg, "error")
-            except Exception as e:
-                self.show_popup("Backend Error", str(e), "error")
-                return
+        update_btn.pack(pady=10)
 
-    # ===== ACTIVATE / DISABLE UPDATE BUTTON =====
-        def enable_update_button():
-            update_btn.config(
-            bg="#000", fg="white",
-            cursor="arrow", relief="flat"
-        )
-            update_btn.bind("<Enter>", lambda e: update_btn.config(bg="#222"))
-            update_btn.bind("<Leave>", lambda e: update_btn.config(bg="#000"))
-            update_btn.bind("<Button-1>", lambda e: submit_update())
+        def enable_update():
+            update_btn.config(bg="#000000", fg="white", cursor="hand2")
+            update_btn.bind("<Enter>", lambda e: update_btn.config(bg="#222222"))
+            update_btn.bind("<Leave>", lambda e: update_btn.config(bg="#000000"))
+            update_btn.bind("<Button-1>", lambda e: update_attendance())
 
-        def disable_update_button():
-            update_btn.config(
-            bg="#D5D8DC", fg="#AEB6BF",
-            cursor="arrow", relief="ridge"
-        )
+        def disable_update():
+            update_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
             update_btn.unbind("<Enter>")
             update_btn.unbind("<Leave>")
             update_btn.unbind("<Button-1>")
 
+        disable_update()
 
-        disable_update_button()   # initial state
-
-
-    # ===== ENABLE UPDATE WHEN ALL FIELDS FULL =====
-        def validate_update(*args):
-            if all(v.get().strip() for v in self.update_vars.values()):
-                enable_update_button()
-            else:
-                disable_update_button()
+        # ===== VALIDATE EVERY CHANGE =====
+        def validate_entries(*args):
+            status = self.update_vars["status"].get().strip().upper()
+            if status not in ("P", "A", "L"):
+                disable_update()
+                return
+            
+            enable_update()
 
         for v in self.update_vars.values():
-            v.trace_add("write", validate_update)
+            v.trace_add("write", validate_entries)
 
-
-    # ===== LOAD ATTENDANCE RECORD =====
-        def load_attendance():
-            import requests
-
+        # ===== LOAD DATA FROM BACKEND =====
+        def load_record():
             att_id = att_id_var.get().strip()
-            if not att_id:
-                self.show_popup("Missing Input",
-                        "Please enter an Attendance ID.",
-                        "warning")
+
+            if not att_id.isdigit():
+                self.show_popup("Invalid ID", "Attendance ID must be numeric.", "warning")
                 return
 
-            if not att_id.isdigit() or int(att_id) <= 0:
-                self.show_popup("Invalid Attendance ID",
-                        "Attendance ID must be a positive number.",
-                        "warning")
-                return
-
-        # Clear old error label
-            if self.update_error_label:
-                self.update_error_label.destroy()
-                self.update_error_label = None
-
+            import requests
             try:
                 res = requests.get(f"http://127.0.0.1:8000/admin/attendance/student/{att_id}")
-  
+
                 if res.status_code != 200:
-                    self.show_popup("Not Found",
-                            "Attendance record not found for this ID.",
-                            "error")
-                    self.update_error_label = tk.Label(
-                    self.content,
-                    text="Attendance not found",
-                    fg="red", bg="#ECF0F1",
-                    font=("Arial", 14)
-                )
-                    self.update_error_label.pack()
+                    self.show_popup("Not Found", "Attendance record not found.", "warning")
+                    disable_update()
+                    for var in self.update_vars.values():
+                        var.set("")
                     return
 
                 data = res.json()
 
-            # Enable all fields
-                for entry in self.update_fields.values():
+                # Enable fields
+                for entry in self.update_entries.values():
                     entry.config(state="normal")
 
-                self.update_vars["Student ID"].set(data["student_id"])
-                self.update_vars["Class ID"].set(data["class_id"])
-                self.update_vars["Subject ID"].set(data["subject_id"])
-                self.update_vars["Teacher ID"].set("" if data["teacher_id"] is None else data["teacher_id"])
-                self.update_vars["Date (YYYY-MM-DD)"].set(data["lecture_date"])
-                self.update_vars["Status (P/A/L)"].set(data["status"])
-                self.update_vars["Remarks"].set(data.get("remarks", ""))
+                # Fill data
+                self.update_vars["student_id"].set(data["student_id"])
+
+                # Subject
+                for label, sid in self.subject_map.items():
+                    if sid == data["subject_id"]:
+                        self.update_vars["subject_id"].set(label)
+                        break
+
+                # Class
+                for label, cid in self.class_map.items():
+                    if cid == data["class_id"]:
+                        self.update_vars["class_id"].set(label)
+                        break
+
+                self.update_vars["lecture_date"].set(data["lecture_date"])
+                self.update_vars["status"].set(data["status"])
+                self.update_vars["remarks"].set(data.get("remarks", ""))
 
             except Exception as e:
-                self.show_popup("Backend Error",
-                        f"Unable to fetch attendance.\nError: {e}",
-                        "error")
-                return
+                self.show_popup("Error", f"Server Error: {e}", "error")
 
-    # ===== LOAD BUTTON VALIDATION =====
+        # Bind load button logic
         def validate_load(*args):
-            if att_id_var.get().strip():
+            load_btn.unbind("<Button-1>")
+            load_btn.unbind("<Enter>")
+            load_btn.unbind("<Leave>")
+
+            if att_id_var.get().isdigit():
                 load_btn.config(bg="#000", fg="white", cursor="hand2")
-                load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222"))
-                load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000"))
-                load_btn.bind("<Button-1>", lambda e: load_attendance())
+                load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
+                load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
+                load_btn.bind("<Button-1>", lambda e: load_record())
             else:
                 load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                load_btn.unbind("<Enter>")
-                load_btn.unbind("<Leave>")
-                load_btn.unbind("<Button-1>")
 
         att_id_var.trace_add("write", validate_load)
+
+        # ===== UPDATE API CALL =====
+        def update_attendance():
+            att_id = att_id_var.get().strip()
+
+            payload = {
+                "status": self.update_vars["status"].get(),
+                "remarks": self.update_vars["remarks"].get()
+                }
+
+            import requests
+            try:
+                res = requests.put(
+                f"http://127.0.0.1:8000/admin/attendance/student/update/{att_id}",
+                json=payload
+                )
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "Failed to update attendance.", "error")
+                    return
+
+                self.show_popup("Success", "Attendance Updated Successfully!", "success")
+                self.change_screen(
+                "Attendance Updated Successfully!",
+                add_callback=self.load_update_student_attendance_screen
+                )
+
+            except Exception as e:
+                self.show_popup("Error", f"Update Failed: {e}", "error")
 
 
     # ==== Button to delete attendance of a student using atten_id ====
@@ -3656,16 +4099,17 @@ class AdminUI:
 
         # ----------- VALIDATE FIELD -----------
         def validate_delete_btn(*args):
-            if att_id_var.get().strip():
+            delete_btn.unbind("<Button-1>")
+            delete_btn.unbind("<Enter>")
+            delete_btn.unbind("<Leave>")
+
+            if att_id_var.get().strip().isdigit():
                 delete_btn.config(bg="#000000", fg="white", cursor="hand2")
                 delete_btn.bind("<Enter>", lambda e: delete_btn.config(bg="#222222"))
                 delete_btn.bind("<Leave>", lambda e: delete_btn.config(bg="#000000"))
                 delete_btn.bind("<Button-1>", lambda e: perform_delete())
             else:
                 delete_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                delete_btn.unbind("<Enter>")
-                delete_btn.unbind("<Leave>")
-                delete_btn.unbind("<Button-1>")
 
         att_id_var.trace_add("write", validate_delete_btn)
 
@@ -3675,18 +4119,18 @@ class AdminUI:
             att_id = att_id_var.get().strip()
             if not att_id:
                 self.show_popup(
-            "Missing Input",
-            "Please enter an Attendance ID.",
-            "warning"
-        )
+                "Missing Input",
+                "Please enter an Attendance ID.",
+                "warning"
+                )
                 return
 
             if not att_id.isdigit() or int(att_id) <= 0:
                 self.show_popup(
-            "Invalid Attendance ID",
-            "Attendance ID must be a positive number.",
-            "warning"
-        )
+                "Invalid Attendance ID",
+                "Attendance ID must be a positive number.",
+                "warning"
+                )
                 return
 
             try:
@@ -3695,34 +4139,25 @@ class AdminUI:
 
                 if response.status_code == 200:
                     self.show_popup(
-                "Success",
-                "Attendance deactivated successfully!",
-                "info"
-            )
+                    "Success",
+                    "Attendance deactivated successfully!",
+                    "info"
+                    )
                     self.change_screen("Attendance Deactivated Successfully",
                                        add_callback=self.load_delete_student_attendance_screen)
                 else:
                     self.show_popup(
-                "Not Found",
-                "Attendance record not found for this ID.",
-                "error"
-            )
-                    tk.Label(
-                    self.content, text="Attendance Not Found",
-                    fg="red", bg="#ECF0F1", font=("Arial", 14)
-                    ).pack(pady=10)
+                    "Not Found",
+                    "Attendance record not found for this ID.",
+                    "error"
+                )
 
             except Exception as e:
                 self.show_popup(
-            "Backend Error",
-            f"Something went wrong.\nError: {e}",
-            "error"
-        )
-                tk.Label(
-                self.content, text=f"Error: {e}",
-                fg="red", bg="#ECF0F1", font=("Arial", 14)
-                ).pack(pady=10)
- 
+                "Backend Error",
+                f"Something went wrong.\nError: {e}",
+                "error"
+                )
 
     # ===========================================================================
     # --- TEACHERS ATTENDANCE ---
@@ -3730,30 +4165,28 @@ class AdminUI:
     def load_view_all_teacher_attendance(self):
         self.clear_content()
 
-    # ---- Title ----
+        # ---- Title ----
         tk.Label(
         self.content,
         text="All Teacher Attendance Records",
         font=("Arial", 26, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
-    # ---- Back Button ----
+        # ---- Back Button ----
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
         back_frame.pack(anchor="w", padx=20)
         self.create_back_button(back_frame, self.load_dashboard, None)
 
-    # ---- Table Frame ----
+        # ---- Table Frame ----
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-    # Columns
+        # Columns
         cols = ("record_id", "teacher_id", "date", "status", "remarks")
 
-    # ====================================================
-    #     FILTER BAR (Dropdown + Entry + Black Buttons)
-    # ====================================================
+        # FILTER BAR (Dropdown + Entry + Black Buttons)
         filter_frame = tk.Frame(self.content, bg="#ECF0F1")
         filter_frame.pack(pady=10)
 
@@ -3763,7 +4196,7 @@ class AdminUI:
         font=("Arial", 12, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=0, padx=5)
 
         filter_var = tk.StringVar()
         filter_dropdown = ttk.Combobox(
@@ -3772,19 +4205,19 @@ class AdminUI:
         values=list(cols),
         state="readonly",
         width=18
-    )
+        )
         filter_dropdown.grid(row=0, column=1, padx=10)
 
         filter_value_var = tk.StringVar()
         filter_value = tk.Entry(
-    filter_frame,
-    textvariable=filter_value_var,
-    font=("Arial", 12),
-    width=20
-)
+        filter_frame,
+        textvariable=filter_value_var,
+        font=("Arial", 12),
+        width=20
+        )
         filter_value.grid(row=0, column=2, padx=10)
 
-    # ---------- Button Style ----------
+        # ---------- Button Style ----------
         def style_button(btn):
             btn.config(
             bg="#000000",
@@ -3799,24 +4232,24 @@ class AdminUI:
             btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
             btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
 
-    # LOAD Button
+        # LOAD Button
         load_btn = tk.Label(filter_frame, text="Load")
         style_button(load_btn)
         load_btn.grid(row=0, column=3, padx=10)
 
-    # LOAD ALL Button
+        # LOAD ALL Button
         load_all_btn = tk.Label(filter_frame, text="Load All")
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
 
-    # ---- Scrollbars ----
+        # ---- Scrollbars ----
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
 
         x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
         x_scroll.pack(side="bottom", fill="x")
 
-    # ---- TABLE ----
+        # ---- TABLE ----
         self.teacher_tree = ttk.Treeview(
         table_frame,
         columns=cols,
@@ -3824,44 +4257,48 @@ class AdminUI:
         yscrollcommand=y_scroll.set,
         xscrollcommand=x_scroll.set,
         height=18
-    )
+        )
         self.teacher_tree.pack(fill="both", expand=True)
 
         y_scroll.config(command=self.teacher_tree.yview)
         x_scroll.config(command=self.teacher_tree.xview)
 
-    # Column Widths
+        # Column Widths
         widths = {
         "record_id": 120,
         "teacher_id": 120,
         "date": 150,
         "status": 100,
         "remarks": 220,
-    }
+        }
 
         for col in cols:
             self.teacher_tree.heading(col, text=col.replace("_", " ").title())
             self.teacher_tree.column(col, width=widths[col], anchor="center")
 
-    # ---- FETCH BACKEND DATA ----
+        # ---- FETCH BACKEND DATA ----
         import requests
         try:
             res = requests.get("http://127.0.0.1:8000/admin/attendance/teacher")
+
             self.all_teacher_att = res.json() if res.status_code == 200 else []
+
             self.column_values_teacher_att = {
-    "record_id":   [str(r["record_id"]) for r in self.all_teacher_att],
-    "teacher_id":  [str(r["teacher_id"]) for r in self.all_teacher_att],
-    "date":        [r["date"] for r in self.all_teacher_att],
-    "status":      [r["status"] for r in self.all_teacher_att],
-    "remarks":     [r["remarks"] for r in self.all_teacher_att],
-}
+                "record_id":   [str(r["record_id"]) for r in self.all_teacher_att],
+                "teacher_id":  [str(r["teacher_id"]) for r in self.all_teacher_att],
+                "date":        [r["date"] for r in self.all_teacher_att],
+                "status":      [r["status"] for r in self.all_teacher_att],
+                "remarks":     [r["remarks"] for r in self.all_teacher_att],
+            }
         except:
             self.all_teacher_att = []
 
-    # ---- UPDATE TABLE ----
+        # ---- UPDATE TABLE ----
         def update_table(data):
             for r in self.teacher_tree.get_children():
                 self.teacher_tree.delete(r)
+
+            status_map = {"P": "Present", "A": "Absent", "LE": "Leave"}  
 
             for row in data:
                 self.teacher_tree.insert(
@@ -3871,15 +4308,15 @@ class AdminUI:
                     row["record_id"],
                     row["teacher_id"],
                     row["date"],
-                    row["status"],
+                    status_map.get(row["status"], row["status"]),
                     row.get("remarks", "")
                 )
             )
 
-    # ---- FILTER LOGIC ----
+        # ---- FILTER LOGIC ----
         def load_filtered():
             col = filter_var.get().strip()
-            val = filter_value.get().strip()
+            val = filter_value.get().strip().lower()
 
             if not col or not val:
                 return
@@ -3888,16 +4325,16 @@ class AdminUI:
 
             if val not in valid_lower:
                 self.show_popup(
-            "Invalid Search Value",
-            f"'{val}' not found in column '{col}'.",
-            "warning"
-        )
+                "Invalid Search Value",
+                f"'{val}' not found in column '{col}'.",
+                "warning"
+                )
                 filter_value_var.set("")
                 return
             filtered = [
             r for r in self.all_teacher_att
             if str(r[col]).lower() == val.lower()
-        ]
+            ]
             update_table(filtered)
 
         def load_all():
@@ -3906,7 +4343,7 @@ class AdminUI:
         load_btn.bind("<Button-1>", lambda e: load_filtered())
         load_all_btn.bind("<Button-1>", lambda e: load_all())
 
-    # ---- INITIAL LOAD ----
+        # ---- INITIAL LOAD ----
         update_table(self.all_teacher_att)
 
     
@@ -3974,23 +4411,23 @@ class AdminUI:
         remarks_entry = tk.Entry(form, font=("Arial", 14), width=25, state="disabled")
         remarks_entry.grid(row=4, column=1, padx=10, pady=8)
 
-        tk.Label(form, text="Record ID:", font=("Arial", 14), bg="#ECF0F1").grid(row=5, column=0, padx=10, pady=8)
-        rec_id_entry = tk.Entry(form, font=("Arial", 14), width=25, state="disabled")
-        rec_id_entry.grid(row=5, column=1, padx=10, pady=8)
-
         # ===== ENABLE / DISABLE SEARCH BUTTON =====
         def validate_search_btn(*args):
-            if rec_var.get().strip():
+            search_btn.unbind("<Button-1>")
+            search_btn.unbind("<Enter>")
+            search_btn.unbind("<Leave>")
+
+            val = rec_var.get().strip()
+
+            if val.isdigit() and int(val) > 0:
                 search_btn.config(bg="#000000", fg="white", cursor="hand2")
+
                 search_btn.bind("<Enter>", lambda e: search_btn.config(bg="#222222"))
                 search_btn.bind("<Leave>", lambda e: search_btn.config(bg="#000000"))
-
                 search_btn.bind("<Button-1>", lambda e: fetch_attendance())
+
             else:
                 search_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                search_btn.unbind("<Enter>")
-                search_btn.unbind("<Leave>")
-                search_btn.unbind("<Button-1>")
 
         rec_var.trace_add("write", validate_search_btn)
 
@@ -3999,17 +4436,17 @@ class AdminUI:
             record_id = rec_var.get().strip()
             if not record_id:
                 self.show_popup(
-            "Missing Input",
-            "Please enter a Record ID.",
-            "warning"
-        )
+                "Missing Input",
+                "Please enter a Record ID.",
+                "warning"
+                )
                 return
             if not record_id.isdigit() or int(record_id) <= 0:
                 self.show_popup(
-            "Invalid Record ID",
-            "Record ID must be a positive number.",
-            "warning"
-        )
+                "Invalid Record ID",
+                "Record ID must be a positive number.",
+                "warning"
+                )
                 return
             import requests
             try:
@@ -4018,42 +4455,42 @@ class AdminUI:
                 if res.status_code == 200:
                     data = res.json()
 
-            # Enable all entries
-                    for box in (tk_id, date_entry, status_entry, remarks_entry, rec_id_entry):
+                    # Enable all entries
+                    for box in (tk_id, date_entry, status_entry, remarks_entry):
                         box.config(state="normal")
 
-            # Clear previous values
+                    status_map = {"P": "Present", "A": "Absent", "L": "Leave"}
+    
+                    # Clear previous values
                     tk_id.delete(0, "end")
                     date_entry.delete(0, "end")
                     status_entry.delete(0, "end")
                     remarks_entry.delete(0, "end")
-                    rec_id_entry.delete(0, "end")
 
-            # Fill new data
+                    # Fill new data
                     tk_id.insert(0, data["teacher_id"])
                     date_entry.insert(0, data["date"])
-                    status_entry.insert(0, data["status"])
+                    status_entry.insert(0, status_map.get(data["status"], data["status"]))
                     remarks_entry.insert(0, data.get("remarks", ""))
-                    rec_id_entry.insert(0, data.get("record_id", ""))
 
-            # Disable them again
-                    for box in (tk_id, date_entry, status_entry, remarks_entry, rec_id_entry):
+                    # Disable them again
+                    for box in (tk_id, date_entry, status_entry, remarks_entry):
                         box.config(state="disabled")
 
                 else:
                     self.show_popup(
-                "Not Found",
-                f"No attendance record found for ID {record_id}.",
-                "error"
-            )
+                    "Not Found",
+                    f"No attendance record found for ID {record_id}.",
+                    "error"
+                    )
                     return
 
             except Exception as e:
                 self.show_popup(
-            "Backend Error",
-            f"Something went wrong.\nError: {e}",
-            "error"
-        )
+                "Backend Error",
+                f"Something went wrong.\nError: {e}",
+                "error"
+                )
                 return
 
 
@@ -4082,47 +4519,46 @@ class AdminUI:
 
         # ---- FROM DATE ----
         tk.Label(
-    form,
-    text="From Date (YYYY-MM-DD):",
-    font=("Arial", 14),
-    bg="#ECF0F1"
-).grid(row=1, column=0, padx=10, pady=8)
+        form,
+        text="From Date (YYYY-MM-DD):",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=1, column=0, padx=10, pady=8)
 
         from_var = tk.StringVar()
         from_entry = tk.Entry(form, textvariable=from_var, font=("Arial", 14), width=20)
         from_entry.grid(row=1, column=1, padx=5, pady=8)
 
         tk.Button(
-    form,
-    text="Calendar",
-    font=("Arial", 12),
-    bg="white",
-    relief="flat",
-    command=lambda v=from_var, e=from_entry: self.open_calendar_popup(e, v)
-).grid(row=1, column=2, padx=5)
+        form,
+        text="Calendar",
+        font=("Arial", 12),
+        bg="white",
+        relief="flat",
+        command=lambda v=from_var, e=from_entry: self.open_calendar_popup(e, v)
+        ).grid(row=1, column=2, padx=5)
 
 
-# ---- TO DATE ----
+        # ---- TO DATE ----
         tk.Label(
-    form,
-    text="To Date (YYYY-MM-DD):",
-    font=("Arial", 14),
-    bg="#ECF0F1"
-).grid(row=2, column=0, padx=10, pady=8)
+        form,
+        text="To Date (YYYY-MM-DD):",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=2, column=0, padx=10, pady=8)
 
         to_var = tk.StringVar()
         to_entry = tk.Entry(form, textvariable=to_var, font=("Arial", 14), width=20)
         to_entry.grid(row=2, column=1, padx=5, pady=8)
 
         tk.Button(
-    form,
-    text="Calendar",
-    font=("Arial", 12),
-    bg="white",
-    relief="flat",
-    command=lambda v=to_var, e=to_entry: self.open_calendar_popup(e, v)
-).grid(row=2, column=2, padx=5)
-
+        form,
+        text="Calendar",
+        font=("Arial", 12),
+        bg="white",
+        relief="flat",
+        command=lambda v=to_var, e=to_entry: self.open_calendar_popup(e, v)
+        ).grid(row=2, column=2, padx=5)
         
         btn_frame = tk.Frame(self.content, bg="#ECF0F1")
         btn_frame.pack(pady=25)
@@ -4159,6 +4595,10 @@ class AdminUI:
 
         # ===== Enable Button on Input =====
         def validate_btn(*args):
+            summary_btn.unbind("<Button-1>")
+            summary_btn.unbind("<Enter>")
+            summary_btn.unbind("<Leave>")
+
             if tid_var.get().strip() and from_var.get().strip() and to_var.get().strip():
                 summary_btn.config(bg="#000000", fg="white", cursor="hand2")
                 summary_btn.bind("<Enter>", lambda e: summary_btn.config(bg="#222222"))
@@ -4166,9 +4606,6 @@ class AdminUI:
                 summary_btn.bind("<Button-1>", lambda e: fetch_summary())
             else:
                 summary_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                summary_btn.unbind("<Enter>")
-                summary_btn.unbind("<Leave>")
-                summary_btn.unbind("<Button-1>")
 
         tid_var.trace_add("write", validate_btn)
         from_var.trace_add("write", validate_btn)
@@ -4176,75 +4613,47 @@ class AdminUI:
 
         # ===== BACKEND CALL =====
         def fetch_summary():
+            import requests
+            from datetime import datetime
+
             teacher_id = tid_var.get().strip()
             date_from = from_var.get().strip()
             date_to = to_var.get().strip()
-            if not teacher_id:
-                self.show_popup(
-            "Missing Input",
-            "Teacher ID cannot be empty.",
-            "warning"
-        )
-                return
 
-    # Teacher ID must be a positive integer
             if not teacher_id.isdigit() or int(teacher_id) <= 0:
-                self.show_popup(
-            "Invalid Teacher ID",
-            "Teacher ID must be a positive number.",
-            "warning"
-        )
+                self.show_popup("Invalid Teacher ID", "Teacher ID must be a positive number.", "warning")
                 return
 
-    # Date From empty
-            if not date_from:
-                self.show_popup(
-            "Missing Date",
-            "Please enter a 'From' date.",
-            "warning"
-        )
+            # Date format check
+            try:
+                d_from = datetime.strptime(date_from, "%Y-%m-%d")
+                d_to = datetime.strptime(date_to, "%Y-%m-%d")
+            except:
+                self.show_popup("Invalid Date", "Dates must be in YYYY-MM-DD format.", "warning")
                 return
 
-    # Date To empty
-            if not date_to:
-                self.show_popup(
-            "Missing Date",
-            "Please enter a 'To' date.",
-            "warning"
-        )
+            if d_from > d_to:
+                self.show_popup("Invalid Range", "From Date cannot be after To Date.", "warning")
                 return
 
-    # Date format validation
-            import re
-            date_pattern = r"^\d{4}-\d{2}-\d{2}$"
-
-            if not re.match(date_pattern, date_from):
-                self.show_popup(
-            "Invalid Date Format",
-            "From Date must be in YYYY-MM-DD format.",
-            "error"
-        )
-                return
-
-            import requests
             url = (
-                f"http://127.0.0.1:8000/admin/attendance/teacher/summary/{teacher_id}"
-                f"?date_from={date_from}"
-                f"&date_to={date_to}"
+            f"http://127.0.0.1:8000/admin/attendance/teacher/summary/{teacher_id}"
+            f"?date_from={date_from}&date_to={date_to}"
             )
 
             try:
-                res = requests.get(url)     
+                res = requests.get(url)
+
                 if res.status_code != 200:
-                    res = requests.get(url)
                     self.show_popup(
-                "Not Found",
-                "Teacher not found or no summary available for given date range.",
-                "error"
-            )
+                    "Not Found",
+                    "Teacher not found or no summary available for given date range.",
+                    "error"
+                    )
                     return
+
                 data = res.json()
-                
+
                 labels["Teacher ID"].config(text=f"Teacher ID: {data['teacher_id']}")
                 labels["Total Days"].config(text=f"Total Days: {data['total_days']}")
                 labels["Present"].config(text=f"Present: {data['present']}")
@@ -4253,12 +4662,7 @@ class AdminUI:
                 labels["Percentage"].config(text=f"Percentage: {data['percentage']}%")
 
             except Exception as e:
-                self.show_popup(
-            "Backend Error",
-            f"Failed to fetch summary.\nError: {e}",
-            "error"
-        )
-                return
+                self.show_popup("Backend Error", f"Failed to fetch summary.\nError: {e}", "error")
             
 
     # ==== Button to Update a teacher's attendance ====
@@ -4310,43 +4714,53 @@ class AdminUI:
         for label, var in fields.items():
 
             tk.Label(
-        form,
-        text=f"{label}:",
-        font=("Arial", 14),
-        bg="#ECF0F1"
-    ).grid(row=row_index, column=0, padx=10, pady=8)
+                form,
+                text=f"{label}:",
+                font=("Arial", 14),
+                bg="#ECF0F1"
+                ).grid(row=row_index, column=0, padx=10, pady=8)
 
-    # ---- DATE FIELD GETS SPECIAL TREATMENT ----
+            # ---- DATE FIELD GETS SPECIAL TREATMENT ----
             if label == "Date":
                 ent = tk.Entry(
-            form,
-            textvariable=var,
-            font=("Arial", 14),
-            width=20,
-            state="disabled"
-        )
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=20,
+                state="disabled"
+                )
                 ent.grid(row=row_index, column=1, padx=5, pady=8)
 
-        # Calendar button
-                cal_btn = tk.Button(
-            form,
-            text="Calendar",
-            font=("Arial", 12),
-            bg="white",
-            relief="flat",
-            command=lambda v=var, e=ent: self.open_calendar_popup(e, v)
-        )
-                cal_btn.grid(row=row_index, column=2, padx=5)
+                tk.Button(
+                form,
+                text="Calendar",
+                font=("Arial", 12),
+                bg="white",
+                relief="flat",
+                command=lambda v=var, e=ent: self.open_calendar_popup(e, v)
+                ).grid(row=row_index, column=2, padx=5)
+
+
+            elif label == "Status":
+                from tkinter.ttk import Combobox
+                ent = Combobox(
+                form,
+                textvariable=var,
+                values=["P", "A", "L"],
+                font=("Arial", 14),
+                width=22,
+                state="disabled"   
+                )
+                ent.grid(row=row_index, column=1, padx=10, pady=8)
 
             else:
-        # ---- NORMAL DISABLED ENTRY ----
                 ent = tk.Entry(
-            form,
-            textvariable=var,
-            font=("Arial", 14),
-            width=25,
-            state="disabled"
-        )
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=25,
+                state="disabled"
+                )
                 ent.grid(row=row_index, column=1, padx=10, pady=8)
 
             entries[label] = ent
@@ -4378,7 +4792,7 @@ class AdminUI:
 
         # ===== VALIDATION FOR LOAD BUTTON =====
         def validate_load(*args):
-            if record_var.get().strip():
+            if record_var.get().strip().isdigit():
                 load_btn.config(bg="#000000", fg="white", cursor="hand2")
                 load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
                 load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
@@ -4398,7 +4812,7 @@ class AdminUI:
                 self.show_popup("Missing Input", "Record ID cannot be empty!", "warning")
                 return
 
-    # Must be positive integer
+            # Must be positive integer
             if not rec_id.isdigit() or int(rec_id) <= 0:
                 self.show_popup("Invalid Record ID", "Record ID must be a positive number.", "warning")
                 return
@@ -4408,16 +4822,18 @@ class AdminUI:
                 res = requests.get(f"http://127.0.0.1:8000/admin/attendance/teacher/{rec_id}")
                 if res.status_code != 200:
                     self.show_popup(
-                "Not Found",
-                f"No attendance record found for ID {rec_id}.",
-                "error"
-            )
+                        "Not Found",
+                        f"No attendance record found for ID {rec_id}.",
+                        "error"
+                    )
                     return
                 data = res.json()
 
                 # Enable all input fields
                 for ent in entries.values():
                     ent.config(state="normal")
+
+                entries["Status"].config(state="readonly")
 
                 # Fill values
                 fields["Teacher ID"].set(data["teacher_id"])
@@ -4429,20 +4845,18 @@ class AdminUI:
 
             except Exception as e:
                 self.show_popup(
-            "Backend Error",
-            f"Could not fetch teacher attendance.\nError: {e}",
-            "error"
-        )
+                    "Backend Error",
+                    f"Could not fetch teacher attendance.\nError: {e}",
+                    "error"
+                )
 
         # ===== VALIDATE ALL FIELDS BEFORE UPDATE =====
         def enable_update_validation():
-
             def validate_all(*args):
-                if all(v.get().strip() for v in fields.values()):
-                    update_btn.config(
-                    bg="#000000", fg="white",
-                    cursor="hand2"
-                    )
+                status = fields["Status"].get().strip().upper()
+
+                if status in ("P", "A", "L"):
+                    update_btn.config(bg="#000000", fg="white", cursor="hand2")
                     update_btn.bind("<Enter>", lambda e: update_btn.config(bg="#222222"))
                     update_btn.bind("<Leave>", lambda e: update_btn.config(bg="#000000"))
                     update_btn.bind("<Button-1>", lambda e: submit_update())
@@ -4452,9 +4866,8 @@ class AdminUI:
                     update_btn.unbind("<Leave>")
                     update_btn.unbind("<Button-1>")
 
-            # Track all fields live
-            for var in fields.values():
-                var.trace_add("write", validate_all)
+            fields["Status"].trace_add("write", validate_all)
+            fields["Remarks"].trace_add("write", validate_all)
 
         # ===== SUBMIT UPDATE TO BACKEND =====
         def submit_update():
@@ -4467,21 +4880,8 @@ class AdminUI:
             if not rec_id.isdigit() or int(rec_id) <= 0:
                 self.show_popup("Invalid Record ID", "Record ID must be a positive number.", "warning")
                 return
-            
-            teacher_raw = fields["Teacher ID"].get().strip()
-            if not teacher_raw.isdigit() or int(teacher_raw) <= 0:
-                self.show_popup("Invalid Teacher ID", "Teacher ID must be a positive number.", "warning")
-                return
-            teacher_id = int(teacher_raw)
 
-    # Date
-            date_val = fields["Date"].get().strip()
-            import re
-            if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_val):
-                self.show_popup("Invalid Date", "Date must be in YYYY-MM-DD format!", "error")
-                return
-
-    # Status
+            # Status
             status_val = fields["Status"].get().strip().upper()
             if status_val not in ["P", "A", "L"]:
                 self.show_popup("Invalid Status", "Status must be P, A, or L only!", "warning")
@@ -4490,8 +4890,6 @@ class AdminUI:
             remarks_val = fields["Remarks"].get().strip()
 
             payload = {
-            "teacher_id": teacher_id,
-            "date": date_val,
             "status": status_val,
             "remarks": remarks_val
             }
@@ -4503,9 +4901,9 @@ class AdminUI:
                 if res.status_code == 200:
                     self.show_popup("Success", "Teacher Attendance Updated Successfully!", "info")
                     self.change_screen(
-                "Teacher Attendance Updated Successfully",
-                add_callback=self.load_update_teacher_attendance_screen
-            )   
+                            "Teacher Attendance Updated Successfully",
+                            add_callback=self.load_update_teacher_attendance_screen
+                    )   
                 else:
                     msg = res.json().get("detail", "Update failed!")
                     self.show_popup("Error", msg, "error")
@@ -4562,23 +4960,20 @@ class AdminUI:
         )
         delete_btn.pack(pady=25)
 
-       # ===== VALIDATE DELETE BUTTON (Enable / Disable) =====
+        # ===== VALIDATE DELETE BUTTON (Enable / Disable) =====
         def validate_delete(*args):
+            delete_btn.unbind("<Enter>")
+            delete_btn.unbind("<Leave>")
+            delete_btn.unbind("<Button-1>")
+
             if record_var.get().strip():
                 delete_btn.config(bg="#000000", fg="white", cursor="hand2")
 
-                # Hover
                 delete_btn.bind("<Enter>", lambda e: delete_btn.config(bg="#222222"))
                 delete_btn.bind("<Leave>", lambda e: delete_btn.config(bg="#000000"))
-
-                # Click
                 delete_btn.bind("<Button-1>", lambda e: submit_delete())
-
             else:
                 delete_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                delete_btn.unbind("<Enter>")
-                delete_btn.unbind("<Leave>")
-                delete_btn.unbind("<Button-1>")
 
         record_var.trace_add("write", validate_delete)
 
@@ -4631,7 +5026,7 @@ class AdminUI:
 
         fields = [
         ("Full Name", "full_name"),
-        ("Gender (M/F/O)", "gender"),
+        ("Gender", "gender"),
         ("Date of Birth", "date_of_birth"),
         ("Address", "address"),
         ("Class ID", "class_id"),
@@ -4652,18 +5047,50 @@ class AdminUI:
             vars[key] = tk.StringVar()
 
             if key == "date_of_birth":
-                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=28)
+                entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30)
                 entry.grid(row=i, column=1, padx=5, pady=6)
                 cal_btn = tk.Button(
-        form,
-        text="Calendar",
-        font=("Arial", 12),
-        bg="white",
-        relief="flat",
-        cursor="arrow",
-        command=lambda v=vars[key], b=entry: self.open_calendar_popup(b, v)
-    )
+                    form,
+                    text="Calendar",
+                    font=("Arial", 12),
+                    bg="white",
+                    relief="flat",
+                    cursor="arrow",
+                    command=lambda v=vars[key], b=entry: self.open_calendar_popup(b, v)
+                )
                 cal_btn.grid(row=i, column=2, padx=5)
+            
+            elif key == "gender":
+                from tkinter.ttk import Combobox
+                vars[key] = tk.StringVar()
+                gender_dropdown = Combobox(
+                    form,
+                    textvariable=vars[key],
+                    values=["MALE", "FEMALE", "OTHER"],
+                    state="readonly",
+                    font=("Arial", 14),
+                    width=28
+                )
+                gender_dropdown.grid(row=i, column=1, padx=10, pady=6)
+            
+            elif key == "class_id":
+                vars[key] = tk.StringVar()
+
+                classes = fetch_classes()     # API call
+                class_options = [
+                f"{c['class_id']} - {c['class_name']} {c['section']}"
+                for c in classes
+                ]
+
+                class_dropdown = Combobox(
+                    form,
+                    textvariable=vars[key],
+                    values=class_options,
+                    state="readonly",
+                    font=("Arial", 14),
+                    width=28
+                )
+                class_dropdown.grid(row=i, column=1, padx=10, pady=6)
 
             else:
                 entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30)
@@ -4711,6 +5138,7 @@ class AdminUI:
 
         def submit():
             data = {k: v.get().strip() for k, v in vars.items()}
+
             for key, val in vars.items():
                 if not val.get().strip():
                     self.show_popup("Missing Information",
@@ -4722,18 +5150,19 @@ class AdminUI:
             for n in name_fields:
                 if data.get(n):
                     data[n] = data[n].title() 
-                   
-            gender = vars["gender"].get().strip().upper()
-            if gender not in ["M", "F", "O"]:
-                self.show_popup("Invalid Gender",
-                             "Gender must be M, F or O only!",
-                             "error")
-                return
             
-            class_id = vars["class_id"].get().strip()
-            if not class_id.isdigit():
-                self.show_popup("Invalid Class ID", "Class ID must be a numeric value!", "warning")
+            class_raw = vars["class_id"].get().strip()
+
+            if class_raw not in class_options:
+                self.show_popup(
+                "Missing Class",
+                "Please select a class from dropdown!",
+                "warning"
+                )
                 return
+
+            class_id = int(class_raw.split("-")[0].strip())
+            data["class_id"] = class_id
             
             import re
             dob = vars["date_of_birth"].get().strip()
@@ -4775,7 +5204,7 @@ class AdminUI:
    
             try:
                 import requests
-                res = requests.post("http://127.0.0.1:8000/admin/admissions/", json=data)
+                res = requests.post("http://127.0.0.1:8000/admin/admissions/create", json=data)
 
                 if res.status_code == 200:
                     self.show_popup("Success", "Admission Submitted Successfully!", "info")
@@ -4804,37 +5233,35 @@ class AdminUI:
         fg="#2C3E50"
     ).pack(pady=20)
 
-    # -------- BACK BUTTON --------
+        # -------- BACK BUTTON --------
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
         back_frame.pack(anchor="w", padx=20)
         self.create_back_button(back_frame, self.load_dashboard, None)
 
-    # -------- TABLE FRAME --------
+        # -------- TABLE FRAME --------
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
         cols = (
-        "admission_id", "full_name", "date_of_birth", "gender", "address",
-        "father_name", "mother_name", "parent_phone", "parent_email",
-        "class_id", "previous_school"
-    )
+        "admission_id", "full_name", "status", "date_of_birth", "gender",
+        "parent_phone", "parent_email", "class_id"
+        )
 
-    # ====================================================
-    #        FILTER BAR (Dropdown + Entry + Black Buttons)
-    # ====================================================
+     
+        # FILTER BAR (Dropdown + Entry + Black Buttons)
         filter_frame = tk.Frame(self.content, bg="#ECF0F1")
         filter_frame.pack(pady=10)
 
-    # Sort by label
+        # Sort by label
         tk.Label(
         filter_frame,
         text="Sort By:",
         font=("Arial", 12, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=0, padx=5)
 
-    # Dropdown
+        # Dropdown
         filter_var = tk.StringVar()
         filter_dropdown = ttk.Combobox(
         filter_frame,
@@ -4849,14 +5276,14 @@ class AdminUI:
         filter_var_value = tk.StringVar()
 
         filter_value = tk.Entry(
-    filter_frame, 
-    textvariable=filter_var_value,
-    font=("Arial", 12), 
-    width=25
-)
+        filter_frame, 
+        textvariable=filter_var_value,
+        font=("Arial", 12), 
+        width=25
+        )
         filter_value.grid(row=0, column=2, padx=10) 
 
-    # ---- Button Style ----
+        # ---- Button Style ----
         def style_button(btn):
             btn.config(
             bg="#000000",
@@ -4871,19 +5298,18 @@ class AdminUI:
             btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
             btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
 
-    # LOAD button
+        # LOAD button
         load_btn = tk.Label(filter_frame, text="Load")
         style_button(load_btn)
         load_btn.grid(row=0, column=3, padx=10)
 
-    # LOAD ALL button
+        # LOAD ALL button
         load_all_btn = tk.Label(filter_frame, text="Load All")
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
 
-    # ======================================================
-    #                 TABLE + SCROLLBARS
-    # ======================================================
+        # ======================================================
+        # TABLE + SCROLLBARS
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
 
@@ -4902,36 +5328,32 @@ class AdminUI:
         y_scroll.config(command=self.admission_tree.yview)
         x_scroll.config(command=self.admission_tree.xview)
 
-    # Table headings
+        # Table headings
         for col in cols:
             self.admission_tree.heading(col, text=col.replace("_", " ").title())
             self.admission_tree.column(col, width=180, anchor="center")
 
-    # ======================================================
-    #                     BACKEND FETCH
-    # ======================================================
+        # ======================================================
+        # BACKEND FETCH
         import requests
         try:
-            res = requests.get("http://127.0.0.1:8000/admin/admissions/")
+            res = requests.get("http://127.0.0.1:8000/admin/admissions/all")
             self.all_admissions = res.json() if res.status_code == 200 else []
             self.column_values = {
-    "admission_id": [str(r["admission_id"]) for r in self.all_admissions],
-    "full_name": [r["full_name"] for r in self.all_admissions],
-    "date_of_birth": [r["date_of_birth"] for r in self.all_admissions],
-    "gender": [r["gender"] for r in self.all_admissions],
-    "address": [r["address"] for r in self.all_admissions],
-    "father_name": [r["father_name"] for r in self.all_admissions],
-    "mother_name": [r["mother_name"] for r in self.all_admissions],
-    "parent_phone": [r["parent_phone"] for r in self.all_admissions],
-    "parent_email": [r["parent_email"] for r in self.all_admissions],
-    "class_id": [str(r["class_id"]) for r in self.all_admissions],
-    "previous_school": [r["previous_school"] for r in self.all_admissions],
-    }
+            "admission_id": [str(r["admission_id"]) for r in self.all_admissions],
+            "full_name": [r["full_name"] for r in self.all_admissions],
+            "status": [r["status"] for r in self.all_admissions],
+            "date_of_birth": [r["date_of_birth"] for r in self.all_admissions],
+            "gender": [r["gender"] for r in self.all_admissions],
+            "class_id": [str(r["class_id"]) for r in self.all_admissions],
+            "parent_phone": [r["parent_phone"] for r in self.all_admissions],
+            "parent_email": [r["parent_email"] for r in self.all_admissions]
+            }
 
         except:
             self.all_admissions = []
 
-    # ----------- UPDATE TABLE FUNCTION -----------
+        # ----------- UPDATE TABLE FUNCTION -----------
         def update_table(data):
             for row in self.admission_tree.get_children():
                 self.admission_tree.delete(row)
@@ -4942,41 +5364,37 @@ class AdminUI:
                 values=(
                     row["admission_id"],
                     row["full_name"],
+                    row["status"],
                     row["date_of_birth"],
                     row["gender"],
-                    row["address"],
-                    row["father_name"],
-                    row["mother_name"],
                     row["parent_phone"],
                     row["parent_email"],
-                    row["class_id"],
-                    row["previous_school"]
+                    row["class_id"]
                 )
             )
 
-    # ----------- FILTER FUNCTION -----------
+        # ----------- FILTER FUNCTION -----------
         def load_filtered():
             col = filter_var.get().strip()
             val = filter_value.get().strip().lower()
 
             if not col or not val:
+                self.show_popup("Input Error", "Please select column and value", "warning")
                 return
             
-            valid_list = self.column_values.get(col, [])
-            valid_lower = [str(v).lower() for v in valid_list]
-
-            if val not in valid_lower:
-                self.show_popup(
-            "Invalid Search Value",
-            f"'{val}' not found in column '{col}'.",
-            "warning"
-        )
-                filter_var_value.set("")  # clear invalid
-                return
             filtered = [
-            r for r in self.all_admissions
-            if str(r[col]).lower() == val.lower()
-        ]
+                r for r in self.all_admissions
+                if val in str(r.get(col, "")).lower()
+            ]
+
+            if not filtered:
+                self.show_popup(
+                "No Records",
+                f"No records found for '{val}' in '{col}'",
+                "info"
+                )
+                return
+
             update_table(filtered)
 
         def load_all():
@@ -4985,7 +5403,7 @@ class AdminUI:
         load_btn.bind("<Button-1>", lambda e: load_filtered())
         load_all_btn.bind("<Button-1>", lambda e: load_all())
 
-    # INITIAL LOAD
+        # INITIAL LOAD
         update_table(self.all_admissions)
 
 
@@ -5054,7 +5472,7 @@ class AdminUI:
         output_frame = tk.Frame(self.content, bg="#ECF0F1")
         output_frame.pack(pady=10)
 
-        labels = ["full_name", "date_of_birth", "gender", "address", "father_name", "mother_name", "parent_phone", "parent_email", "class_id", "previous_school"]
+        labels = ["full_name", "status", "date_of_birth", "gender", "address", "father_name", "mother_name", "parent_phone", "parent_email", "class_id", "previous_school"]
 
         vars_dict = {}
 
@@ -5076,7 +5494,7 @@ class AdminUI:
 
         # ---------- FETCH FUNCTION ----------
         def fetch_admission():
-            adm_id = str(adm_id_var).get().strip()
+            adm_id = adm_id_var.get().strip()
 
             if not adm_id.isdigit() or int(adm_id) <= 0:
                 self.show_popup("Wrong","Admission ID should be a Number!", "warning")
@@ -5095,7 +5513,11 @@ class AdminUI:
                 data = res.json()
 
                 vars_dict["full_name"].set(data["full_name"])
-                vars_dict["gender"].set(data["gender"])
+
+                gender_map = {"M": "Male", "F": "Female", "O": "Other"}
+                vars_dict["gender"].set(gender_map.get(data["gender"], data["gender"]))
+
+                vars_dict["status"].set(data["status"])
                 vars_dict["date_of_birth"].set(data["date_of_birth"])
                 vars_dict["class_id"].set(data["class_id"])
                 vars_dict["address"].set(data["address"])
@@ -5106,10 +5528,523 @@ class AdminUI:
                 vars_dict["previous_school"].set(data["previous_school"])
 
             except:
+                for k in vars_dict.values():
+                    k.set("")
                 self.show_popup("Error","Error in Fetching Details from Server", "error")
+    
 
     # ==========================================================
-    # ===== Button to approve admissions =====
+    # ===== Button to Submit admissions =====   
+    def load_submit_admission_screen(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Submit Admission",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=25)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+ 
+        # ---------- ADMISSION ID INPUT ----------
+        tk.Label(
+        form,
+        text="Admission ID:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=0, column=0, padx=10, pady=10)
+
+        adm_id_var = tk.StringVar()
+        tk.Entry(
+        form,
+        textvariable=adm_id_var,
+        font=("Arial", 14),
+        width=25
+        ).grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- LOAD BUTTON ----------
+        load_btn = tk.Label(
+        form,
+        text="Load",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15,
+        pady=5,
+        width=12,
+        relief="ridge",
+        cursor="arrow"
+        )
+        load_btn.grid(row=0, column=2, padx=10)
+
+        # ---------- LOAD ADMISSION ----------
+        def load_admission():
+            adm_id = adm_id_var.get().strip()
+
+            if not adm_id.isdigit():
+                self.show_popup("Invalid", "Admission ID must be numeric", "warning")
+                return
+
+            import requests
+            try:
+                res = requests.get(f"http://127.0.0.1:8000/admin/admissions/{adm_id}")
+
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "Admission not found", "info")
+                    disable_submit()
+                    return
+
+                data = res.json()
+
+                status = data["status"]
+
+                if status != "DRAFT":
+                    self.show_popup(
+                    "Not Allowed",
+                    f"Admission is '{status}'. Only DRAFT can be submitted.",
+                    "warning"
+                    )
+                    disable_submit()
+                    return  
+
+                gender_map = {"M": "Male", "F": "Female", "O": "Other"}
+
+                vars_dict["full_name"].set(data["full_name"])
+                vars_dict["date_of_birth"].set(data["date_of_birth"])
+                vars_dict["gender"].set(gender_map.get(data["gender"], data["gender"]))
+                vars_dict["address"].set(data["address"])
+                vars_dict["father_name"].set(data["father_name"])
+                vars_dict["mother_name"].set(data["mother_name"])
+                vars_dict["parent_phone"].set(data["parent_phone"])
+                vars_dict["parent_email"].set(data["parent_email"])
+                vars_dict["class_id"].set(data["class_id"])
+                vars_dict["previous_school"].set(data["previous_school"])
+
+                status = data["status"]
+                vars_dict["status"].set(status)
+
+                enable_submit()
+
+            except:
+                self.show_popup("Error", "Server error while loading admission", "error")
+
+        def validate_load(*args):
+            if adm_id_var.get().strip():
+                load_btn.config(bg="#000000", fg="white", cursor="hand2")
+                load_btn.bind("<Button-1>", lambda e: load_admission())
+            else:
+                load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                load_btn.unbind("<Button-1>")
+
+        adm_id_var.trace_add("write", validate_load)
+
+        # ---------- OUTPUT PANEL ----------
+        output_frame = tk.Frame(self.content, bg="#ECF0F1")
+        output_frame.pack(pady=20)
+
+        fields = [
+        "full_name", "date_of_birth", "gender", "address",
+        "father_name", "mother_name", "parent_phone",
+        "parent_email", "class_id", "previous_school", "status"
+        ]
+
+        vars_dict = {}
+
+        for i, field in enumerate(fields):
+            tk.Label(
+            output_frame,
+            text=f"{field}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=6, sticky="w")
+
+            var = tk.StringVar()
+            tk.Entry(
+            output_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+            ).grid(row=i, column=1, padx=10, pady=6)
+
+            vars_dict[field] = var
+
+        # ---------- BACK BUTTON ROW (SEPARATE) ----------
+        back_row = tk.Frame(self.content, bg="#ECF0F1")
+        back_row.pack(pady=10)
+
+        self.create_back_button(
+        parent=back_row,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        ) 
+
+        # ---------- BUTTON ROW ----------
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=20)
+
+        # ---------- ACTION BUTTONS ----------
+        submit_btn = tk.Label(
+        btn_row,
+        text="Submit Admission",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        submit_btn.grid(row=0, column=0, padx=15)
+
+        def disable_submit():
+            submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            submit_btn.unbind("<Button-1>")
+
+        def enable_submit():
+            submit_btn.config(bg="#000000", fg="white", cursor="hand2")
+            submit_btn.bind("<Button-1>", lambda e: submit_admission())
+
+        disable_submit()
+
+        # ---------- SUBMIT ----------
+        def submit_admission():
+            adm_id = adm_id_var.get().strip()
+            import requests
+ 
+            res = requests.patch(f"http://127.0.0.1:8000/admin/admissions/{adm_id}/submit")
+
+            if res.status_code == 200:
+                self.show_popup("Success", "Admission submitted successfully", "success")
+                self.change_screen(
+                            "Admission Submitted Successfully",
+                            add_callback=self.load_submit_admission_screen
+                            )
+            else:
+                self.show_popup("Failed", res.text, "error")
+    
+    # ==========================================================
+    # ===== Button to Mark admissions as Verified=====
+    def load_verify_admission_screen(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Verify Admission",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=25)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        # ---------- ADMISSION ID INPUT ----------
+        tk.Label(
+        form,
+        text="Admission ID:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=0, column=0, padx=10, pady=10)
+
+        adm_id_var = tk.StringVar()
+        tk.Entry(
+        form,
+        textvariable=adm_id_var,
+        font=("Arial", 14),
+        width=25
+        ).grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- LOAD BUTTON ----------
+        load_btn = tk.Label(
+        form,
+        text="Load",
+        font=("Arial", 12, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=15,
+        pady=5,
+        width=12,
+        relief="ridge",
+        cursor="arrow"
+        )
+        load_btn.grid(row=0, column=2, padx=10)
+
+        def disable_actions():
+            for btn in (verify_btn, reject_btn):
+                btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                btn.unbind("<Button-1>")
+
+        def enable_verify():
+            verify_btn.config(bg="#000000", fg="white", cursor="hand2")
+            verify_btn.bind("<Button-1>", lambda e: verify_admission())
+
+        def enable_reject():
+            reject_btn.config(bg="#8B0000", fg="white", cursor="hand2")
+            reject_btn.bind("<Button-1>", lambda e: open_reject_popup())
+
+        # ---------- LOAD ADMISSION ----------
+        def load_admission():
+            adm_id = adm_id_var.get().strip()
+
+            if not adm_id.isdigit():
+                self.show_popup("Invalid", "Admission ID must be numeric", "warning")
+                return
+
+            import requests
+            try:
+                res = requests.get(f"http://127.0.0.1:8000/admin/admissions/{adm_id}")
+
+                if res.status_code != 200:
+                    self.show_popup("Not Found", "Admission not found", "info")
+                    disable_actions()
+                    return
+
+                data = res.json()
+
+                status = data["status"]
+
+                if status != "SUBMITTED":
+                    self.show_popup(
+                    "Not Allowed",
+                    f"Admission is '{status}'. Only SUBMITTED can be verified.",
+                    "warning"
+                    )
+                    disable_actions()
+                    return   
+
+                gender_map = {"M": "Male", "F": "Female", "O": "Other"}
+
+                vars_dict["full_name"].set(data["full_name"])
+                vars_dict["date_of_birth"].set(data["date_of_birth"])
+                vars_dict["gender"].set(gender_map.get(data["gender"], data["gender"]))
+                vars_dict["address"].set(data["address"])
+                vars_dict["father_name"].set(data["father_name"])
+                vars_dict["mother_name"].set(data["mother_name"])
+                vars_dict["parent_phone"].set(data["parent_phone"])
+                vars_dict["parent_email"].set(data["parent_email"])
+                vars_dict["class_id"].set(data["class_id"])
+                vars_dict["previous_school"].set(data["previous_school"])
+
+                status = data["status"]
+                vars_dict["status"].set(status)
+
+                enable_verify()
+                enable_reject()
+
+            except:
+                self.show_popup("Error", "Server error while loading admission", "error")
+
+        def validate_load(*args):
+            if adm_id_var.get().strip():
+                load_btn.config(bg="#000000", fg="white", cursor="hand2")
+                load_btn.bind("<Button-1>", lambda e: load_admission())
+            else:
+                load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                load_btn.unbind("<Button-1>")
+
+        adm_id_var.trace_add("write", validate_load)
+
+        # ---------- OUTPUT PANEL ----------
+        output_frame = tk.Frame(self.content, bg="#ECF0F1")
+        output_frame.pack(pady=20)
+
+        fields = [
+        "full_name", "date_of_birth", "gender", "address",
+        "father_name", "mother_name", "parent_phone",
+        "parent_email", "class_id", "previous_school", "status"
+        ]
+ 
+        vars_dict = {}
+
+        for i, field in enumerate(fields):
+            tk.Label(
+            output_frame,
+            text=f"{field}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=6, sticky="w")
+
+            var = tk.StringVar()
+            tk.Entry(
+            output_frame,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30,
+            state="disabled",
+            disabledbackground="#F2F3F4",
+            disabledforeground="black"
+            ).grid(row=i, column=1, padx=10, pady=6)
+
+            vars_dict[field] = var
+
+        # ---------- BACK BUTTON ROW (SEPARATE) ----------
+        back_row = tk.Frame(self.content, bg="#ECF0F1")
+        back_row.pack(pady=10)
+
+        self.create_back_button(
+        parent=back_row,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
+
+        # ---------- BUTTON ROW ----------
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=30)
+
+        # ---------- ACTION BUTTONS ----------
+        verify_btn = tk.Label(
+        btn_row,
+        text="Verify Admission",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        verify_btn.grid(row=0, column=0, padx=15)
+
+        reject_btn = tk.Label(
+        btn_row,
+        text="Reject Admission",
+        font=("Arial", 14, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        reject_btn.grid(row=0, column=1, padx=15)  
+
+        disable_actions()
+
+        # ---------- VERIFY ----------
+        def verify_admission():
+            adm_id = adm_id_var.get().strip()
+            import requests
+
+            res = requests.patch(f"http://127.0.0.1:8000/admin/admissions/{adm_id}/verify")
+
+            if res.status_code == 200:
+                self.show_popup("Verified", "Admission verified successfully", "success")
+                self.change_screen( 
+                    "Admission verified successfully",
+                    add_callback=self.load_verify_admission_screen
+                    )
+            else:
+                self.show_popup("Failed", res.text, "error")
+        
+        # ------------------------
+        def open_reject_popup():
+            popup = tk.Toplevel(self.root)
+            popup.title("Reject Admission")
+            popup.resizable(False, False)
+
+            popup_width = 420
+            popup_height = 230
+
+            # ---- CENTER THE POPUP ----
+            popup.update_idletasks()
+            screen_width = popup.winfo_screenwidth()
+            screen_height = popup.winfo_screenheight()
+
+            x = (screen_width // 2) - (popup_width // 2)
+            y = (screen_height // 2) - (popup_height // 2)
+
+            popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+            popup.transient(self.root)
+            popup.grab_set()
+            popup.focus_force()
+
+            tk.Label(
+            popup,
+            text="Reason for Rejection",
+            font=("Arial", 14, "bold")
+            ).pack(pady=10)
+
+            reason_var = tk.StringVar()
+
+            reason_entry = tk.Entry(
+            popup,
+            textvariable=reason_var,
+            font=("Arial", 12),
+            width=40
+            )
+            reason_entry.pack(pady=10)
+            reason_entry.focus()
+
+            def submit_rejection():
+                reason = reason_var.get().strip()
+                if not reason:
+                    self.show_popup(
+                    "Required",
+                    "Rejection reason is required",
+                    "warning"
+                    )
+                    return
+
+                popup.destroy()
+                send_reject_request(reason)
+
+            reject_confirm_btn = tk.Button(
+            popup,
+            text="Reject Admission",
+            bg="#D5D8DC",
+            fg="#AEB6BF",
+            font=("Arial", 12, "bold"),
+            width=18,
+            padx=20,
+            pady=6,
+            relief="ridge",
+            state="disabled",
+            command=submit_rejection
+            )
+            reject_confirm_btn.pack(pady=20)
+
+            def validate_reason(*args):
+                if reason_var.get().strip():
+                    reject_confirm_btn.config(bg="#8B0000", fg="white", state="normal", cursor="hand2")
+                else:
+                    reject_confirm_btn.config(bg="#D5D8DC", fg="#AEB6BF", state="disabled", cursor="arrow")
+
+            reason_var.trace_add("write", validate_reason)
+
+        # ---------- REJECT ----------
+        def send_reject_request(reason):
+            adm_id = adm_id_var.get().strip()
+            import requests
+
+            res = requests.patch(
+            f"http://127.0.0.1:8000/admin/admissions/{adm_id}/reject",
+            json={"remarks": reason}
+            )
+
+            if res.status_code == 200:
+                self.show_popup(
+                "Rejected",
+                "Admission rejected successfully",
+                "info"
+                )
+                self.change_screen("Admission rejected successfully", add_callback=self.load_verify_admission_screen)
+            else:
+                self.show_popup("Failed", res.text, "error")
+
+
+    # ==========================================================
+    # ===== Button to Approve admissions =====
     def load_approve_admission_screen(self):
         self.clear_content()
 
@@ -5166,7 +6101,12 @@ class AdminUI:
         output_frame = tk.Frame(self.content, bg="#ECF0F1")
         output_frame.pack(pady=20)
 
-        fields = ["full_name", "date_of_birth", "gender", "address", "father_name", "mother_name", "parent_phone", "parent_email", "class_id", "previous_school"]
+        fields = [
+                "full_name", "date_of_birth", "gender", "address",
+                "father_name", "mother_name", "parent_phone",
+                "parent_email", "class_id", "previous_school",
+                "status"
+                ]
         vars_dict = {}
 
         for i, label in enumerate(fields):
@@ -5211,10 +6151,11 @@ class AdminUI:
         relief="ridge",
         cursor="arrow"
         )
-        approve_btn.pack(pady=20)
+        approve_btn.pack(pady=10)
 
         # ----- APPROVE BUTTON DISABLED UNTIL DATA LOADED -----
         def enable_approve():
+            approve_btn.unbind("<Button-1>")   
             approve_btn.config(bg="#000000", fg="white", cursor="hand2")
             approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
             approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
@@ -5225,8 +6166,6 @@ class AdminUI:
             approve_btn.unbind("<Enter>")
             approve_btn.unbind("<Leave>")
             approve_btn.unbind("<Button-1>")
-
-            disable_approve()
 
         # ---------- LOAD ADMISSION DETAILS ----------
         def load_admission():
@@ -5250,8 +6189,23 @@ class AdminUI:
 
                 data = res.json()
 
+                status = data["status"]
+
+                if status in ("APPROVED", "REJECTED", "SUBMITTED"):
+                    disable_approve()
+                    self.show_popup(
+                            "Not Ready",
+                            f"Admission is in '{status}' state.\nOnly VERIFIED admissions can be approved.",
+                            "warning"
+                    )
+                    return
+
                 vars_dict["full_name"].set(data["full_name"])
-                vars_dict["gender"].set(data["gender"])
+
+                gender_map = {"M": "Male", "F": "Female", "O": "Other"}
+                vars_dict["gender"].set(gender_map.get(data["gender"], data["gender"]))
+                
+                vars_dict["status"].set(status)
                 vars_dict["date_of_birth"].set(data["date_of_birth"])
                 vars_dict["class_id"].set(data["class_id"])
                 vars_dict["address"].set(data["address"])
@@ -5261,27 +6215,43 @@ class AdminUI:
                 vars_dict["mother_name"].set(data["mother_name"])
                 vars_dict["previous_school"].set(data["previous_school"])
 
-                enable_approve()
+                enable_approve() 
 
-            except:
-                self.show_popup("Error", "Error in Fetching Data from Server", "error")
+            except requests.exceptions.RequestException as e:
+                self.show_popup(
+                "Server Error",
+                f"Backend error: {str(e)}",
+                "error"
+                )
 
         # ---------- APPROVE ADMISSION FUNCTION ----------
         def approve_admission():
+            disable_approve()   
             adm_id = adm_id_var.get().strip()
             import requests
 
             try:
-                res = requests.post(f"http://127.0.0.1:8000/admin/admissions/approve/{adm_id}")
+                res = requests.post(f"http://127.0.0.1:8000/admin/admissions/{adm_id}/approve")
 
                 if res.status_code == 200:
+                    disable_approve()
                     self.show_popup("Admission Approved Successfully, Student data added in Database successfully!", "success")
+                    
+                    adm_id_var.set("")
+                    for v in vars_dict.values():
+                        v.set("")
+                    
                     self.change_screen(
-                        f"Admission Approved Successfully!\nStudent ID: {res.json()['student_id']}",
+                        "Admission Approved Successfully!",
                         add_callback=self.load_approve_admission_screen
                     )
                 else:
-                    self.show_popup("Failed", "Admission Not Approved", res.text)
+                    try:
+                        msg = res.json().get("detail", "Admission not approved")
+                    except:
+                        msg = res.text
+
+                    self.show_popup("Failed", msg, "error")
 
             except:
                 self.show_popup("Error", "Error approving admission", "error")
@@ -5364,7 +6334,13 @@ class AdminUI:
 
         # --------- VALIDATION ----------
         def validate(*args):
-            if all(vars[k].get().strip() for k in vars):
+            submit.unbind("<Button-1>")
+
+            sid = vars["student_id"].get().strip()
+            if (
+                sid.isdigit() and int(sid) > 0 and
+                all(vars[k].get().strip() for k in vars)
+            ):
                 submit.config(bg="#000000", fg="white", cursor="hand2")
                 submit.bind("<Enter>", lambda e: submit.config(bg="#222222"))
                 submit.bind("<Leave>", lambda e: submit.config(bg="#000000"))
@@ -5373,7 +6349,6 @@ class AdminUI:
                 submit.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
                 submit.unbind("<Enter>")
                 submit.unbind("<Leave>")
-                submit.unbind("<Button-1>")
 
         for v in vars.values():
             v.trace_add("write", validate)
@@ -5387,22 +6362,33 @@ class AdminUI:
             if not re.match(r"\d{4}-\d{2}-\d{2}", date_str):
                 self.show_popup("Invalid Date", "Date must be YYYY-MM-DD!", "warning")
                 return
-
+            
             payload = {
-        "student_id": int(sid),
-        "reason": vars["reason"].get().strip(),
-        "remarks": None,
-        "issue_date": date_str
-    }
+                "student_id": int(sid),
+                "reason": vars["reason"].get().strip(),
+                "remarks": None,
+                "issue_date": date_str
+                }
 
             import requests
-            res = requests.post("http://127.0.0.1:8000/admin/tc/issue", json=payload)
+            try:
+                res = requests.post(
+                "http://127.0.0.1:8000/admin/tc/issue",
+                json=payload
+            )
 
-            if res.status_code == 200:
-                self.show_popup("Success", "TC Issued Successfully!", "info")
-                self.change_screen("TC Issued!", add_callback=self.load_issue_tc_screen)
-            else:
-                self.show_popup("Error", f"Failed to Issue TC! {res.text}", "error")
+                if res.status_code == 200:
+                    self.show_popup("Success", "TC Issued Successfully!", "info")
+                    self.change_screen(
+                        "TC Issued!",
+                        add_callback=self.load_issue_tc_screen
+                    )
+                else:
+                    msg = res.json().get("detail", res.text)
+                    self.show_popup("Error", msg, "error")
+
+            except Exception:
+                self.show_popup("Error", "Server not reachable!", "error")
 
 
     # ===========================================================
@@ -5486,6 +6472,17 @@ class AdminUI:
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
 
+        status_var = tk.StringVar()
+        status_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=status_var,
+        values=["ALL", "PENDING", "APPROVED"],
+        state="readonly",
+        width=18
+        )
+        status_dropdown.set("ALL")
+        status_dropdown.grid(row=0, column=5, padx=10)
+
         # ------ TABLE + SCROLLBARS ------
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
@@ -5510,23 +6507,36 @@ class AdminUI:
             self.tc_tree.column(col, width=180, anchor="center")
 
         # ----- BACKEND FETCH ------
-        import requests
-        try:
-            res = requests.get("http://127.0.0.1:8000/admin/tc/all")
-            self.all_tc = res.json() if res.status_code == 200 else []
+        def fetch_tc():
+            import requests
+            try:
+                params = {}
+                if status_var.get() == "PENDING":
+                    params["is_active"] = False
+                elif status_var.get() == "APPROVED":
+                    params["is_active"] = True
 
-            # ------- For Validations -------
-            self.tc_column_values = {
-            "tc_id": [str(r["tc_id"]) for r in self.all_tc],
-            "student_id": [str(r["student_id"]) for r in self.all_tc],
-            "issue_date": [r["issue_date"] for r in self.all_tc],
-            "reason": [r["reason"] for r in self.all_tc],
-            "remarks": [r["remarks"] for r in self.all_tc],
-            "status": [1 if r["status"] else 0 for r in self.all_tc]
-            }
+                res = requests.get(
+                    "http://127.0.0.1:8000/admin/tc/all",
+                    params=params
+                )
 
-        except:
-            self.all_tc = []
+                self.all_tc = res.json() if res.status_code == 200 else []
+
+                self.tc_column_values = {
+                    "tc_id": [str(r["tc_id"]) for r in self.all_tc],
+                    "student_id": [str(r["student_id"]) for r in self.all_tc],
+                    "issue_date": [r["issue_date"] for r in self.all_tc],
+                    "reason": [r["reason"] for r in self.all_tc],
+                    "remarks": [r["remarks"] for r in self.all_tc],
+                    "status": ["APPROVED" if r["is_active"] else "PENDING" for r in self.all_tc]
+                }
+
+                update_table(self.all_tc)
+
+            except:
+                self.all_tc = []
+                self.show_popup("Error", "Failed to load TC records", "error")
 
         # ------- UPDATE TABLE FUNCTION -------
         def update_table(data):
@@ -5542,7 +6552,7 @@ class AdminUI:
                     row["issue_date"],
                     row["reason"],
                     row["remarks"], 
-                    1 if row["status"] else 0
+                    "APPROVED" if row["is_active"] else "PENDING"
                     )
                 )
 
@@ -5576,10 +6586,11 @@ class AdminUI:
             update_table(self.all_tc)
 
         load_btn.bind("<Button-1>", lambda e: load_filtered())
-        load_all_btn.bind("<Button-1>", lambda e: load_all())
+        load_all_btn.bind("<Button-1>", lambda e: fetch_tc())
+        status_dropdown.bind("<<ComboboxSelected>>", lambda e: fetch_tc())
 
         # INITIAL LOAD
-        update_table(self.all_tc)
+        fetch_tc() 
 
 
     # ==================================================================
@@ -5624,6 +6635,8 @@ class AdminUI:
 
         # Enable/Disable LOAD Button
         def validate_load(*args):
+            load_btn.unbind("<Button-1>")
+
             if tc_id_var.get().strip():
                 load_btn.config(bg="#000000", fg="white", cursor="hand2")
                 load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
@@ -5633,7 +6646,6 @@ class AdminUI:
                 load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
                 load_btn.unbind("<Enter>")
                 load_btn.unbind("<Leave>")
-                load_btn.unbind("<Button-1>")
 
         tc_id_var.trace_add("write", validate_load)
 
@@ -5728,9 +6740,17 @@ class AdminUI:
                 vars_dict["student_id"].set(data["student_id"])
                 vars_dict["issue_date"].set(data["issue_date"])
                 vars_dict["reason"].set(data["reason"])
-                vars_dict["status"].set("1" if data["status"] else "0")
+                vars_dict["status"].set("APPROVED" if data["is_active"] else "PENDING")
 
-                enable_approve()
+                if not data["is_active"]:
+                    enable_approve()
+                else:
+                    disable_approve()
+                    self.show_popup(
+                    "Not Allowed",
+                    "This TC is already APPROVED.\nOnly PENDING TCs can be approved.",
+                    "warning"
+                    )
 
             except:
                 self.show_popup("Error", "Server not reachable!", "error")
@@ -7300,6 +8320,15 @@ class AdminUI:
 
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
+        
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,    
+        form_frame=form                          
+        )
 
         fields = [
         ("Full Name", "full_name"),
@@ -7314,16 +8343,45 @@ class AdminUI:
         ]
 
         vars = {}
-
+        available_subjects = fetch_subjects()
+        self.subject_values = [
+                f"{s['subject_id']} - {s['subject_name']}"
+                for s in available_subjects
+                ]
+        
         for i, (label, key) in enumerate(fields):
 
             tk.Label(form, text=f"{label}:", font=("Arial", 14), bg="#ECF0F1") \
             .grid(row=i, column=0, padx=10, pady=6)
 
             vars[key] = tk.StringVar()
+            
+            # ---------- GENDER DROPDOWN ----------
+            if key == "gender":
+                entry = ttk.Combobox(
+                form,
+                textvariable=vars[key],
+                font=("Arial", 14),
+                width=27,
+                state="readonly",
+                values=["MALE", "FEMALE", "OTHER"]
+                )
+                entry.grid(row=i, column=1, padx=10, pady=6)
+
+            # ---------- SUBJECT DROPDOWN ----------
+            elif key == "subject_id":
+                entry = ttk.Combobox(
+                form,
+                textvariable=vars[key],
+                font=("Arial", 14),
+                width=27,
+                state="readonly",
+                values=self.subject_values
+                )
+                entry.grid(row=i, column=1, padx=10, pady=6)
 
             # calendar for dob
-            if key == "date_of_birth":
+            elif key == "date_of_birth":
                 entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=28)
                 entry.grid(row=i, column=1, padx=5, pady=6)
 
@@ -7355,7 +8413,7 @@ class AdminUI:
 
         def validate():
             if all(v.get().strip() for v in vars.values()):
-                submit_btn.config(bg="#000000", fg="white", cursor="arrow")
+                submit_btn.config(bg="#000000", fg="white", cursor="hand2")
                 submit_btn.bind("<Button-1>", lambda e: submit())
             else:
                 submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
@@ -7367,27 +8425,40 @@ class AdminUI:
         def submit():
             data = {k: v.get().strip() for k, v in vars.items()}
 
-            # Gender check
-            gender = data["gender"].upper()
-            if gender not in ["M", "F", "O"]:
-                return self.show_popup("Invalid Gender", "Gender must be M/F/O only!", "warning")
+            if data["gender"] not in ["MALE", "FEMALE", "OTHER"]:
+                return self.show_popup(
+                "Invalid Gender",
+                "Please select gender from dropdown!",
+                "warning"
+                )
 
             # Subject ID must be int
-            if not data["subject_id"].isdigit():
-                return self.show_popup("Invalid Subject ID", "Subject ID must be numeric!", "warning")
+            if data["subject_id"] not in self.subject_values:
+                return self.show_popup(
+                "Invalid Subject",
+                "Please select a valid subject from dropdown!",
+                "warning"
+                )
+            
+            # clean subject_id before sending
+            data["subject_id"] = int(data["subject_id"].split("-")[0].strip())
 
             # Experience must be int
             if not data["experience_years"].isdigit():
                  return self.show_popup("Invalid Experience", "Experience must be a number!", "warning")
+            
+            data["experience_years"] = int(data["experience_years"])
 
             # email auto-format
-            if "@school.com" not in data["email"]:
-                data["email"] = data["email"].lower().replace(" ", "") + "@school.com"
+            email = data["email"].lower().replace(" ", "")
+            if "@" not in email:
+                email = email + "@school.com"
+            data["email"] = email
 
             # phone validation
             if not data["phone"].isdigit() or len(data["phone"]) != 10:
                 return self.show_popup("Invalid Phone", "Phone must be 10 digits!", "warning")
-
+            
             # POST request
             try:
                 import requests
@@ -7429,7 +8500,8 @@ class AdminUI:
 
         cols = (
         "onboarding_id", "full_name", "date_of_birth", "gender", "address",
-        "email", "phone", "subject_id", "qualification", "experience_years"
+        "email", "phone", "subject_id", "qualification", "experience_years",
+        "status"
         )
         # Filter Bar
         filter_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -7506,12 +8578,18 @@ class AdminUI:
 
         for col in cols:
             self.teacher_onboarding_tree.heading(col, text=col.replace("_", " ").title())
-            self.teacher_onboarding_tree.column(col, width=180, anchor="center")
+            if col in ("address", "qualification"):
+                self.teacher_onboarding_tree.column(col, width=250, anchor="center")
+            else:
+                self.teacher_onboarding_tree.column(col, width=180, anchor="center")
 
         # Backend Fetch
         import requests
         try:
-            res = requests.get("http://127.0.0.1:8000/admin/teachers/onboardings/all")
+            res = requests.get(
+                "http://127.0.0.1:8000/admin/teachers/onboardings/all",
+                params={"status": "PENDING"}
+            )
             self.all_teacher_onboardings = res.json() if res.status_code == 200 else []
 
             self.column_values = {
@@ -7525,6 +8603,7 @@ class AdminUI:
             "subject_id": [str(r["subject_id"]) for r in self.all_teacher_onboardings],
             "qualification": [r["qualification"] for r in self.all_teacher_onboardings],
             "experience_years": [str(r["experience_years"]) for r in self.all_teacher_onboardings],
+            "status": [r["status"] for r in self.all_teacher_onboardings]
             }
         except:
             self.all_teacher_onboardings = []
@@ -7533,8 +8612,11 @@ class AdminUI:
         def update_table(data):
             for row in self.teacher_onboarding_tree.get_children():
                 self.teacher_onboarding_tree.delete(row)
+            
+            gender_map = {"MALE": "Male", "FEMALE": "Female", "OTHER": "Other"}
 
             for row in data:
+                gender = gender_map.get(row["gender"], row["gender"])
                 self.teacher_onboarding_tree.insert(
                 "",
                 "end",
@@ -7542,13 +8624,14 @@ class AdminUI:
                     row["onboarding_id"],
                     row["full_name"],
                     row["date_of_birth"],
-                    row["gender"],
+                    gender,
                     row["address"],
                     row["email"],
                     row["phone"],
                     row["subject_id"],
                     row["qualification"],
-                    row["experience_years"]
+                    row["experience_years"],
+                    row["status"]
                 )
             )
 
@@ -7646,7 +8729,8 @@ class AdminUI:
 
         fields = [
         "full_name", "date_of_birth", "gender", "address",
-        "email", "phone", "subject_id", "qualification", "experience_years"
+        "email", "phone", "subject_id", "qualification", "experience_years",
+        "status"
         ]
 
         vars_dict = {}
@@ -7671,20 +8755,23 @@ class AdminUI:
             vars_dict[field] = var
 
         # ---------------- BACK BUTTON ----------------
-        btn_row = tk.Frame(self.content, bg="#ECF0F1")
-        btn_row.pack(pady=30)
+        back_row = tk.Frame(self.content, bg="#ECF0F1")
+        back_row.pack(pady=10)
 
         self.create_back_button(
-        parent=btn_row,
+        parent=back_row,
         go_back_callback=self.load_dashboard,
         form_frame=form
         )
 
         self.content.update_idletasks()
 
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=30)
+
         # ---------------- APPROVE BUTTON ----------------
         approve_btn = tk.Label(
-        self.content,
+        btn_row,
         text="Approve Onboarding",
         font=("Arial", 14, "bold"),
         bg="#D5D8DC",
@@ -7695,22 +8782,37 @@ class AdminUI:
         relief="ridge",
         cursor="arrow"
         )
-        approve_btn.pack(pady=20)
+        approve_btn.grid(row=0, column=0, padx=15)
+        
+        # ---------------- REJECT BUTTON ----------------
+        reject_btn = tk.Label(
+        btn_row,
+        text="Reject Onboarding",
+        font=("Arial", 14, "bold"),
+        bg="#D9534F",          # red
+        fg="white",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        reject_btn.grid(row=0, column=1, padx=15)
 
         # ENABLE / DISABLE APPROVE BUTTON
-        def enable_approve():
-            approve_btn.config(bg="#000000", fg="white", cursor="arrow")
-            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
-            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
+        def disable_actions():
+            for btn in (approve_btn, reject_btn):
+                btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                btn.unbind("<Button-1>")
+
+        def enable_actions():
+            approve_btn.config(bg="#000000", fg="white", cursor="hand2")
             approve_btn.bind("<Button-1>", lambda e: approve_onboarding())
 
-        def disable_approve():
-            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-            approve_btn.unbind("<Enter>")
-            approve_btn.unbind("<Leave>")
-            approve_btn.unbind("<Button-1>")
+            reject_btn.config(bg="#8B0000", fg="white", cursor="hand2")
+            reject_btn.bind("<Button-1>", lambda e: open_reject_popup())
 
-        disable_approve()
+        disable_actions()
 
         # ---------------- LOAD DATA FUNCTION ----------------
         def load_teacher_onboarding():
@@ -7727,16 +8829,18 @@ class AdminUI:
 
                 if res.status_code != 200:
                     self.show_popup("Not Found", "No onboarding record found!", "info")
-                    disable_approve()
+                    disable_actions()
                     for v in vars_dict.values():
                         v.set("")
                     return
 
                 data = res.json()
+                
+                gender_map = {"MALE": "Male", "FEMALE": "Female", "OTHER": "Other"}
 
                 vars_dict["full_name"].set(data["full_name"])
                 vars_dict["date_of_birth"].set(data["date_of_birth"])
-                vars_dict["gender"].set(data["gender"])
+                vars_dict["gender"].set(gender_map.get(data["gender"], data["gender"]))
                 vars_dict["address"].set(data["address"])
                 vars_dict["email"].set(data["email"])
                 vars_dict["phone"].set(data["phone"])
@@ -7744,7 +8848,18 @@ class AdminUI:
                 vars_dict["qualification"].set(data["qualification"])
                 vars_dict["experience_years"].set(data["experience_years"])
 
-                enable_approve()
+                status = data["status"]
+                vars_dict["status"].set(status)
+
+                if status == "PENDING":
+                    enable_actions()
+                else:
+                    disable_actions()
+                    self.show_popup(
+                    "Not Allowed",
+                    f"Onboarding is already '{status}'.\nOnly PENDING onboardings can be processed.",
+                    "warning"
+                )
 
             except:
                 self.show_popup("Error", "Error fetching onboarding record!", "error")
@@ -7773,7 +8888,99 @@ class AdminUI:
             except:
                 self.show_popup("Error", "Error approving onboarding!", "error")
 
-    
+        # -------------------------
+        def open_reject_popup():
+            popup = tk.Toplevel(self.root)
+            popup.title("Reject Onboarding")
+            popup.resizable(False, False)
+
+            popup_width = 420
+            popup_height = 230
+
+            popup.update_idletasks()
+            screen_width = popup.winfo_screenwidth()
+            screen_height = popup.winfo_screenheight()
+
+            x = (screen_width // 2) - (popup_width // 2)
+            y = (screen_height // 2) - (popup_height // 2)
+
+            popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+            popup.transient(self.root)
+            popup.grab_set()
+            popup.focus_force()
+
+            tk.Label(
+            popup,
+            text="Reason for Rejection",
+            font=("Arial", 14, "bold")
+            ).pack(pady=10)
+
+            reason_var = tk.StringVar()
+
+            reason_entry = tk.Entry(
+            popup,
+            textvariable=reason_var,
+            font=("Arial", 12),
+            width=40
+            )
+            reason_entry.pack(pady=10)
+            reason_entry.focus()
+
+            def submit_rejection():
+                reason = reason_var.get().strip()
+                if not reason:
+                    self.show_popup("Required", "Rejection reason is required", "warning")
+                    return
+
+                popup.destroy()
+                send_reject_request(reason)
+
+            reject_confirm_btn = tk.Button(
+            popup,
+            text="Reject Onboarding",
+            bg="#D5D8DC",
+            fg="#AEB6BF",
+            font=("Arial", 12, "bold"),
+            width=18,
+            padx=20,
+            pady=6,
+            relief="ridge",
+            state="disabled",
+            command=submit_rejection
+            )
+            reject_confirm_btn.pack(pady=20)
+
+            def validate_reason(*args):
+                if reason_var.get().strip():
+                    reject_confirm_btn.config(bg="#8B0000", fg="white", state="normal", cursor="hand2")
+                else:
+                    reject_confirm_btn.config(bg="#D5D8DC", fg="#AEB6BF", state="disabled", cursor="arrow")
+
+            reason_var.trace_add("write", validate_reason)
+        
+        def send_reject_request(reason):
+            oid = onboard_id_var.get().strip()
+            import requests
+
+            res = requests.post(
+                f"http://127.0.0.1:8000/admin/teachers/onboardings/reject/{oid}",
+                json={"reason": reason}
+            )
+
+            if res.status_code == 200:
+                self.show_popup(
+                "Rejected",
+                "Teacher onboarding rejected successfully",
+                "info"
+            )
+                self.change_screen(
+                "Onboarding Rejected",
+                add_callback=self.load_approve_teacher_onboarding_screen
+                )
+            else:
+                self.show_popup("Failed", res.text, "error")
+
+
     # ==============================================================================
     # ----- STAFF ONNBOARDINGS ------
     # ----- Button to Create Staff Onboardings ------
@@ -7790,7 +8997,15 @@ class AdminUI:
 
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
-
+        
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+        
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,    
+        form_frame=form                          
+        )
         fields = [
         ("Full Name", "full_name"),
         ("Date of Birth", "date_of_birth"),
@@ -7811,9 +9026,20 @@ class AdminUI:
             .grid(row=i, column=0, padx=10, pady=6)
 
             vars[key] = tk.StringVar()
+            
+            if key == "gender":
+                entry = ttk.Combobox(
+                form,
+                textvariable=vars[key],
+                font=("Arial", 14),
+                width=27,
+                state="readonly",
+                values=["MALE", "FEMALE", "OTHER"]
+                )
+                entry.grid(row=i, column=1, padx=10, pady=6)
 
             # calendar for dob
-            if key == "date_of_birth":
+            elif key == "date_of_birth":
                 entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=28)
                 entry.grid(row=i, column=1, padx=5, pady=6)
 
@@ -7845,7 +9071,7 @@ class AdminUI:
 
         def validate():
             if all(v.get().strip() for v in vars.values()):
-                submit_btn.config(bg="#000000", fg="white", cursor="arrow")
+                submit_btn.config(bg="#000000", fg="white", cursor="hand2")
                 submit_btn.bind("<Button-1>", lambda e: submit())
             else:
                 submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
@@ -7857,23 +9083,29 @@ class AdminUI:
         def submit():
             data = {k: v.get().strip() for k, v in vars.items()}
 
-            # Gender check
-            gender = data["gender"].upper()
-            if gender not in ["M", "F", "O"]:
-                return self.show_popup("Invalid Gender", "Gender must be M/F/O only!", "warning")
+            if data["gender"] not in ["MALE", "FEMALE", "OTHER"]:
+                return self.show_popup(
+                "Invalid Gender",
+                "Please select gender from dropdown!",
+                "warning"
+                )
 
             # Experience must be int
             if not data["experience_years"].isdigit():
                 return self.show_popup("Invalid Experience", "Experience must be a number!", "warning")
 
+            data["experience_years"] = int(data["experience_years"])
+            
             # email auto-format
-            if "@school.com" not in data["email"]:
-                data["email"] = data["email"].lower().replace(" ", "") + "@school.com"
+            email = data["email"].lower().replace(" ", "")
+            if "@" not in email:
+                email = email + "@school.com"
+            data["email"] = email
 
             # phone validation
             if not data["phone"].isdigit() or len(data["phone"]) != 10:
                 return self.show_popup("Invalid Phone", "Phone must be 10 digits!", "warning")
-
+   
             # POST request
             try:
                 import requests
@@ -7915,7 +9147,8 @@ class AdminUI:
 
         cols = (
         "onboarding_id", "full_name", "date_of_birth", "gender", "address",
-        "email", "phone", "department", "role", "experience_years"
+        "email", "phone", "department", "role", "experience_years",
+        "status"
         )
         # Filter Bar
         filter_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -7992,12 +9225,18 @@ class AdminUI:
 
         for col in cols:
             self.staff_onboarding_tree.heading(col, text=col.replace("_", " ").title())
-            self.staff_onboarding_tree.column(col, width=180, anchor="center")
+            if col in ("address", "qualification"):
+                self.staff_onboarding_tree.column(col, width=250, anchor="center")
+            else:
+                self.staff_onboarding_tree.column(col, width=180, anchor="center")
 
         # Backend Fetch
         import requests
         try:
-            res = requests.get("http://127.0.0.1:8000/admin/staff/onboardings/all")
+            res = requests.get(
+                "http://127.0.0.1:8000/admin/staff/onboardings/all",
+                params={"status": "PENDING"}
+            )
             self.all_staff_onboardings = res.json() if res.status_code == 200 else []
 
             self.column_values = {
@@ -8011,6 +9250,7 @@ class AdminUI:
             "department": [r["department"] for r in self.all_staff_onboardings],
             "role": [r["role"] for r in self.all_staff_onboardings],
             "experience_years": [str(r["experience_years"]) for r in self.all_staff_onboardings],
+            "status": [r["status"] for r in self.all_staff_onboardings]
             }
         except:
             self.all_staff_onboardings = []
@@ -8019,8 +9259,11 @@ class AdminUI:
         def update_table(data):
             for row in self.staff_onboarding_tree.get_children():
                 self.staff_onboarding_tree.delete(row)
+            
+            gender_map = {"MALE": "Male", "FEMALE": "Female", "OTHER": "Other"}
 
             for row in data:
+                gender = gender_map.get(row["gender"], row["gender"])
                 self.staff_onboarding_tree.insert(
                 "",
                 "end",
@@ -8028,13 +9271,14 @@ class AdminUI:
                     row["onboarding_id"],
                     row["full_name"],
                     row["date_of_birth"],
-                    row["gender"],
+                    gender,
                     row["address"],
                     row["email"],
                     row["phone"],
                     row["department"],
                     row["role"],
-                    row["experience_years"]
+                    row["experience_years"],
+                    row["status"]
                 )
             )
 
@@ -8132,8 +9376,8 @@ class AdminUI:
 
         fields = [
         "full_name", "date_of_birth", "gender", "address", "department", "role",
-        "email", "phone", "experience_years"
-         ]
+        "email", "phone", "experience_years", "status"
+        ]
 
         vars_dict = {}
 
@@ -8157,20 +9401,23 @@ class AdminUI:
             vars_dict[field] = var
 
         # ---------------- BACK BUTTON ----------------
-        btn_row = tk.Frame(self.content, bg="#ECF0F1")
-        btn_row.pack(pady=30)
+        back_row = tk.Frame(self.content, bg="#ECF0F1")
+        back_row.pack(pady=10)
 
         self.create_back_button(
-        parent=btn_row,
+        parent=back_row,
         go_back_callback=self.load_dashboard,
         form_frame=form
         )
 
         self.content.update_idletasks()
 
+        btn_row = tk.Frame(self.content, bg="#ECF0F1")
+        btn_row.pack(pady=30)
+
         # ---------------- APPROVE BUTTON ----------------
         approve_btn = tk.Label(
-        self.content,
+        btn_row,
         text="Approve Onboarding",
         font=("Arial", 14, "bold"),
         bg="#D5D8DC",
@@ -8181,22 +9428,37 @@ class AdminUI:
         relief="ridge",
         cursor="arrow"
         )
-        approve_btn.pack(pady=20)
+        approve_btn.grid(row=0, column=0, padx=15)
+        
+        # ---------------- REJECT BUTTON ----------------
+        reject_btn = tk.Label(
+        btn_row,
+        text="Reject Onboarding",
+        font=("Arial", 14, "bold"),
+        bg="#D9534F",          # red
+        fg="white",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        reject_btn.grid(row=0, column=1, padx=15)
 
         # ENABLE / DISABLE APPROVE BUTTON
-        def enable_approve():
-            approve_btn.config(bg="#000000", fg="white", cursor="arrow")
-            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
-            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
+        def disable_actions():
+            for btn in (approve_btn, reject_btn):
+                btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                btn.unbind("<Button-1>")
+
+        def enable_actions():
+            approve_btn.config(bg="#000000", fg="white", cursor="hand2")
             approve_btn.bind("<Button-1>", lambda e: approve_onboarding())
 
-        def disable_approve():
-            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-            approve_btn.unbind("<Enter>")
-            approve_btn.unbind("<Leave>")
-            approve_btn.unbind("<Button-1>")
+            reject_btn.config(bg="#8B0000", fg="white", cursor="hand2")
+            reject_btn.bind("<Button-1>", lambda e: open_reject_popup())
 
-        disable_approve()
+        disable_actions()
 
         # ---------------- LOAD DATA FUNCTION ----------------
         def load_staff_onboarding():
@@ -8213,16 +9475,18 @@ class AdminUI:
 
                 if res.status_code != 200:
                     self.show_popup("Not Found", "No onboarding record found!", "info")
-                    disable_approve()
+                    disable_actions()
                     for v in vars_dict.values():
                         v.set("")
                     return
 
                 data = res.json()
+                
+                gender_map = {"MALE": "Male", "FEMALE": "Female", "OTHER": "Other"}
 
                 vars_dict["full_name"].set(data["full_name"])
                 vars_dict["date_of_birth"].set(data["date_of_birth"])
-                vars_dict["gender"].set(data["gender"])
+                vars_dict["gender"].set(gender_map.get(data["gender"], data["gender"]))
                 vars_dict["address"].set(data["address"])
                 vars_dict["email"].set(data["email"])
                 vars_dict["phone"].set(data["phone"])
@@ -8230,11 +9494,22 @@ class AdminUI:
                 vars_dict["role"].set(data["role"])
                 vars_dict["experience_years"].set(data["experience_years"])
 
-                enable_approve()
+                status = data["status"]
+                vars_dict["status"].set(status)
 
+                if status == "PENDING":
+                    enable_actions()
+                else:
+                    disable_actions()
+                    self.show_popup(
+                    "Not Allowed",
+                    f"Onboarding is already '{status}'.\nOnly PENDING onboardings can be approved.",
+                    "warning"
+                )
+                    
             except:
                 self.show_popup("Error", "Error fetching onboarding record!", "error")
-
+         
         # ---------------- APPROVE FUNCTION ----------------
         def approve_onboarding():
             oid = onboard_id_var.get().strip()
@@ -8258,7 +9533,99 @@ class AdminUI:
 
             except:
                 self.show_popup("Error", "Error approving onboarding!", "error")
+        
+        # -------------------------
+        def open_reject_popup():
+            popup = tk.Toplevel(self.root)
+            popup.title("Reject Onboarding")
+            popup.resizable(False, False)
 
+            popup_width = 420
+            popup_height = 230
+
+            popup.update_idletasks()
+            screen_width = popup.winfo_screenwidth()
+            screen_height = popup.winfo_screenheight()
+
+            x = (screen_width // 2) - (popup_width // 2)
+            y = (screen_height // 2) - (popup_height // 2)
+
+            popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+            popup.transient(self.root)
+            popup.grab_set()
+            popup.focus_force()
+
+            tk.Label(
+            popup,
+            text="Reason for Rejection",
+            font=("Arial", 14, "bold")
+            ).pack(pady=10)
+
+            reason_var = tk.StringVar()
+
+            reason_entry = tk.Entry(
+            popup,
+            textvariable=reason_var,
+            font=("Arial", 12),
+            width=40
+            )
+            reason_entry.pack(pady=10)
+            reason_entry.focus()
+
+            def submit_rejection():
+                reason = reason_var.get().strip()
+                if not reason:
+                    self.show_popup("Required", "Rejection reason is required", "warning")
+                    return
+
+                popup.destroy()
+                send_reject_request(reason)
+
+            reject_confirm_btn = tk.Button(
+            popup,
+            text="Reject Onboarding",
+            bg="#D5D8DC",
+            fg="#AEB6BF",
+            font=("Arial", 12, "bold"),
+            width=18,
+            padx=20,
+            pady=6,
+            relief="ridge",
+            state="disabled",
+            command=submit_rejection
+            )
+            reject_confirm_btn.pack(pady=20)
+
+            def validate_reason(*args):
+                if reason_var.get().strip():
+                    reject_confirm_btn.config(bg="#8B0000", fg="white", state="normal", cursor="hand2")
+                else:
+                    reject_confirm_btn.config(bg="#D5D8DC", fg="#AEB6BF", state="disabled", cursor="arrow")
+
+            reason_var.trace_add("write", validate_reason)
+        
+        # ------------------------------
+        def send_reject_request(reason):
+            oid = onboard_id_var.get().strip()
+            import requests
+
+            res = requests.post(
+                f"http://127.0.0.1:8000/admin/staff/onboardings/reject/{oid}",
+                json={"reason": reason}
+            )
+
+            if res.status_code == 200:
+                self.show_popup(
+                "Rejected",
+                "Staff onboarding rejected successfully",
+                "info"
+            )
+                self.change_screen(
+                "Onboarding Rejected",
+                add_callback=self.load_approve_staff_onboarding_screen
+                )
+            else:
+                self.show_popup("Failed", res.text, "error")
 
     # ==============================================================================
     # ------ TEACHER OFFBOARDINGS/TRANSFERS/SEPERATIONS ------
@@ -8273,18 +9640,18 @@ class AdminUI:
         font=("Arial", 26, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=20)
 
-    # ---------- FIELDS ----------
+        # ---------- FIELDS ----------
         fields = [
         ("Teacher ID", "teacher_id"),
         ("Reason", "reason"),
         ("Remarks", "remarks"),
         ("Last Working Date (YYYY-MM-DD)", "separation_date")
-    ]
+        ]
 
         vars = {}
 
@@ -8292,11 +9659,11 @@ class AdminUI:
 
             tk.Label(
             form, text=f"{label}:", font=("Arial", 14), bg="#ECF0F1"
-        ).grid(row=i, column=0, padx=10, pady=8)
+            ).grid(row=i, column=0, padx=10, pady=8)
 
             vars[key] = tk.StringVar()
 
-        # --- Calendar for separation date ---
+            # --- Calendar for separation date ---
             if key == "separation_date":
                 entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=28)
                 entry.grid(row=i, column=1, padx=10, pady=6)
@@ -8308,12 +9675,12 @@ class AdminUI:
                 bg="white",
                 relief="flat",
                 command=lambda v=vars[key], b=entry: self.open_calendar_popup(b, v)
-            ).grid(row=i, column=2, padx=5)
+                ).grid(row=i, column=2, padx=5)
             else:
                 entry = tk.Entry(form, textvariable=vars[key], font=("Arial", 14), width=30)
                 entry.grid(row=i, column=1, padx=10, pady=6)
 
-    # ---------- BACK BUTTON ----------
+        # ---------- BACK BUTTON ----------
         btn_frame = tk.Frame(self.content, bg="#ECF0F1")
         btn_frame.pack(pady=25)
 
@@ -8321,9 +9688,9 @@ class AdminUI:
         parent=btn_frame,
         go_back_callback=self.load_dashboard,
         form_frame=form
-    )
+        )
 
-    # ---------- SUBMIT BUTTON ----------
+        # ---------- SUBMIT BUTTON ----------
         submit_btn = tk.Label(
         form,
         text="Issue Separation",
@@ -8335,12 +9702,14 @@ class AdminUI:
         width=20,
         cursor="arrow",
         relief="ridge"
-    )
+        )
         submit_btn.grid(row=len(fields), column=0, columnspan=3, pady=20)
 
-    # ---------- VALIDATION ----------
+        # ---------- VALIDATION ----------
         def validate(*args):
-            if all(vars[k].get().strip() for k in vars):
+            required_keys = ["teacher_id", "reason", "separation_date"]
+
+            if all(vars[k].get().strip() for k in required_keys):
                 submit_btn.config(bg="#000000", fg="white", cursor="arrow")
                 submit_btn.bind("<Enter>", lambda e: submit_btn.config(bg="#222222"))
                 submit_btn.bind("<Leave>", lambda e: submit_btn.config(bg="#000000"))
@@ -8354,10 +9723,20 @@ class AdminUI:
         for v in vars.values():
             v.trace_add("write", validate)
 
-    # ---------- SUBMIT FUNCTION ----------
+        # ---------- SUBMIT FUNCTION ----------
         def issue_separation():
+            
+            tid = vars["teacher_id"].get().strip()
 
-        # date format validation
+            if not tid.isdigit() or int(tid) <= 0:
+                self.show_popup(
+                "Invalid Teacher ID",
+                "Teacher ID must be a positive number",
+                "warning"
+            )
+                return
+
+            # date format validation
             import re
             date_str = vars["separation_date"].get().strip()
             if not re.match(r"\d{4}-\d{2}-\d{2}$", date_str):
@@ -8365,21 +9744,29 @@ class AdminUI:
                 return
 
             payload = {
-            "teacher_id": int(vars["teacher_id"].get().strip()),
+            "teacher_id": int(tid),
             "reason": vars["reason"].get().strip(),
             "remarks": vars["remarks"].get().strip(),
             "separation_date": date_str
-        }
+            }
 
-        # ---- send to backend ----
+            # ---- send to backend ----
             import requests
             res = requests.post("http://127.0.0.1:8000/admin/teachers/separation/issue", json=payload)
 
-            if res.status_code == 200:
+            if res.status_code in (200, 201):
                 self.show_popup("Success", "Separation Issued Successfully!", "info")
+
+                for v in vars.values():
+                    v.set("")
+
                 self.change_screen("Teacher Separation Issued!", add_callback=self.load_issue_teacher_separation_screen)
             else:
-                msg = res.json().get("detail", "Error issuing separation")
+                try:
+                    msg = res.json().get("detail", "Error issuing separation")
+                except:
+                    msg = res.text or "Error issuing separation"
+
                 self.show_popup("Failed", msg, "error")
 
 
@@ -8388,16 +9775,16 @@ class AdminUI:
     def load_view_all_teacher_separation_screen(self):
         self.clear_content()
 
-    # ---------- TITLE ----------
+        # ---------- TITLE ----------
         tk.Label(
         self.content,
         text="All Teacher Separation Requests",
         font=("Arial", 26, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
-    # ---------- BACK BUTTON ----------
+        # ---------- BACK BUTTON ----------
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
         back_frame.pack(anchor="w", padx=20)
 
@@ -8405,16 +9792,16 @@ class AdminUI:
         parent=back_frame,
         go_back_callback=self.load_dashboard,
         form_frame=None
-    )
+        )
 
-    # ---------- TABLE FRAME ----------
+        # ---------- TABLE FRAME ----------
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-    # ------- TABLE COLUMNS -------
+        # ------- TABLE COLUMNS -------
         cols = ("sep_id", "teacher_id", "separation_date", "reason", "status")
 
-    # ------- FILTER BAR -------
+        # ------- FILTER BAR -------
         filter_frame = tk.Frame(self.content, bg="#ECF0F1")
         filter_frame.pack(pady=10)
 
@@ -8424,7 +9811,7 @@ class AdminUI:
         font=("Arial", 12, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=0, padx=5)
 
         filter_var = tk.StringVar()
         filter_dropdown = ttk.Combobox(
@@ -8433,7 +9820,7 @@ class AdminUI:
         values=list(cols),
         state="readonly",
         width=20
-    )
+        )
         filter_dropdown.grid(row=0, column=1, padx=10)
 
         filter_val_var = tk.StringVar()
@@ -8442,10 +9829,10 @@ class AdminUI:
         textvariable=filter_val_var,
         font=("Arial", 12),
         width=25
-    )
+        )
         filter_val.grid(row=0, column=2, padx=10)
 
-    # ----- Black Button Styling -----
+        # ----- Black Button Styling -----
         def style_button(btn):
             btn.config(
             bg="#000000",
@@ -8456,7 +9843,7 @@ class AdminUI:
             relief="raised",
             cursor="arrow",
             font=("Arial", 12, "bold")
-        )
+            )
             btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
             btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
 
@@ -8467,22 +9854,34 @@ class AdminUI:
         load_all_btn = tk.Label(filter_frame, text="Load All")
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
+        
+        # ---- STATUS FILTER DROPDOWN ----
+        status_var = tk.StringVar()
+        status_dropdown = ttk.Combobox(
+            filter_frame,
+            textvariable=status_var,
+            values=["ALL", "PENDING", "APPROVED", "REJECTED"],
+            state="readonly",
+            width=18
+        )
+        status_dropdown.set("ALL")
+        status_dropdown.grid(row=0, column=5, padx=10)
 
-    # ---------- SCROLLBARS ----------
+        # ---------- SCROLLBARS ----------
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
 
         x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
         x_scroll.pack(side="bottom", fill="x")
 
-    # ---------- TREEVIEW TABLE ----------
+        # ---------- TREEVIEW TABLE ----------
         self.sep_tree = ttk.Treeview(
         table_frame,
         columns=cols,
         show="headings",
         yscrollcommand=y_scroll.set,
         xscrollcommand=x_scroll.set
-    )
+        )
         self.sep_tree.pack(fill="both", expand=True)
 
         y_scroll.config(command=self.sep_tree.yview)
@@ -8492,29 +9891,51 @@ class AdminUI:
             self.sep_tree.heading(col, text=col.replace("_", " ").title())
             self.sep_tree.column(col, width=180, anchor="center")
 
-    # ---------- FETCH DATA FROM BACKEND ----------
-        import requests
-        try:
-            res = requests.get("http://127.0.0.1:8000/admin/teachers/separation/all")
-            self.all_separations = res.json() if res.status_code == 200 else []
+        # ---------- FETCH DATA FROM BACKEND ----------
+        def fetch_separations():
+            import requests
+            try:
+                params = {}
+                if status_var.get() != "ALL":
+                    params["status"] = status_var.get()
 
-        # Structure for validation
-            self.sep_column_values = {
-            "sep_id": [str(r["sep_id"]) for r in self.all_separations],
-            "teacher_id": [str(r["teacher_id"]) for r in self.all_separations],
-            "separation_date": [r["separation_date"] for r in self.all_separations],
-            "reason": [r["reason"] for r in self.all_separations],
-            "status": [1 if r["status"] else 0 for r in self.all_separations]
-        }
-        except:
-            self.all_separations = []
+                res = requests.get(
+                "http://127.0.0.1:8000/admin/teachers/separation/all",
+                params=params
+                )
+
+                try:
+                    self.all_separations = res.json()
+                except:
+                    self.all_separations = []
+
+                self.sep_column_values = {
+                    "sep_id": [str(r["sep_id"]) for r in self.all_separations],
+                    "teacher_id": [str(r["teacher_id"]) for r in self.all_separations],
+                    "separation_date": [r["separation_date"] for r in self.all_separations],
+                    "reason": [r["reason"] for r in self.all_separations],
+                    "status": [r["status"] for r in self.all_separations],
+                }
+
+                update_table(self.all_separations)
+
+            except Exception as e:
+                self.all_separations = []
+                self.show_popup("Error", "Failed to load separation data", "error")
 
         # ---------- UPDATE TABLE ----------
         def update_table(data):
             for row in self.sep_tree.get_children():
                 self.sep_tree.delete(row)
+            
+            status_map = {
+                "PENDING": "Pending",
+                "APPROVED": "Approved",
+                "REJECTED": "Rejected"
+            }
 
             for row in data:
+                status = status_map.get(row["status"], row["status"])
                 self.sep_tree.insert(
                 "",
                 "end",
@@ -8523,9 +9944,9 @@ class AdminUI:
                     row["teacher_id"],
                     row["separation_date"],
                     row["reason"],
-                    1 if row["status"] else 0
+                    status
                 )
-            )
+                )
 
         # ---------- FILTER FUNCTION ----------
         def load_filtered():
@@ -8548,20 +9969,20 @@ class AdminUI:
                 return
 
             filtered = [
-            r for r in self.all_separations
-            if str(r[col]).lower() == val
-        ]
+                r for r in self.all_separations
+                if str(r[col]).lower() == val
+                ]
             update_table(filtered)
 
         def load_all():
             update_table(self.all_separations)
-
+        
         load_btn.bind("<Button-1>", lambda e: load_filtered())
-        load_all_btn.bind("<Button-1>", lambda e: load_all())
+        load_all_btn.bind("<Button-1>", lambda e: fetch_separations())
+        status_dropdown.bind("<<ComboboxSelected>>", lambda e: fetch_separations())
 
-    # INITIAL LOAD
-        update_table(self.all_separations)
-    
+        # INITIAL LOAD
+        fetch_separations()
 
     # ==============================================================================
     # ----- Button to Approve Separation of a Teacher -----
@@ -8669,20 +10090,36 @@ class AdminUI:
         cursor="arrow"
         )
         approve_btn.pack(pady=20)
+        
+        # ---------- REJECT BUTTON ----------
+        reject_btn = tk.Label(
+        self.content,
+        text="Reject Separation",
+        font=("Arial", 14, "bold"),
+        bg="#D9534F",     # red
+        fg="white",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        reject_btn.pack(pady=5)
 
-        def enable_approve():
+        # ENABLE / DISABLE APPROVE BUTTON
+        def disable_actions():
+            for btn in (approve_btn, reject_btn):
+                btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                btn.unbind("<Button-1>")
+
+        def enable_actions():
             approve_btn.config(bg="#000000", fg="white", cursor="hand2")
-            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
-            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
             approve_btn.bind("<Button-1>", lambda e: approve_separation())
 
-        def disable_approve():
-            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-            approve_btn.unbind("<Enter>")
-            approve_btn.unbind("<Leave>")
-            approve_btn.unbind("<Button-1>")
+            reject_btn.config(bg="#8B0000", fg="white", cursor="hand2")
+            reject_btn.bind("<Button-1>", lambda e: open_reject_popup())
 
-        disable_approve()
+        disable_actions()
 
         # ---------- LOAD SEPARATION DETAILS ----------
         def load_separation():
@@ -8698,7 +10135,7 @@ class AdminUI:
 
                 if res.status_code != 200:
                     self.show_popup("Not Found", "Separation record not found!", "info")
-                    disable_approve()
+                    disable_actions()
                     for v in vars_dict.values():
                         v.set("")
                     return
@@ -8709,9 +10146,19 @@ class AdminUI:
                 vars_dict["teacher_id"].set(data["teacher_id"])
                 vars_dict["separation_date"].set(data["separation_date"])
                 vars_dict["reason"].set(data["reason"])
-                vars_dict["status"].set("1" if data["status"] else "0")
 
-                enable_approve()
+                status = data["status"]
+                vars_dict["status"].set(status)
+
+                if status == "PENDING":
+                    enable_actions()
+                else:
+                    disable_actions()
+                    self.show_popup(
+                    "Not Allowed",
+                    f"Separation is already '{status}'.\nOnly PENDING separations can be approved.",
+                    "warning"
+                )
 
             except Exception:
                 self.show_popup("Error", "Server not reachable!", "error")
@@ -8733,7 +10180,105 @@ class AdminUI:
 
             except Exception:
                 self.show_popup("Error", "Unable to approve separation!", "error")
-    
+        
+        # ---------- REJECT POPUP ----------
+        def open_reject_popup():
+            popup = tk.Toplevel(self.root)
+            popup.title("Reject Separation")
+            popup.resizable(False, False)
+
+            popup_width = 420
+            popup_height = 230
+
+            popup.update_idletasks()
+            screen_width = popup.winfo_screenwidth()
+            screen_height = popup.winfo_screenheight()
+
+            x = (screen_width // 2) - (popup_width // 2)
+            y = (screen_height // 2) - (popup_height // 2)
+
+            popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+            popup.transient(self.root)
+            popup.grab_set()
+            popup.focus_force()
+
+            tk.Label(
+            popup,
+            text="Reason for Rejection",
+            font=("Arial", 14, "bold")
+            ).pack(pady=10)
+
+            reason_var = tk.StringVar()
+
+            reason_entry = tk.Entry(
+            popup,
+            textvariable=reason_var,
+            font=("Arial", 12),
+            width=40
+            )
+            reason_entry.pack(pady=10)
+            reason_entry.focus()
+
+            def submit_rejection():
+                reason = reason_var.get().strip()
+                if not reason:
+                    self.show_popup("Required", "Rejection reason is required!", "warning")
+                    return
+
+                popup.destroy()
+                reject_separation(reason)
+
+            reject_confirm_btn = tk.Button(
+            popup,
+            text="Reject Onboarding",
+            bg="#D5D8DC",
+            fg="#AEB6BF",
+            font=("Arial", 12, "bold"),
+            width=18,
+            padx=20,
+            pady=6,
+            relief="ridge",
+            state="disabled",
+            command=submit_rejection
+            )
+            reject_confirm_btn.pack(pady=20)
+
+            def validate_reason(*args):
+                if reason_var.get().strip():
+                    reject_confirm_btn.config(bg="#8B0000", fg="white", state="normal", cursor="hand2")
+                else:
+                    reject_confirm_btn.config(bg="#D5D8DC", fg="#AEB6BF", state="disabled", cursor="arrow")
+
+            reason_var.trace_add("write", validate_reason)
+        
+        # ----------------------------
+        def reject_separation(reason):
+            sep_id = sep_id_var.get().strip()
+            import requests
+
+            try:
+                res = requests.post(
+                f"http://127.0.0.1:8000/admin/teachers/separation/reject/{sep_id}",
+                json={"reason": reason}
+                )
+
+                if res.status_code == 200:
+                    self.show_popup(
+                    "Rejected",
+                    "Teacher separation rejected successfully.",
+                    "info"
+                    )
+                    self.change_screen(
+                    "Separation Rejected",
+                    add_callback=self.load_approve_teacher_separation_screen
+                    )
+                else:
+                    msg = res.json().get("detail", "Rejection failed")
+                    self.show_popup("Failed", msg, "error")
+
+            except:
+                self.show_popup("Error", "Server error while rejecting separation", "error")
+
 
     # ==============================================================================
     # ----- Button to Create a Transfer Request for Teacher -----
@@ -8762,23 +10307,71 @@ class AdminUI:
         ]
 
         self.tf_vars = {}
+        # ===== FETCH DROPDOWN DATA =====
+        subjects = fetch_subjects()
+        classes = fetch_classes()
+
+        self.subject_map = {
+        f"{s['subject_name']} - {s['subject_id']}": s["subject_id"]
+        for s in subjects
+        }
+
+        self.class_map = {
+        f"{c['class_name']} - {c['section']}": c["class_id"]
+        for c in classes
+        }
+
+        subject_values = list(self.subject_map.keys())
+        class_values = list(self.class_map.keys())
 
         for i, (label, key) in enumerate(fields):
 
             tk.Label(
-            form, text=f"{label}:", font=("Arial", 14), bg="#ECF0F1"
+            form,
+            text=f"{label}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
             ).grid(row=i, column=0, padx=10, pady=8, sticky="e")
- 
+
             var = tk.StringVar()
             self.tf_vars[key] = var
 
-            entry = tk.Entry(
-            form, textvariable=var, font=("Arial", 14), width=28
-            )
-            entry.grid(row=i, column=1, padx=10, pady=8)
+            from tkinter.ttk import Combobox
 
-            # Calendar only for request_date
-            if key == "request_date":
+            # ===== SUBJECT DROPDOWN =====
+            if key == "new_subject_id":
+                entry = Combobox(
+                form,
+                textvariable=var,
+                values=subject_values,
+                state="readonly",
+                font=("Arial", 14),
+                width=26
+                )
+                entry.grid(row=i, column=1, padx=10, pady=8)
+
+            # ===== CLASS DROPDOWN =====
+            elif key == "new_class_id":
+                entry = Combobox(
+                form,
+                textvariable=var,
+                values=class_values,
+                state="readonly",
+                font=("Arial", 14),
+                width=26
+                )     
+                entry.grid(row=i, column=1, padx=10, pady=8)
+
+            # ===== DATE FIELD =====
+            elif key == "request_date":
+                entry = tk.Entry(
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=28
+                )
+                entry.grid(row=i, column=1, padx=10, pady=8)
+
                 tk.Button(
                 form,
                 text="Calendar",
@@ -8787,6 +10380,16 @@ class AdminUI:
                 relief="ridge",
                 command=lambda e=entry, v=var: self.open_calendar_popup(e, v)
                 ).grid(row=i, column=2, padx=5)
+
+            # ===== NORMAL ENTRY (Teacher ID, New Department) =====
+            else:
+                entry = tk.Entry(
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=28
+                )
+                entry.grid(row=i, column=1, padx=10, pady=8)
 
         # ---- BACK BUTTON ----
         btn_row = tk.Frame(self.content, bg="#ECF0F1")
@@ -8833,22 +10436,26 @@ class AdminUI:
         def validate(*args):
             data = {k: v.get().strip() for k, v in self.tf_vars.items()}
 
-            if not data["teacher_id"].isdigit():
+            if not data["teacher_id"].isdigit() or int(data["teacher_id"]) <= 0:
                 disable()
                 return
 
-            if data["new_subject_id"] and not data["new_subject_id"].isdigit():
+            if data["new_subject_id"] and data["new_subject_id"] not in self.subject_map:
                 disable()
                 return
-            
-            if data["new_class_id"] and not data["new_class_id"].isdigit():
+
+            if data["new_class_id"] and data["new_class_id"] not in self.class_map:
                 disable()
                 return
             
             if not re.match(r"^\d{4}-\d{2}-\d{2}$", data["request_date"]):
                 disable()
                 return
-
+            
+            if not (data["new_department"] or data["new_subject_id"] or data["new_class_id"]):
+                disable()
+                return
+            
             enable()
 
         for v in self.tf_vars.values():
@@ -8866,8 +10473,8 @@ class AdminUI:
             payload = {
             "teacher_id": int(data["teacher_id"]),
             "new_department": data["new_department"] if data["new_department"] else None,
-            "new_subject_id": int(data["new_subject_id"]) if data["new_subject_id"] else None,
-            "new_class_id": int(data["new_class_id"]) if data["new_class_id"] else None,
+            "new_subject_id": self.subject_map.get(data["new_subject_id"]),
+            "new_class_id": self.class_map.get(data["new_class_id"]),
             "request_date": data["request_date"]
             }
 
@@ -8904,7 +10511,7 @@ class AdminUI:
         font=("Arial", 26, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
         # -------- BACK BUTTON --------
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -8937,7 +10544,7 @@ class AdminUI:
         font=("Arial", 12, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=0, padx=5)
 
         filter_var = tk.StringVar()
         filter_dropdown = ttk.Combobox(
@@ -8946,7 +10553,7 @@ class AdminUI:
         values=list(cols),
         state="readonly",
         width=20
-    )
+        )
         filter_dropdown.grid(row=0, column=1, padx=10)
 
         filter_val_var = tk.StringVar()
@@ -8955,7 +10562,7 @@ class AdminUI:
         textvariable=filter_val_var,
         font=("Arial", 12),
         width=25
-    )
+        )
         filter_val.grid(row=0, column=2, padx=10)
 
         # ---- Button Styling ----
@@ -8969,7 +10576,7 @@ class AdminUI:
             relief="raised",
             cursor="arrow",
             font=("Arial", 12, "bold")
-        )
+            )
             btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
             btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
 
@@ -8980,6 +10587,17 @@ class AdminUI:
         load_all_btn = tk.Label(filter_frame, text="Load All")
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
+
+        status_var = tk.StringVar()
+        status_dropdown = ttk.Combobox(
+            filter_frame,
+            textvariable=status_var,
+            values=["ALL", "PENDING", "APPROVED", "REJECTED"],
+            state="readonly",
+            width=18
+        )
+        status_dropdown.set("ALL")
+        status_dropdown.grid(row=0, column=5, padx=10)
 
         # ------ TABLE + SCROLLBARS ------
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
@@ -8994,7 +10612,7 @@ class AdminUI:
         show="headings",
         yscrollcommand=y_scroll.set,
         xscrollcommand=x_scroll.set
-    )
+        )
         self.transfer_tree.pack(fill="both", expand=True)
 
         y_scroll.config(command=self.transfer_tree.yview)
@@ -9005,25 +10623,39 @@ class AdminUI:
             self.transfer_tree.column(col, width=180, anchor="center")
 
         # ----- BACKEND FETCH ------
-        import requests
-        try:
-            res = requests.get("http://127.0.0.1:8000/admin/teacher-transfer/all")
-            self.all_transfers = res.json() if res.status_code == 200 else []
+        def fetch_transfers():
+            import requests
+            try:
+                params = {}
+                if status_var.get() != "ALL":
+                    params["status"] = status_var.get()
 
-            # For filter validation:
-            self.transfer_column_values = {
-            "transfer_id": [str(r["transfer_id"]) for r in self.all_transfers],
-            "teacher_id": [str(r["teacher_id"]) for r in self.all_transfers],
-            "old_department": [str(r["old_department"]) for r in self.all_transfers],
-            "old_subject_id": [str(r["old_subject_id"]) for r in self.all_transfers],
-            "new_department": [str(r["new_department"]) for r in self.all_transfers],
-            "new_subject_id": [str(r["new_subject_id"]) for r in self.all_transfers],
-            "request_date": [r["request_date"] for r in self.all_transfers],
-            "status": [1 if r["status"] else 0 for r in self.all_transfers]
-        }
+                res = requests.get(
+                    "http://127.0.0.1:8000/admin/teacher-transfer/all",
+                    params=params
+                )
 
-        except:
-            self.all_transfers = []
+                try:
+                    self.all_transfers = res.json()
+                except:
+                    self.all_transfers = []
+
+                self.transfer_column_values = {
+                    "transfer_id": [str(r["transfer_id"]) for r in self.all_transfers],
+                    "teacher_id": [str(r["teacher_id"]) for r in self.all_transfers],
+                    "old_department": [str(r["old_department"]) for r in self.all_transfers],
+                    "old_subject_id": [str(r["old_subject_id"]) for r in self.all_transfers],
+                    "new_department": [str(r["new_department"]) for r in self.all_transfers],
+                    "new_subject_id": [str(r["new_subject_id"]) for r in self.all_transfers],
+                    "request_date": [r["request_date"] for r in self.all_transfers],
+                    "status": [r["status"] for r in self.all_transfers],
+                    }
+
+                update_table(self.all_transfers)
+
+            except Exception:
+                self.all_transfers = []
+                self.show_popup("Error", "Failed to load transfer data", "error")
 
         # ------- UPDATE TABLE -------
         def update_table(data):
@@ -9042,7 +10674,7 @@ class AdminUI:
                     row["new_department"],
                     row["new_subject_id"],
                     row["request_date"],
-                    1 if row["status"] else 0
+                    row["status"]     
                 )
             )
 
@@ -9076,10 +10708,11 @@ class AdminUI:
             update_table(self.all_transfers)
 
         load_btn.bind("<Button-1>", lambda e: load_filtered())
-        load_all_btn.bind("<Button-1>", lambda e: load_all())
+        load_all_btn.bind("<Button-1>", lambda e: fetch_transfers())
+        status_dropdown.bind("<<ComboboxSelected>>", lambda e: fetch_transfers())
 
         # INITIAL LOAD
-        update_table(self.all_transfers)
+        fetch_transfers()
 
 
     # ==============================================================================
@@ -9125,6 +10758,8 @@ class AdminUI:
 
         # Enable/Disable LOAD button
         def validate_load(*args):
+            load_btn.unbind("<Button-1>")
+
             if transfer_id_var.get().strip():
                 load_btn.config(bg="#000000", fg="white", cursor="hand2")
                 load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
@@ -9134,7 +10769,6 @@ class AdminUI:
                 load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
                 load_btn.unbind("<Enter>")
                 load_btn.unbind("<Leave>")
-                load_btn.unbind("<Button-1>")
 
         transfer_id_var.trace_add("write", validate_load)
 
@@ -9197,20 +10831,36 @@ class AdminUI:
         cursor="arrow"
     )
         approve_btn.pack(pady=20)
+        
+        # ---------- REJECT BUTTON ----------
+        reject_btn = tk.Label(
+        self.content,
+        text="Reject Transfer",
+        font=("Arial", 14, "bold"),
+        bg="#D9534F",
+        fg="white",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        reject_btn.pack(pady=5)
 
-        def enable_approve():
+        # ENABLE / DISABLE APPROVE BUTTON
+        def disable_actions():
+            for btn in (approve_btn, reject_btn):
+                btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                btn.unbind("<Button-1>")
+
+        def enable_actions():
             approve_btn.config(bg="#000000", fg="white", cursor="hand2")
-            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
-            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
             approve_btn.bind("<Button-1>", lambda e: approve_transfer())
 
-        def disable_approve():
-            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-            approve_btn.unbind("<Enter>")
-            approve_btn.unbind("<Leave>")
-            approve_btn.unbind("<Button-1>")
+            reject_btn.config(bg="#8B0000", fg="white", cursor="hand2")
+            reject_btn.bind("<Button-1>", lambda e: open_reject_popup())
 
-        disable_approve()
+        disable_actions()
 
         # ---------- LOAD TRANSFER DETAILS ----------
         def load_transfer():
@@ -9226,7 +10876,7 @@ class AdminUI:
 
                 if res.status_code != 200:
                     self.show_popup("Not Found", "No record found for this Transfer ID!", "info")
-                    disable_approve()
+                    disable_actions()
                     for v in vars_dict.values():
                         v.set("")
                     return
@@ -9238,9 +10888,18 @@ class AdminUI:
                     vars_dict[key].set(data.get(key))
 
                 # status formatting
-                vars_dict["status"].set("1" if data["status"] else "0")
+                status = data["status"]
+                vars_dict["status"].set(status)
 
-                enable_approve()
+                if status == "PENDING":
+                    enable_actions()
+                else:
+                    disable_actions()
+                    self.show_popup(
+                    "Not Allowed",
+                    f"Transfer is already '{status}'.\nOnly PENDING Transfers can be approved.",
+                    "warning"
+                )
 
             except:
                 self.show_popup("Error", "Server not reachable!", "error")
@@ -9267,6 +10926,96 @@ class AdminUI:
 
             except:
                 self.show_popup("Error", "Unable to approve transfer!", "error")
+    
+        # -----------------------
+        def open_reject_popup():
+            popup = tk.Toplevel(self.root)
+            popup.title("Reject Transfer")
+            popup.resizable(False, False)
+
+            popup_width = 420
+            popup_height = 230
+
+            popup.update_idletasks()
+            screen_width = popup.winfo_screenwidth()
+            screen_height = popup.winfo_screenheight()
+
+            x = (screen_width // 2) - (popup_width // 2)
+            y = (screen_height // 2) - (popup_height // 2)
+
+            popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+            popup.transient(self.root)
+            popup.grab_set()
+            popup.focus_force()
+
+            tk.Label(
+            popup,
+            text="Reason for Rejection",
+            font=("Arial", 14, "bold")
+            ).pack(pady=10)
+
+            reason_var = tk.StringVar()
+
+            entry = tk.Entry(
+            popup,
+            textvariable=reason_var,
+            font=("Arial", 12),
+            width=40
+            )
+            entry.pack(pady=10)
+            entry.focus()
+
+            def submit():
+                reason = reason_var.get().strip()
+                if not reason:
+                    self.show_popup("Required", "Rejection reason is required!", "warning")
+                    return
+                popup.destroy()
+                reject_transfer(reason)
+
+            reject_confirm_btn = tk.Button(
+            popup,
+            text="Reject Onboarding",
+            bg="#D5D8DC",
+            fg="#AEB6BF",
+            font=("Arial", 12, "bold"),
+            width=18,
+            padx=20,
+            pady=6,
+            relief="ridge",
+            state="disabled",
+            command=submit
+            )
+            reject_confirm_btn.pack(pady=20)
+
+            def validate_reason(*args):
+                if reason_var.get().strip():
+                    reject_confirm_btn.config(bg="#8B0000", fg="white", state="normal", cursor="hand2")
+                else:
+                    reject_confirm_btn.config(bg="#D5D8DC", fg="#AEB6BF", state="disabled", cursor="arrow")
+
+            reason_var.trace_add("write", validate_reason)
+
+        def reject_transfer(reason):
+            tid = transfer_id_var.get().strip()
+            import requests
+            try:
+                res = requests.post(
+                f"http://127.0.0.1:8000/admin/teacher-transfer/reject/{tid}",
+                params={"reason": reason}
+                )
+
+                if res.status_code == 200:
+                    self.show_popup("Rejected", "Transfer rejected successfully.", "info")
+                    self.change_screen(
+                        "Transfer Rejected",
+                        add_callback=self.load_approve_teacher_transfer_screen
+                        )
+                else:
+                    msg = res.json().get("detail", "Rejection failed")
+                    self.show_popup("Failed", msg, "error")
+            except:
+                self.show_popup("Error", "Server error while rejecting transfer", "error")
     
 
     # ==============================================================================
@@ -9349,7 +11098,9 @@ class AdminUI:
 
         # ---------- VALIDATION ----------
         def validate(*args):
-            if all(vars[k].get().strip() for k in vars):
+            required_keys = ["staff_id", "reason", "separation_date"]
+
+            if all(vars[k].get().strip() for k in required_keys):
                 submit_btn.config(bg="#000000", fg="white", cursor="arrow")
                 submit_btn.bind("<Enter>", lambda e: submit_btn.config(bg="#222222"))
                 submit_btn.bind("<Leave>", lambda e: submit_btn.config(bg="#000000"))
@@ -9365,7 +11116,17 @@ class AdminUI:
 
         # ---------- SUBMIT FUNCTION ----------
         def issue_separation():
+            
+            sid = vars["staff_id"].get().strip()
 
+            if not sid.isdigit() or int(sid) <= 0:
+                self.show_popup(
+                "Invalid Staff ID",
+                "Staff ID must be a positive number",
+                "warning"
+            )
+                return
+            
             # date format validation
             import re
             date_str = vars["separation_date"].get().strip()
@@ -9374,7 +11135,7 @@ class AdminUI:
                 return
 
             payload = {
-            "staff_id": int(vars["staff_id"].get().strip()),
+            "staff_id": int(sid),
             "reason": vars["reason"].get().strip(),
             "remarks": vars["remarks"].get().strip(),
             "separation_date": date_str
@@ -9384,11 +11145,19 @@ class AdminUI:
             import requests
             res = requests.post("http://127.0.0.1:8000/admin/staff/separation/issue", json=payload)
 
-            if res.status_code == 200:
+            if res.status_code in (200, 201):
                 self.show_popup("Success", "Separation Issued Successfully!", "info")
+
+                for v in vars.values():
+                    v.set("")
+
                 self.change_screen("Staff Separation Issued!", add_callback=self.load_issue_staff_separation_screen)
             else:
-                msg = res.json().get("detail", "Error issuing separation")
+                try:
+                    msg = res.json().get("detail", "Error issuing separation")
+                except:
+                    msg = res.text or "Error issuing separation"
+
                 self.show_popup("Failed", msg, "error")
 
     # ==============================================================================
@@ -9475,7 +11244,19 @@ class AdminUI:
         load_all_btn = tk.Label(filter_frame, text="Load All")
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
-
+        
+        # ---- STATUS FILTER DROPDOWN ----
+        status_var = tk.StringVar()
+        status_dropdown = ttk.Combobox(
+            filter_frame,
+            textvariable=status_var,
+            values=["ALL", "PENDING", "APPROVED", "REJECTED"],
+            state="readonly",
+            width=18
+        )
+        status_dropdown.set("ALL")
+        status_dropdown.grid(row=0, column=5, padx=10)
+        
         # ---------- SCROLLBARS ----------
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
@@ -9501,21 +11282,37 @@ class AdminUI:
             self.sep_tree.column(col, width=180, anchor="center")
 
         # ---------- FETCH DATA FROM BACKEND ----------
-        import requests
-        try:
-            res = requests.get("http://127.0.0.1:8000/admin/staff/separation/all")
-            self.all_separations = res.json() if res.status_code == 200 else []
+        def fetch_separations():
+            import requests
+            try:
+                params = {}
+                if status_var.get() != "ALL":
+                    params["status"] = status_var.get()
 
-            # Structure for validation
-            self.sep_column_values = {
-            "sep_id": [str(r["sep_id"]) for r in self.all_separations],
-            "staff_id": [str(r["staff_id"]) for r in self.all_separations],
-            "separation_date": [r["separation_date"] for r in self.all_separations],
-            "reason": [r["reason"] for r in self.all_separations],
-            "status": [1 if r["status"] else 0 for r in self.all_separations]
-            }
-        except:
-            self.all_separations = []
+                res = requests.get(
+                    "http://127.0.0.1:8000/admin/staff/separation/all",
+                    params=params
+                )
+
+                try:
+                    self.all_separations = res.json()
+                except:
+                    self.all_separations = []
+
+                self.sep_column_values = {
+                    "sep_id": [str(r["sep_id"]) for r in self.all_separations],
+                    "staff_id": [str(r["staff_id"]) for r in self.all_separations],
+                    "separation_date": [r["separation_date"] for r in self.all_separations],
+                    "reason": [r["reason"] for r in self.all_separations],
+                    "status": [r["status"] for r in self.all_separations],
+                }
+
+                update_table(self.all_separations)
+
+            except Exception:
+                self.all_separations = []
+                self.show_popup("Error", "Failed to load separation data", "error")
+
 
         # ---------- UPDATE TABLE ----------
         def update_table(data):
@@ -9531,7 +11328,7 @@ class AdminUI:
                     row["staff_id"],
                     row["separation_date"],
                     row["reason"],
-                    1 if row["status"] else 0
+                    row["status"]
                 )
             )
 
@@ -9565,10 +11362,11 @@ class AdminUI:
             update_table(self.all_separations)
 
         load_btn.bind("<Button-1>", lambda e: load_filtered())
-        load_all_btn.bind("<Button-1>", lambda e: load_all())
+        load_all_btn.bind("<Button-1>", lambda e: fetch_separations())
+        status_dropdown.bind("<<ComboboxSelected>>", lambda e: fetch_separations())
 
         # INITIAL LOAD
-        update_table(self.all_separations)
+        fetch_separations()
     
 
     # ==============================================================================
@@ -9678,19 +11476,35 @@ class AdminUI:
         )
         approve_btn.pack(pady=20)
 
-        def enable_approve():
+        # ---------- REJECT BUTTON ----------
+        reject_btn = tk.Label(
+        self.content,
+        text="Reject Separation",
+        font=("Arial", 14, "bold"),
+        bg="#D9534F",     # red
+        fg="white",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        reject_btn.pack(pady=5)
+
+        # ENABLE / DISABLE APPROVE BUTTON
+        def disable_actions():
+            for btn in (approve_btn, reject_btn):
+                btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                btn.unbind("<Button-1>")
+
+        def enable_actions():
             approve_btn.config(bg="#000000", fg="white", cursor="hand2")
-            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
-            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
             approve_btn.bind("<Button-1>", lambda e: approve_separation())
 
-        def disable_approve():
-            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-            approve_btn.unbind("<Enter>")
-            approve_btn.unbind("<Leave>")
-            approve_btn.unbind("<Button-1>")
+            reject_btn.config(bg="#8B0000", fg="white", cursor="hand2")
+            reject_btn.bind("<Button-1>", lambda e: open_reject_popup())
 
-        disable_approve()
+        disable_actions()
 
         # ---------- LOAD SEPARATION DETAILS ----------
         def load_separation():
@@ -9706,7 +11520,7 @@ class AdminUI:
 
                 if res.status_code != 200:
                     self.show_popup("Not Found", "Separation record not found!", "info")
-                    disable_approve()
+                    disable_actions()
                     for v in vars_dict.values():
                         v.set("")
                     return
@@ -9717,10 +11531,19 @@ class AdminUI:
                 vars_dict["staff_id"].set(data["staff_id"])
                 vars_dict["separation_date"].set(data["separation_date"])
                 vars_dict["reason"].set(data["reason"])
-                vars_dict["status"].set("1" if data["status"] else "0")
+                
+                status = data["status"]
+                vars_dict["status"].set(status)
 
-                enable_approve()
-
+                if status == "PENDING":
+                    enable_actions()
+                else:
+                    disable_actions()
+                    self.show_popup(
+                    "Not Allowed",
+                    f"Separation is already '{status}'.\nOnly PENDING separations can be approved.",
+                    "warning"
+                )
             except Exception:
                 self.show_popup("Error", "Server not reachable!", "error")
 
@@ -9741,6 +11564,105 @@ class AdminUI:
 
             except Exception:
                 self.show_popup("Error", "Unable to approve separation!", "error")
+
+        # ---------- REJECT POPUP ----------
+        def open_reject_popup():
+            popup = tk.Toplevel(self.root)
+            popup.title("Reject Separation")
+            popup.resizable(False, False)
+
+            popup_width = 420
+            popup_height = 230
+
+            popup.update_idletasks()
+            screen_width = popup.winfo_screenwidth()
+            screen_height = popup.winfo_screenheight()
+
+            x = (screen_width // 2) - (popup_width // 2)
+            y = (screen_height // 2) - (popup_height // 2)
+
+            popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+            popup.transient(self.root)
+            popup.grab_set()
+            popup.focus_force()
+
+            tk.Label(
+            popup,
+            text="Reason for Rejection",
+            font=("Arial", 14, "bold")
+            ).pack(pady=10)
+
+            reason_var = tk.StringVar()
+
+            reason_entry = tk.Entry(
+            popup,
+            textvariable=reason_var,
+            font=("Arial", 12),
+            width=40
+            )
+            reason_entry.pack(pady=10)
+            reason_entry.focus()
+
+            def submit_rejection():
+                reason = reason_var.get().strip()
+                if not reason:
+                    self.show_popup("Required", "Rejection reason is required!", "warning")
+                    return
+
+                popup.destroy()
+                reject_separation(reason)
+
+            reject_confirm_btn = tk.Button(
+            popup,
+            text="Reject Onboarding",
+            bg="#D5D8DC",
+            fg="#AEB6BF",
+            font=("Arial", 12, "bold"),
+            width=18,
+            padx=20,
+            pady=6,
+            relief="ridge",
+            state="disabled",
+            command=submit_rejection
+            )
+            reject_confirm_btn.pack(pady=20)
+
+            def validate_reason(*args):
+                if reason_var.get().strip():
+                    reject_confirm_btn.config(bg="#8B0000", fg="white", state="normal", cursor="hand2")
+                else:
+                    reject_confirm_btn.config(bg="#D5D8DC", fg="#AEB6BF", state="disabled", cursor="arrow")
+
+            reason_var.trace_add("write", validate_reason)
+        
+        # ----------------------------
+        def reject_separation(reason):
+            sep_id = sep_id_var.get().strip()
+            import requests
+
+            try:
+                res = requests.post(
+                f"http://127.0.0.1:8000/admin/staff/separation/reject/{sep_id}",
+                json={"reason": reason}
+                )
+
+                if res.status_code == 200:
+                    self.show_popup(
+                    "Rejected",
+                    "Staff separation rejected successfully.",
+                    "info"
+                    )
+                    self.change_screen(
+                    "Separation Rejected",
+                    add_callback=self.load_approve_staff_separation_screen
+                    )
+                else:
+                    msg = res.json().get("detail", "Rejection failed")
+                    self.show_popup("Failed", msg, "error")
+
+            except:
+                self.show_popup("Error", "Server error while rejecting separation", "error")
+
 
     # ==============================================================================
     # ----- Button Create a Transfer Request for a staff Member -----
@@ -9839,13 +11761,17 @@ class AdminUI:
         def validate(*args):
             data = {k: v.get().strip() for k, v in self.tf_vars.items()}
 
-            if not data["staff_id"].isdigit():
+            if not data["staff_id"].isdigit() or int(data["staff_id"]) <= 0:
                 disable()
                 return
             
             if not re.match(r"^\d{4}-\d{2}-\d{2}$", data["request_date"]):
                 disable()
                 return
+
+            if not (data["new_department"] or data["new_role"]):
+                disable()
+                return    
 
             enable()
 
@@ -9978,6 +11904,17 @@ class AdminUI:
         style_button(load_all_btn)
         load_all_btn.grid(row=0, column=4, padx=10)
 
+        status_var = tk.StringVar()
+        status_dropdown = ttk.Combobox(
+            filter_frame,
+            textvariable=status_var,
+            values=["ALL", "PENDING", "APPROVED", "REJECTED"],
+            state="readonly",
+            width=18
+        )
+        status_dropdown.set("ALL")
+        status_dropdown.grid(row=0, column=5, padx=10)
+
         # ------ TABLE + SCROLLBARS ------
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
@@ -10002,25 +11939,39 @@ class AdminUI:
             self.transfer_tree.column(col, width=180, anchor="center")
 
         # ----- BACKEND FETCH ------
-        import requests
-        try:
-            res = requests.get("http://127.0.0.1:8000/admin/staff-transfer/all")
-            self.all_transfers = res.json() if res.status_code == 200 else []
+        def fetch_transfers():
+            import requests
+            try:
+                params = {}
+                if status_var.get() != "ALL":
+                    params["status"] = status_var.get()
 
-            # For filter validation:
-            self.transfer_column_values = {
-            "transfer_id": [str(r["transfer_id"]) for r in self.all_transfers],
-            "staff_id": [str(r["staff_id"]) for r in self.all_transfers],
-            "old_department": [str(r["old_department"]) for r in self.all_transfers],
-            "old_role": [str(r["old_role"]) for r in self.all_transfers],
-            "new_department": [str(r["new_department"]) for r in self.all_transfers],
-            "new_role": [str(r["new_role"]) for r in self.all_transfers],
-            "request_date": [r["request_date"] for r in self.all_transfers],
-            "status": [1 if r["status"] else 0 for r in self.all_transfers]
-            }
+                res = requests.get(
+                    "http://127.0.0.1:8000/admin/staff-transfer/all",
+                    params=params
+                )
 
-        except:
-            self.all_transfers = []
+                try:
+                    self.all_transfers = res.json()
+                except:
+                    self.all_transfers = []
+
+                self.transfer_column_values = {
+                    "transfer_id": [str(r["transfer_id"]) for r in self.all_transfers],
+                    "staff_id": [str(r["staff_id"]) for r in self.all_transfers],
+                    "old_department": [str(r["old_department"]) for r in self.all_transfers],
+                    "old_role": [str(r["old_role"]) for r in self.all_transfers],
+                    "new_department": [str(r["new_department"]) for r in self.all_transfers],
+                    "new_role": [str(r["new_role"]) for r in self.all_transfers],
+                    "request_date": [r["request_date"] for r in self.all_transfers],
+                    "status": [r["status"] for r in self.all_transfers],
+                    }
+
+                update_table(self.all_transfers)
+
+            except Exception:
+                self.all_transfers = []
+                self.show_popup("Error", "Failed to load transfer data", "error")
 
         # ------- UPDATE TABLE -------
         def update_table(data):
@@ -10039,9 +11990,9 @@ class AdminUI:
                     row["new_department"],
                     row["new_role"],
                     row["request_date"],
-                    1 if row["status"] else 0
+                    row["status"]     
                 )
-            )
+                )
 
         # ------- FILTER FUNCTION -------
         def load_filtered():
@@ -10073,10 +12024,11 @@ class AdminUI:
             update_table(self.all_transfers)
 
         load_btn.bind("<Button-1>", lambda e: load_filtered())
-        load_all_btn.bind("<Button-1>", lambda e: load_all())
+        load_all_btn.bind("<Button-1>", lambda e: fetch_transfers())
+        status_dropdown.bind("<<ComboboxSelected>>", lambda e: fetch_transfers())
 
         # INITIAL LOAD
-        update_table(self.all_transfers)
+        fetch_transfers()
 
     # ==============================================================================  
     # ----- Button to Approve a Transfer Request of a Staff Member -----
@@ -10121,6 +12073,8 @@ class AdminUI:
 
         # Enable/Disable LOAD button
         def validate_load(*args):
+            load_btn.unbind("<Button-1>")
+
             if transfer_id_var.get().strip():
                 load_btn.config(bg="#000000", fg="white", cursor="hand2")
                 load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
@@ -10130,7 +12084,6 @@ class AdminUI:
                 load_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
                 load_btn.unbind("<Enter>")
                 load_btn.unbind("<Leave>")
-                load_btn.unbind("<Button-1>")
 
         transfer_id_var.trace_add("write", validate_load)
 
@@ -10193,19 +12146,35 @@ class AdminUI:
         )
         approve_btn.pack(pady=20)
 
-        def enable_approve():
+        # ---------- REJECT BUTTON ----------
+        reject_btn = tk.Label(
+        self.content,
+        text="Reject Transfer",
+        font=("Arial", 14, "bold"),
+        bg="#D9534F",
+        fg="white",
+        padx=20,
+        pady=10,
+        width=18,
+        relief="ridge",
+        cursor="arrow"
+        )
+        reject_btn.pack(pady=5)
+
+        # ENABLE / DISABLE APPROVE BUTTON
+        def disable_actions():
+            for btn in (approve_btn, reject_btn):
+                btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+                btn.unbind("<Button-1>")
+
+        def enable_actions():
             approve_btn.config(bg="#000000", fg="white", cursor="hand2")
-            approve_btn.bind("<Enter>", lambda e: approve_btn.config(bg="#222222"))
-            approve_btn.bind("<Leave>", lambda e: approve_btn.config(bg="#000000"))
             approve_btn.bind("<Button-1>", lambda e: approve_transfer())
 
-        def disable_approve():
-            approve_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-            approve_btn.unbind("<Enter>")
-            approve_btn.unbind("<Leave>")
-            approve_btn.unbind("<Button-1>")
+            reject_btn.config(bg="#8B0000", fg="white", cursor="hand2")
+            reject_btn.bind("<Button-1>", lambda e: open_reject_popup())
 
-        disable_approve()
+        disable_actions()
 
         # ---------- LOAD TRANSFER DETAILS ----------
         def load_transfer():
@@ -10221,7 +12190,7 @@ class AdminUI:
 
                 if res.status_code != 200:
                     self.show_popup("Not Found", "No record found for this Transfer ID!", "info")
-                    disable_approve()
+                    disable_actions()
                     for v in vars_dict.values():
                         v.set("")
                     return
@@ -10233,9 +12202,18 @@ class AdminUI:
                     vars_dict[key].set(data.get(key))
 
                 # status formatting
-                vars_dict["status"].set("1" if data["status"] else "0")
+                status = data["status"]
+                vars_dict["status"].set(status)
 
-                enable_approve()
+                if status == "PENDING":
+                    enable_actions()
+                else:
+                    disable_actions()
+                    self.show_popup(
+                    "Not Allowed",
+                    f"Transfer is already '{status}'.\nOnly PENDING Transfers can be approved.",
+                    "warning"
+                )
 
             except:
                 self.show_popup("Error", "Server not reachable!", "error")
@@ -10262,7 +12240,98 @@ class AdminUI:
 
             except:
                 self.show_popup("Error", "Unable to approve transfer!", "error")
+
+        # -----------------------
+        def open_reject_popup():
+            popup = tk.Toplevel(self.root)
+            popup.title("Reject Transfer")
+            popup.resizable(False, False)
+
+            popup_width = 420
+            popup_height = 230
+
+            popup.update_idletasks()
+            screen_width = popup.winfo_screenwidth()
+            screen_height = popup.winfo_screenheight()
+
+            x = (screen_width // 2) - (popup_width // 2)
+            y = (screen_height // 2) - (popup_height // 2)
+
+            popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+            popup.transient(self.root)
+            popup.grab_set()
+            popup.focus_force()
+
+            tk.Label(
+            popup,
+            text="Reason for Rejection",
+            font=("Arial", 14, "bold")
+            ).pack(pady=10)
+
+            reason_var = tk.StringVar()
+
+            entry = tk.Entry(
+            popup,
+            textvariable=reason_var,
+            font=("Arial", 12),
+            width=40
+            )
+            entry.pack(pady=10)
+            entry.focus()
+
+            def submit():
+                reason = reason_var.get().strip()
+                if not reason:
+                    self.show_popup("Required", "Rejection reason is required!", "warning")
+                    return
+                popup.destroy()
+                reject_transfer(reason)
+
+            reject_confirm_btn = tk.Button(
+            popup,
+            text="Reject Onboarding",
+            bg="#D5D8DC",
+            fg="#AEB6BF",
+            font=("Arial", 12, "bold"),
+            width=18,
+            padx=20,
+            pady=6,
+            relief="ridge",
+            state="disabled",
+            command=submit
+            )
+            reject_confirm_btn.pack(pady=20)
+
+            def validate_reason(*args):
+                if reason_var.get().strip():
+                    reject_confirm_btn.config(bg="#8B0000", fg="white", state="normal", cursor="hand2")
+                else:
+                    reject_confirm_btn.config(bg="#D5D8DC", fg="#AEB6BF", state="disabled", cursor="arrow")
+
+            reason_var.trace_add("write", validate_reason)
+
+        def reject_transfer(reason):
+            tid = transfer_id_var.get().strip()
+            import requests
+            try:
+                res = requests.post(
+                f"http://127.0.0.1:8000/admin/staff-transfer/reject/{tid}",
+                params={"reason": reason}
+                )
+
+                if res.status_code == 200:
+                    self.show_popup("Rejected", "Transfer rejected successfully.", "info")
+                    self.change_screen(
+                        "Transfer Rejected",
+                        add_callback=self.load_approve_staff_transfer_screen
+                        )
+                else:
+                    msg = res.json().get("detail", "Rejection failed")
+                    self.show_popup("Failed", msg, "error")
+            except:
+                self.show_popup("Error", "Server error while rejecting transfer", "error")
     
+
     # ==============================================================================
     # ====== STAFF's ATTENDANCE ======
     # ----- Button to View all Staff's Attendance ------
@@ -10384,7 +12453,9 @@ class AdminUI:
         import requests
         try:
             res = requests.get("http://127.0.0.1:8000/admin/attendance/staff")
+
             self.all_staff_att = res.json() if res.status_code == 200 else []
+
             self.column_values_staff_att = {
                 "record_id":   [str(r["record_id"]) for r in self.all_staff_att],
                 "staff_id":  [str(r["staff_id"]) for r in self.all_staff_att],
@@ -10400,6 +12471,8 @@ class AdminUI:
             for r in self.staff_tree.get_children():
                 self.staff_tree.delete(r)
 
+            status_map = {"P": "Present", "A": "Absent", "L": "Leave"}      
+
             for row in data:
                 self.staff_tree.insert(
                 "",
@@ -10408,7 +12481,7 @@ class AdminUI:
                     row["record_id"],
                     row["staff_id"],
                     row["date"],
-                    row["status"],
+                    status_map.get(row["status"], row["status"]),
                     row.get("remarks", "")
                 )
             )
@@ -10416,7 +12489,7 @@ class AdminUI:
         # ---- FILTER LOGIC ----
         def load_filtered():
             col = filter_var.get().strip()
-            val = filter_value.get().strip()
+            val = filter_value.get().strip().lower()
 
             if not col or not val:
                 return
@@ -10443,7 +12516,7 @@ class AdminUI:
         load_btn.bind("<Button-1>", lambda e: load_filtered())
         load_all_btn.bind("<Button-1>", lambda e: load_all())
 
-    # ---- INITIAL LOAD ----
+        # ---- INITIAL LOAD ----
         update_table(self.all_staff_att)
 
     # ==============================================================================
@@ -10511,23 +12584,23 @@ class AdminUI:
         remarks_entry = tk.Entry(form, font=("Arial", 14), width=25, state="disabled")
         remarks_entry.grid(row=4, column=1, padx=10, pady=8)
 
-        tk.Label(form, text="Record ID:", font=("Arial", 14), bg="#ECF0F1").grid(row=5, column=0, padx=10, pady=8)
-        rec_id_entry = tk.Entry(form, font=("Arial", 14), width=25, state="disabled")
-        rec_id_entry.grid(row=5, column=1, padx=10, pady=8)
-
         # ===== ENABLE / DISABLE SEARCH BUTTON =====
         def validate_search_btn(*args):
-            if rec_var.get().strip():
+            search_btn.unbind("<Button-1>")
+            search_btn.unbind("<Enter>")
+            search_btn.unbind("<Leave>")
+
+            val = rec_var.get().strip()
+
+            if val.isdigit() and int(val) > 0:
                 search_btn.config(bg="#000000", fg="white", cursor="hand2")
+
                 search_btn.bind("<Enter>", lambda e: search_btn.config(bg="#222222"))
                 search_btn.bind("<Leave>", lambda e: search_btn.config(bg="#000000"))
-
                 search_btn.bind("<Button-1>", lambda e: fetch_attendance())
+
             else:
                 search_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                search_btn.unbind("<Enter>")
-                search_btn.unbind("<Leave>")
-                search_btn.unbind("<Button-1>")
 
         rec_var.trace_add("write", validate_search_btn)
 
@@ -10556,25 +12629,25 @@ class AdminUI:
                     data = res.json()
 
                     # Enable all entries
-                    for box in (tk_id, date_entry, status_entry, remarks_entry, rec_id_entry):
+                    for box in (tk_id, date_entry, status_entry, remarks_entry):
                         box.config(state="normal")
+
+                    status_map = {"P": "Present", "A": "Absent", "L": "Leave"}    
 
                     # Clear previous values
                     tk_id.delete(0, "end")
                     date_entry.delete(0, "end")
                     status_entry.delete(0, "end")
                     remarks_entry.delete(0, "end")
-                    rec_id_entry.delete(0, "end")
 
                     # Fill new data
                     tk_id.insert(0, data["staff_id"])
                     date_entry.insert(0, data["date"])
-                    status_entry.insert(0, data["status"])
+                    status_entry.insert(0, status_map.get(data["status"], data["status"]))
                     remarks_entry.insert(0, data.get("remarks", ""))
-                    rec_id_entry.insert(0, data.get("record_id", ""))
 
                     # Disable them again
-                    for box in (tk_id, date_entry, status_entry, remarks_entry, rec_id_entry):
+                    for box in (tk_id, date_entry, status_entry, remarks_entry):
                         box.config(state="disabled")
 
                 else:
@@ -10695,6 +12768,10 @@ class AdminUI:
 
         # ===== Enable Button on Input =====
         def validate_btn(*args):
+            summary_btn.unbind("<Button-1>")
+            summary_btn.unbind("<Enter>")
+            summary_btn.unbind("<Leave>")
+
             if sid_var.get().strip() and from_var.get().strip() and to_var.get().strip():
                 summary_btn.config(bg="#000000", fg="white", cursor="hand2")
                 summary_btn.bind("<Enter>", lambda e: summary_btn.config(bg="#222222"))
@@ -10702,9 +12779,6 @@ class AdminUI:
                 summary_btn.bind("<Button-1>", lambda e: fetch_summary())
             else:
                 summary_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                summary_btn.unbind("<Enter>")
-                summary_btn.unbind("<Leave>")
-                summary_btn.unbind("<Button-1>")
 
         sid_var.trace_add("write", validate_btn)
         from_var.trace_add("write", validate_btn)
@@ -10712,75 +12786,47 @@ class AdminUI:
 
         # ===== BACKEND CALL =====
         def fetch_summary():
+            import requests
+            from datetime import datetime
+
             staff_id = sid_var.get().strip()
             date_from = from_var.get().strip()
             date_to = to_var.get().strip()
-            if not staff_id:
-                self.show_popup(
-                    "Missing Input",
-                    "Staff ID cannot be empty.",
-                    "warning"
-                )
-                return
 
-            # Staff ID must be a positive integer
             if not staff_id.isdigit() or int(staff_id) <= 0:
-                self.show_popup(
-                    "Invalid Staff ID",
-                    "Staff ID must be a positive number.",
-                    "warning"
-                )
+                self.show_popup("Invalid Staff ID", "Staff ID must be a positive number.", "warning")
                 return
 
-            # Date From empty
-            if not date_from:
-                self.show_popup(
-                    "Missing Date",
-                    "Please enter a 'From' date.",
-                    "warning"
-                )
+            # Date format check
+            try:
+                d_from = datetime.strptime(date_from, "%Y-%m-%d")
+                d_to = datetime.strptime(date_to, "%Y-%m-%d")
+            except:
+                self.show_popup("Invalid Date", "Dates must be in YYYY-MM-DD format.", "warning")
                 return
 
-            # Date To empty
-            if not date_to:
-                self.show_popup(
-                    "Missing Date",
-                    "Please enter a 'To' date.",
-                    "warning"
-                )
+            if d_from > d_to:
+                self.show_popup("Invalid Range", "From Date cannot be after To Date.", "warning")
                 return
 
-            # Date format validation
-            import re
-            date_pattern = r"^\d{4}-\d{2}-\d{2}$"
-
-            if not re.match(date_pattern, date_from):
-                self.show_popup(
-                    "Invalid Date Format",
-                    "From Date must be in YYYY-MM-DD format.",
-                    "error"
-                )
-                return
-
-            import requests
             url = (
-                f"http://127.0.0.1:8000/admin/attendance/staff/summary/{staff_id}"
-                f"?date_from={date_from}"
-                f"&date_to={date_to}"
+            f"http://127.0.0.1:8000/admin/attendance/staff/summary/{staff_id}"
+            f"?date_from={date_from}&date_to={date_to}"
             )
 
             try:
-                res = requests.get(url)     
+                res = requests.get(url)
+
                 if res.status_code != 200:
-                    res = requests.get(url)
                     self.show_popup(
-                            "Not Found",
-                            "Staff member not found or no summary available for given date range.",
-                            "error"
+                    "Not Found",
+                    "Staff not found or no summary available for given date range.",
+                    "error"
                     )
                     return
+
                 data = res.json()
-                
+
                 labels["Staff ID"].config(text=f"Staff ID: {data['staff_id']}")
                 labels["Total Days"].config(text=f"Total Days: {data['total_days']}")
                 labels["Present"].config(text=f"Present: {data['present']}")
@@ -10789,12 +12835,7 @@ class AdminUI:
                 labels["Percentage"].config(text=f"Percentage: {data['percentage']}%")
 
             except Exception as e:
-                self.show_popup(
-                    "Backend Error",
-                    f"Failed to fetch summary.\nError: {e}",
-                    "error"
-                )
-                return
+                self.show_popup("Backend Error", f"Failed to fetch summary.\nError: {e}", "error")
 
     # ==============================================================================
     # ----- Button to Update Staff's Attendance -----
@@ -10855,33 +12896,43 @@ class AdminUI:
             # ---- DATE FIELD GETS SPECIAL TREATMENT ----
             if label == "Date":
                 ent = tk.Entry(
-                    form,
-                    textvariable=var,
-                    font=("Arial", 14),
-                    width=20,
-                    state="disabled"
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=20,
+                state="disabled"
                 )
                 ent.grid(row=row_index, column=1, padx=5, pady=8)
 
-                # Calendar button
-                cal_btn = tk.Button(
-                    form,
-                    text="Calendar",
-                    font=("Arial", 12),
-                    bg="white",
-                    relief="flat",
-                    command=lambda v=var, e=ent: self.open_calendar_popup(e, v)
+                tk.Button(
+                form,
+                text="Calendar",
+                font=("Arial", 12),
+                bg="white",
+                relief="flat",
+                command=lambda v=var, e=ent: self.open_calendar_popup(e, v)
+                ).grid(row=row_index, column=2, padx=5)
+
+
+            elif label == "Status":
+                from tkinter.ttk import Combobox
+                ent = Combobox(
+                form,
+                textvariable=var,
+                values=["P", "A", "L"],
+                font=("Arial", 14),
+                width=22,
+                state="disabled"   
                 )
-                cal_btn.grid(row=row_index, column=2, padx=5)
+                ent.grid(row=row_index, column=1, padx=10, pady=8)
 
             else:
-                # ---- NORMAL DISABLED ENTRY ----
                 ent = tk.Entry(
-                    form,
-                    textvariable=var,
-                    font=("Arial", 14),
-                    width=25,
-                    state="disabled"
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=25,
+                state="disabled"
                 )
                 ent.grid(row=row_index, column=1, padx=10, pady=8)
 
@@ -10915,7 +12966,7 @@ class AdminUI:
 
         # ===== VALIDATION FOR LOAD BUTTON =====
         def validate_load(*args):
-            if record_var.get().strip():
+            if record_var.get().strip().isdigit():
                 load_btn.config(bg="#000000", fg="white", cursor="arrow")
                 load_btn.bind("<Enter>", lambda e: load_btn.config(bg="#222222"))
                 load_btn.bind("<Leave>", lambda e: load_btn.config(bg="#000000"))
@@ -10956,6 +13007,8 @@ class AdminUI:
                 for ent in entries.values():
                     ent.config(state="normal")
 
+                entries["Status"].config(state="readonly")
+
                 # Fill values
                 fields["Staff ID"].set(data["staff_id"])
                 fields["Date"].set(data["date"])
@@ -10973,13 +13026,11 @@ class AdminUI:
 
         # ===== VALIDATE ALL FIELDS BEFORE UPDATE =====
         def enable_update_validation():
-
             def validate_all(*args):
-                if all(v.get().strip() for v in fields.values()):
-                    update_btn.config(
-                    bg="#000000", fg="white",
-                    cursor="arrow"
-                    )
+                status = fields["Status"].get().strip().upper()
+
+                if status in ("P", "A", "L"):
+                    update_btn.config(bg="#000000", fg="white", cursor="hand2")
                     update_btn.bind("<Enter>", lambda e: update_btn.config(bg="#222222"))
                     update_btn.bind("<Leave>", lambda e: update_btn.config(bg="#000000"))
                     update_btn.bind("<Button-1>", lambda e: submit_update())
@@ -10989,9 +13040,8 @@ class AdminUI:
                     update_btn.unbind("<Leave>")
                     update_btn.unbind("<Button-1>")
 
-            # Track all fields live
-            for var in fields.values():
-                var.trace_add("write", validate_all)
+            fields["Status"].trace_add("write", validate_all)
+            fields["Remarks"].trace_add("write", validate_all)
 
         # ===== SUBMIT UPDATE TO BACKEND =====
         def submit_update():
@@ -11004,19 +13054,6 @@ class AdminUI:
             if not rec_id.isdigit() or int(rec_id) <= 0:
                 self.show_popup("Invalid Record ID", "Record ID must be a positive number.", "warning")
                 return
-            
-            staff_raw = fields["Staff ID"].get().strip()
-            if not staff_raw.isdigit() or int(staff_raw) <= 0:
-                self.show_popup("Invalid Staff ID", "Staff ID must be a positive number.", "warning")
-                return
-            staff_id = int(staff_raw)
-
-            # Date
-            date_val = fields["Date"].get().strip()
-            import re
-            if not re.match(r"^\d{4}-\d{2}-\d{2}$", date_val):
-                self.show_popup("Invalid Date", "Date must be in YYYY-MM-DD format!", "error")
-                return
 
             # Status
             status_val = fields["Status"].get().strip().upper()
@@ -11027,8 +13064,6 @@ class AdminUI:
             remarks_val = fields["Remarks"].get().strip()
 
             payload = {
-            "staff_id": staff_id,
-            "date": date_val,
             "status": status_val,
             "remarks": remarks_val
             }
@@ -11101,21 +13136,18 @@ class AdminUI:
 
        # ===== VALIDATE DELETE BUTTON (Enable / Disable) =====
         def validate_delete(*args):
-            if record_var.get().strip():
-                delete_btn.config(bg="#000000", fg="white", cursor="arrow")
+            delete_btn.unbind("<Enter>")
+            delete_btn.unbind("<Leave>")
+            delete_btn.unbind("<Button-1>")
 
-                # Hover
+            if record_var.get().strip():
+                delete_btn.config(bg="#000000", fg="white", cursor="hand2")
+
                 delete_btn.bind("<Enter>", lambda e: delete_btn.config(bg="#222222"))
                 delete_btn.bind("<Leave>", lambda e: delete_btn.config(bg="#000000"))
-
-                # Click
                 delete_btn.bind("<Button-1>", lambda e: submit_delete())
-
             else:
                 delete_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
-                delete_btn.unbind("<Enter>")
-                delete_btn.unbind("<Leave>")
-                delete_btn.unbind("<Button-1>")
 
         record_var.trace_add("write", validate_delete)
 
@@ -11273,10 +13305,34 @@ class AdminUI:
 
         # ---------- SUBMIT FUNCTION ----------
         def submit():
+
+            import requests
+            from datetime import datetime
+
+            exam_name = vars["exam_name"].get().strip()
+            description = vars["description"].get().strip()
+            exam_date = vars["exam_date"].get().strip()
+
+            # ---- EXTRA SAFETY ----
+            if not exam_name or not description or not exam_date:
+                self.show_popup("Missing Data", "All fields are required.", "warning")
+                return
+
+            # ---- DATE VALIDATION (LOGICAL) ----
+            try:
+                datetime.strptime(exam_date, "%Y-%m-%d")
+            except ValueError:
+                self.show_popup(
+                "Invalid Date",
+                "Exam Date must be a valid date in YYYY-MM-DD format.",
+                "error"
+                )
+                return
+
             payload = {
-            "exam_name": vars["exam_name"].get().strip(),
-            "description": vars["description"].get().strip(),
-            "exam_date": vars["exam_date"].get().strip(),
+            "exam_name": exam_name.upper(),
+            "description": description,
+            "exam_date": exam_date
             }
 
             import requests
@@ -11284,13 +13340,17 @@ class AdminUI:
                 res = requests.post(
                 "http://127.0.0.1:8000/admin/exams/create",
                 json=payload
-            )
+                )
 
-                if res.status_code == 200 or res.status_code == 201:
+                if res.status_code in (200, 201):
                     self.show_popup("Success", "Exam Created Successfully!", "info")
                     self.change_screen("Exam Created!", add_callback=self.load_create_exam_type_screen)
                 else:
-                    self.show_popup("Error", res.text, "error")
+                    try:
+                        msg = res.json().get("detail", "Failed to create exam.")
+                    except:
+                        msg = "Failed to create exam."
+                    self.show_popup("Error", msg, "error")
 
             except Exception as e:
                 self.show_popup("Server Error", str(e), "error")
@@ -11402,9 +13462,23 @@ class AdminUI:
         try:
             res = requests.get("http://127.0.0.1:8000/admin/exams/all")
             self.exams = res.json() if res.status_code == 200 else []
-        except:
+
+            # ---- COLLECT VALID COLUMN VALUES ----
+            self.column_values_exams = {
+                "exam_id": [str(r["exam_id"]) for r in self.exams],
+                "exam_name": [r["exam_name"] for r in self.exams],
+                "description": [r["description"] for r in self.exams],
+                "exam_date": [r["exam_date"] for r in self.exams],
+                }
+
+        except Exception as e:
             self.exams = []
-            self.show_popup("Error", "Unable to load exams from server!", "error")
+            self.column_values_exams = {}
+            self.show_popup(
+            "Error",
+            "Unable to load exams from server!",
+            "error"
+            )
 
         # ------- FUNCTION TO UPDATE TABLE -------
         def update_table(data):
@@ -11427,20 +13501,31 @@ class AdminUI:
         def load_filtered():
             col = filter_var.get().strip()
             val = filter_val.get().strip().lower()
+
             if not col or not val:
+                return
+            
+            valid_list = self.column_values_exams.get(col, [])
+            valid_lower = [str(v).lower() for v in valid_list]
+
+            if val not in valid_lower:
+                self.show_popup(
+                "Invalid Search Value",
+                f"'{val}' not found in column '{col}'.",
+                "warning"
+                )
+                filter_val_var.set("")
                 return
 
             filtered = [
-            r for r in self.exams
-            if val in str(r[col]).lower()
-        ]
+                r for r in self.exams
+                if str(r[col]).lower() == val
+            ]
 
             update_table(filtered)
 
         load_btn.bind("<Button-1>", lambda e: load_filtered())
         load_all_btn.bind("<Button-1>", lambda e: update_table(self.exams))
-
-        update_table(self.exams)
 
         # INITIAL TABLE LOAD
         update_table(self.exams)
@@ -11516,7 +13601,7 @@ class AdminUI:
             output_frame.grid_slaves(row=2, column=1)[0],
             vars_dict["exam_date"]
         )
-    ).grid(row=2, column=2, padx=6)
+        ).grid(row=2, column=2, padx=6)
 
         # ---------- BACK BUTTON ----------
         back_row = tk.Frame(self.content, bg="#ECF0F1")
@@ -11552,12 +13637,31 @@ class AdminUI:
             update_btn.bind("<Button-1>", lambda e: update_exam())
 
         disable_update()
+        
+        def validate_update_fields(*args):
+            name = vars_dict["exam_name"].get().strip()
+            desc = vars_dict["description"].get().strip()
+            date = vars_dict["exam_date"].get().strip()
+
+            import re
+            if not name or not desc:
+                disable_update()
+                return
+
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", date):
+                disable_update()
+                return
+
+            enable_update()
+        
+        for v in vars_dict.values():
+            v.trace_add("write", validate_update_fields)
 
         # ---------- LOAD EXAM DETAILS ----------
         def load_exam():
             exam_id = exam_id_var.get().strip()
 
-            if not exam_id.isdigit():
+            if not exam_id.isdigit() or int(exam_id) <= 0:
                 self.show_popup("Invalid Input", "Exam ID must be a number!", "warning")
                 disable_update()
                 return
@@ -11578,7 +13682,7 @@ class AdminUI:
             vars_dict["description"].set(data["description"])
             vars_dict["exam_date"].set(data["exam_date"])
 
-            enable_update()
+            validate_update_fields()
 
         # Bind to Load button
         def validate_load(*args):
@@ -11600,7 +13704,7 @@ class AdminUI:
             exam_id = exam_id_var.get().strip()
 
             payload = {
-            "exam_name": vars_dict["exam_name"].get().strip(),
+            "exam_name": vars_dict["exam_name"].get().strip().upper(),
             "description": vars_dict["description"].get().strip(),
             "exam_date": vars_dict["exam_date"].get().strip()
         }
@@ -11637,7 +13741,7 @@ class AdminUI:
         font=("Arial", 26, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
@@ -11645,12 +13749,12 @@ class AdminUI:
         # Exam ID input
         tk.Label(
         form, text="Exam ID:", font=("Arial", 14), bg="#ECF0F1"
-    ).grid(row=0, column=0, padx=10, pady=10)
+        ).grid(row=0, column=0, padx=10, pady=10)
 
         exam_id_var = tk.StringVar()
         tk.Entry(
         form, textvariable=exam_id_var, font=("Arial", 14), width=25
-    ).grid(row=0, column=1, padx=10, pady=10)
+        ).grid(row=0, column=1, padx=10, pady=10)
 
         # Back button
         btn_row = tk.Frame(self.content, bg="#ECF0F1")
@@ -11669,12 +13773,13 @@ class AdminUI:
         width=18,
         relief="ridge",
         cursor="arrow"
-    )
+        )
         delete_btn.pack(pady=20)
 
         # Enable / Disable logic
         def validate(*args):
-            if exam_id_var.get().strip().isdigit():
+            val = exam_id_var.get().strip()
+            if val.isdigit() and int(val) > 0:
                 enable()
             else:
                 disable()
@@ -11697,12 +13802,16 @@ class AdminUI:
         # Delete call
         def delete_exam():
             exam_id = exam_id_var.get().strip()
+            
+            if not exam_id.isdigit() or int(exam_id) <= 0:
+                self.show_popup("Invalid Input", "Exam ID must be a positive number!", "warning")
+                return
 
             try:
                 import requests
                 res = requests.delete(
                 f"http://127.0.0.1:8000/admin/exams/delete/{exam_id}"
-            )
+                )
 
                 if res.status_code == 200:
                     self.show_popup("Success", "Exam Deleted Successfully!", "info")
@@ -11719,7 +13828,7 @@ class AdminUI:
 
     # ==============================================================================
     # ----- Button to Generate and Download Result of a Student with Some Exam ID -----
-    def load_generate_and_download_result_of_student(self):
+    def load_view_and_download_exam_result_of_student(self):
         self.clear_content()
 
         # ===== TITLE =====
@@ -11744,9 +13853,34 @@ class AdminUI:
 
         tk.Label(form, text="Exam ID:", font=("Arial", 14), bg="#ECF0F1")\
         .grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        
         exam_var = tk.StringVar()
-        tk.Entry(form, textvariable=exam_var, width=25, font=("Arial", 14))\
-        .grid(row=1, column=1, padx=10, pady=10)
+
+        available_exams = fetch_exams()
+        self.exam_values = [
+            f"{e['exam_id']} - {e['exam_name']}"
+            for e in available_exams
+        ]
+        # Validation
+        def validate(*args):
+            sid = sid_var.get().strip()
+            eid = exam_var.get().strip()
+
+            if sid.isdigit() and eid:
+                enable_fetch()
+            else:
+                disable_fetch()
+
+        exam_dd = ttk.Combobox(
+        form,
+        textvariable=exam_var,
+        font=("Arial", 14),
+        width=23,
+        state="readonly",
+        values=self.exam_values
+        )
+        exam_dd.grid(row=1, column=1, padx=10, pady=10)
+        exam_dd.bind("<<ComboboxSelected>>", validate)
 
         # ===== BACK BUTTON =====
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -11830,23 +13964,14 @@ class AdminUI:
 
         disable_fetch()
 
-        # Validation
-        def validate(*args):
-            sid = sid_var.get().strip()
-            eid = exam_var.get().strip()
-
-            if sid.isdigit() and eid.isdigit():
-                enable_fetch()
-            else:
-                disable_fetch()
-
         sid_var.trace_add("write", validate)
         exam_var.trace_add("write", validate)
 
         # ====== FETCH RESULT FUNCTION ======
         def fetch_result():
             sid = int(sid_var.get().strip())
-            eid = int(exam_var.get().strip())
+            exam_raw = exam_var.get().strip()
+            eid = int(exam_raw.split("-")[0].strip())
 
             import requests
             try:
@@ -11879,7 +14004,8 @@ class AdminUI:
         # ====== DOWNLOAD FUNCTION ======
         def download_pdf():
             sid = sid_var.get().strip()
-            eid = exam_var.get().strip()
+            exam_raw = exam_var.get().strip()
+            eid = int(exam_raw.split("-")[0].strip())
 
             import requests
             try:
@@ -11932,7 +14058,7 @@ class AdminUI:
         font=("Arial", 24, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
         # ===== FORM FRAME =====
         form = tk.Frame(self.content, bg="#ECF0F1")
@@ -11944,7 +14070,7 @@ class AdminUI:
         text="Student ID:",
         font=("Arial", 14),
         bg="#ECF0F1"
-    ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
         sid_var = tk.StringVar()
         tk.Entry(
@@ -11952,7 +14078,7 @@ class AdminUI:
         textvariable=sid_var,
         width=25,
         font=("Arial", 14)
-    ).grid(row=0, column=1, padx=10, pady=10)
+        ).grid(row=0, column=1, padx=10, pady=10)
 
         # ===== BACK BUTTON =====
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -11969,7 +14095,7 @@ class AdminUI:
         "Max Marks": tk.StringVar(),
         "Percentage": tk.StringVar(),
         "Final Grade": tk.StringVar()
-    }
+        }
 
         # Create summary card layout
         for i, (label, var) in enumerate(summary_vars.items()):
@@ -11996,7 +14122,7 @@ class AdminUI:
         text="Exam-wise Details:",
         font=("Arial", 14, "bold"),
         bg="#ECF0F1"
-    ).grid(row=len(summary_vars), column=0, columnspan=2, pady=10)
+        ).grid(row=len(summary_vars), column=0, columnspan=2, pady=10)
 
         exam_list_box = tk.Text(
         summary_frame,
@@ -12005,7 +14131,7 @@ class AdminUI:
         font=("Arial", 12),
         state="disabled",
         bg="#F2F3F4"
-    )
+        )
         exam_list_box.grid(row=len(summary_vars) + 1, column=0, columnspan=2, padx=10, pady=5)
 
         # ====== FETCH BUTTON ======
@@ -12175,7 +14301,7 @@ class AdminUI:
         font=("Arial", 26, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
         # ===== FORM FRAME =====
         form = tk.Frame(self.content, bg="#ECF0F1")
@@ -12186,16 +14312,28 @@ class AdminUI:
         text="Exam ID:",
         font=("Arial", 14),
         bg="#ECF0F1"
-    ).grid(row=0, column=0, padx=10, pady=10)
+        ).grid(row=0, column=0, padx=10, pady=10)
 
         exam_var = tk.StringVar()
- 
-        tk.Entry(
+
+        # fetch exams
+        available_exams = fetch_exams()
+
+        # dropdown values: "id – name"
+        self.exam_values = [
+            f"{e['exam_id']} - {e['exam_name']}"
+            for e in available_exams
+        ]
+
+        exam_dropdown = ttk.Combobox(
         form,
         textvariable=exam_var,
         font=("Arial", 14),
-        width=25
-    ).grid(row=0, column=1, padx=10, pady=10)
+        width=23,
+        state="readonly",
+        values=self.exam_values
+        )
+        exam_dropdown.grid(row=0, column=1, padx=10, pady=10)
 
         # ===== BACK BUTTON =====
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -12206,7 +14344,8 @@ class AdminUI:
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-        cols = ("result_id", "student_id", "exam_id", "total_marks", "percentage", "grade")
+        cols = ("result_id", "student_id", "obtained_marks",
+                "total_marks", "percentage", "grade", "result_status")
 
         # Scrollbars
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
@@ -12263,16 +14402,18 @@ class AdminUI:
 
         # ===== VALIDATION =====
         def validate(*args):
-            if exam_var.get().strip().isdigit():
+            if exam_var.get().strip() in self.exam_values:
                 enable_load()
             else:
                 disable_load()
 
         exam_var.trace_add("write", validate)
 
+
         # ===== LOAD RESULTS FUNCTION =====
         def load_results():
-            exam_id = exam_var.get().strip()
+            exam_raw = exam_var.get().strip()
+            exam_id = exam_raw.split("-")[0].strip()
 
             import requests
             try:
@@ -12296,10 +14437,11 @@ class AdminUI:
                     values=(
                         r["result_id"],
                         r["student_id"],
-                        r["exam_id"],
+                        r["obtained_marks"],
                         r["total_marks"],
                         r["percentage"],
-                        r["grade"]
+                        r["grade"],
+                        r["result_status"]
                     )
                 )
 
@@ -12319,7 +14461,7 @@ class AdminUI:
         font=("Arial", 24, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
         # ===== FORM =====
         form = tk.Frame(self.content, bg="#ECF0F1")
@@ -12332,11 +14474,40 @@ class AdminUI:
 
         class_var = tk.StringVar()
         exam_var = tk.StringVar()
+        
+        # ===== FETCH DROPDOWN DATA =====
+        available_classes = fetch_classes()
+        available_exams = fetch_exams()
 
-        tk.Entry(form, textvariable=class_var, font=("Arial", 14), width=25)\
-        .grid(row=0, column=1, padx=10, pady=8)
-        tk.Entry(form, textvariable=exam_var, font=("Arial", 14), width=25)\
-        .grid(row=1, column=1, padx=10, pady=8)
+        self.class_values = [
+            f"{c['class_id']} - {c['class_name']} {c['section']}"
+            for c in available_classes
+        ]
+
+        self.exam_values = [
+            f"{e['exam_id']} - {e['exam_name']}"
+            for e in available_exams
+        ]
+        
+        class_dd = ttk.Combobox(
+        form,
+        textvariable=class_var,
+        font=("Arial", 14),
+        width=23,
+        state="readonly",
+        values=self.class_values
+        )
+        class_dd.grid(row=0, column=1, padx=10, pady=8)
+        
+        exam_dd = ttk.Combobox(
+        form,
+        textvariable=exam_var,
+        font=("Arial", 14),
+        width=23,
+        state="readonly",
+        values=self.exam_values
+        )
+        exam_dd.grid(row=1, column=1, padx=10, pady=8)
 
         # BACK BUTTON
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -12347,7 +14518,7 @@ class AdminUI:
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=15)
 
-        cols = ("student_id", "full_name", "exam_id", "total_marks", "percentage", "grade")
+        cols = ("student_id", "full_name", "obtained_marks", "total_marks", "percentage", "grade", "result_status")
 
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
@@ -12409,7 +14580,10 @@ class AdminUI:
 
         # ===== VALIDATION =====
         def validate(*args):
-            if class_var.get().strip().isdigit() and exam_var.get().strip().isdigit():
+            if (
+                class_var.get().strip() in self.class_values
+                and exam_var.get().strip() in self.exam_values
+            ):
                 enable(load_btn)
                 enable(download_btn)
                 load_btn.bind("<Button-1>", lambda e: load_results())
@@ -12423,8 +14597,14 @@ class AdminUI:
 
         # ===== LOAD RESULTS FUNCTION =====
         def load_results():
-            class_id = class_var.get().strip()
-            exam_id = exam_var.get().strip()
+            self.show_mini_notification("Loading results, please wait…")
+
+            class_raw = class_var.get().strip()
+            exam_raw = exam_var.get().strip()
+
+            class_id = int(class_raw.split("-")[0].strip())
+            exam_id = int(exam_raw.split("-")[0].strip())
+
 
             # Clear table
             for item in self.class_results_tree.get_children():
@@ -12457,10 +14637,11 @@ class AdminUI:
                     values=(
                         r["student_id"],
                         stu_data["full_name"],
-                        r["exam_id"],
+                        r["obtained_marks"],
                         r["total_marks"],
                         r["percentage"],
-                        r["grade"]
+                        r["grade"],
+                        r["result_status"]
                     )
                 )
 
@@ -12469,8 +14650,12 @@ class AdminUI:
 
         # ===== DOWNLOAD ZIP FUNCTION =====
         def download_zip():
-            class_id = class_var.get().strip()
-            exam_id = exam_var.get().strip()
+            class_raw = class_var.get().strip()
+            exam_raw = exam_var.get().strip()
+
+            class_id = int(class_raw.split("-")[0].strip())
+            exam_id = int(exam_raw.split("-")[0].strip())
+
 
             import requests
             try:
@@ -12526,8 +14711,24 @@ class AdminUI:
 
         class_var = tk.StringVar()
 
-        tk.Entry(form, textvariable=class_var, font=("Arial", 14), width=25)\
-        .grid(row=0, column=1, padx=10, pady=8)
+        # ===== FETCH CLASSES FOR DROPDOWN =====
+        available_classes = fetch_classes()
+
+        self.class_map = {
+        f"{c['class_id']} - {c['class_name']} {c['section']}": c["class_id"]
+        for c in available_classes
+        }
+        self.class_values = list(self.class_map.keys())
+
+        class_dd = ttk.Combobox(
+        form,
+        textvariable=class_var,
+        font=("Arial", 14),
+        width=23,
+        state="readonly",
+        values=self.class_values
+        )
+        class_dd.grid(row=0, column=1, padx=10, pady=8)
 
         # BACK BUTTON
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -12599,7 +14800,7 @@ class AdminUI:
 
         # ===== VALIDATION =====
         def validate(*args):
-            if class_var.get().strip().isdigit():
+            if class_var.get().strip() in self.class_values:
                 enable(load_btn)
                 enable(download_btn)
                 load_btn.bind("<Button-1>", lambda e: load_results())
@@ -12612,7 +14813,7 @@ class AdminUI:
 
         # ===== LOAD FINAL RESULTS (TABLE VIEW) =====
         def load_results():
-            class_id = class_var.get().strip()
+            class_id = self.class_map[class_var.get()]
 
             # Clear table
             for item in self.final_results_tree.get_children():
@@ -12656,7 +14857,8 @@ class AdminUI:
 
         # ===== DOWNLOAD FINAL RESULTS ZIP =====
         def download_zip():
-            class_id = class_var.get().strip()
+            class_raw = class_var.get().strip()
+            class_id = int(class_raw.split("-")[0].strip())
 
             import requests
             try:
@@ -14049,6 +16251,474 @@ class AdminUI:
 
         update_table(self.all_salaries)
 
+    # ==============================================================================
+    # ----- Button to View Student Credentials Table -----
+    def load_student_credential_table(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Student Credentials",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+ 
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+        ("id", "Credential ID"),
+        ("student_id", "Student ID"),
+        ("login_email", "Login Email"),
+        ("login_password", "Login Password"),
+        ("is_active", "Is Active")
+        ]
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+ 
+        column_keys = [c[0] for c in cols]
+
+        self.student_cred_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+        )
+        self.student_cred_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.student_cred_tree.yview)
+        x_scroll.config(command=self.student_cred_tree.xview)
+
+        # ===== HEADINGS =====
+        for key, label in cols:
+            self.student_cred_tree.heading(key, text=label)
+            self.student_cred_tree.column(key, width=200, anchor="center")
+
+        # ===== FILTER BAR =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Filter By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        filter_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+        )
+        filter_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(
+        filter_frame,
+        textvariable=filter_val_var,
+        font=("Arial", 12),
+        width=25
+        )
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # ===== BUTTON STYLE =====
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+            )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== FETCH FROM BACKEND =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/credentials/students")
+            self.all_student_credentials = res.json() if res.status_code == 200 else []
+        except:
+            self.all_student_credentials = []
+
+        # ===== UPDATE TABLE =====
+        def update_table(data):
+            for row in self.student_cred_tree.get_children():
+                self.student_cred_tree.delete(row)
+
+            for r in data:
+                values = [
+                r.get("id"),
+                r.get("student_id"),
+                r.get("login_email"),
+                r.get("login_password"),
+                "Yes" if r.get("is_active") else "No"
+                ]
+                self.student_cred_tree.insert("", "end", values=values)
+
+        # ===== FILTER LOGIC =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val_var.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+            filtered = [
+            r for r in self.all_student_credentials
+            if val in str(r.get(key, "")).lower()
+            ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_student_credentials))
+
+        update_table(self.all_student_credentials)
+
+    
+    # ==============================================================================
+    # ----- Button to View Teacher Credentials Table -----
+    def load_teacher_credential_table(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Teacher Credentials",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+            ("id", "Credential ID"),
+            ("teacher_id", "Teacher ID"),
+            ("login_email", "Login Email"),
+            ("login_password", "Login Password"),
+            ("is_active", "Is Active")
+            ]
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        column_keys = [c[0] for c in cols]
+     
+        self.teacher_cred_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+        )
+        self.teacher_cred_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.teacher_cred_tree.yview)
+        x_scroll.config(command=self.teacher_cred_tree.xview)
+
+        # ===== HEADINGS =====
+        for key, label in cols:
+            self.teacher_cred_tree.heading(key, text=label)
+            self.teacher_cred_tree.column(key, width=200, anchor="center")
+
+        # ===== FILTER BAR =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Filter By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        filter_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+        )
+        filter_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(
+        filter_frame,
+        textvariable=filter_val_var,
+        font=("Arial", 12),
+        width=25
+        )
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # ===== BUTTON STYLE =====
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+            )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== FETCH FROM BACKEND =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/credentials/teachers")
+            self.all_teacher_credentials = res.json() if res.status_code == 200 else []
+        except:
+            self.all_teacher_credentials = []
+
+        # ===== UPDATE TABLE =====
+        def update_table(data):
+            for row in self.teacher_cred_tree.get_children():
+                self.teacher_cred_tree.delete(row)
+
+            for r in data:
+                values = [
+                r.get("id"),
+                r.get("teacher_id"),
+                r.get("login_email"),
+                r.get("login_password"),
+                "Yes" if r.get("is_active") else "No"
+                ]
+                self.teacher_cred_tree.insert("", "end", values=values)
+
+        # ===== FILTER LOGIC =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val_var.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+            filtered = [
+            r for r in self.all_teacher_credentials
+            if val in str(r.get(key, "")).lower()
+            ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_teacher_credentials))
+
+        update_table(self.all_teacher_credentials)
+
+    
+    # ==============================================================================
+    # ----- Button to View Staff Credentials Table -----
+    def load_staff_credential_table(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Staff Credentials",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+        ("id", "Credential ID"),
+        ("staff_id", "Staff ID"),
+        ("login_email", "Login Email"),
+        ("login_password", "Login Password"),
+        ("is_active", "Is Active")
+        ]
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        column_keys = [c[0] for c in cols]
+
+        self.staff_cred_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set
+        )
+        self.staff_cred_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.staff_cred_tree.yview)
+        x_scroll.config(command=self.staff_cred_tree.xview)
+
+        # ===== HEADINGS =====
+        for key, label in cols:
+            self.staff_cred_tree.heading(key, text=label)
+            self.staff_cred_tree.column(key, width=200, anchor="center")
+
+        # ===== FILTER BAR =====
+        filter_frame = tk.Frame(self.content, bg="#ECF0F1")
+        filter_frame.pack(pady=12)
+
+        tk.Label(
+        filter_frame,
+        text="Filter By:",
+        font=("Arial", 12, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).grid(row=0, column=0, padx=5)
+
+        filter_var = tk.StringVar()
+        filter_dropdown = ttk.Combobox(
+        filter_frame,
+        textvariable=filter_var,
+        values=[label for _, label in cols],
+        state="readonly",
+        width=18
+        )
+        filter_dropdown.grid(row=0, column=1, padx=10)
+
+        filter_val_var = tk.StringVar()
+        filter_val = tk.Entry(
+        filter_frame,
+        textvariable=filter_val_var,
+        font=("Arial", 12),
+        width=25
+        )
+        filter_val.grid(row=0, column=2, padx=10)
+
+        # ===== BUTTON STYLE =====
+        def style_button(btn):
+            btn.config(
+            bg="#000000",
+            fg="white",
+            padx=15,
+            pady=5,
+            width=10,
+            relief="raised",
+            cursor="arrow",
+            font=("Arial", 12, "bold")
+        )
+            btn.bind("<Enter>", lambda e: btn.config(bg="#222222"))
+            btn.bind("<Leave>", lambda e: btn.config(bg="#000000"))
+
+        load_btn = tk.Label(filter_frame, text="Load")
+        style_button(load_btn)
+        load_btn.grid(row=0, column=3, padx=10)
+
+        load_all_btn = tk.Label(filter_frame, text="Load All")
+        style_button(load_all_btn)
+        load_all_btn.grid(row=0, column=4, padx=10)
+
+        # ===== FETCH FROM BACKEND =====
+        import requests
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/credentials/staff")
+            self.all_staff_credentials = res.json() if res.status_code == 200 else []
+        except:
+            self.all_staff_credentials = []
+
+        # ===== UPDATE TABLE =====
+        def update_table(data):
+            for row in self.staff_cred_tree.get_children():
+                self.staff_cred_tree.delete(row)
+
+            for r in data:
+                values = [
+                r.get("id"),
+                r.get("staff_id"),
+                r.get("login_email"),
+                r.get("login_password"),
+                "Yes" if r.get("is_active") else "No"
+            ]
+                self.staff_cred_tree.insert("", "end", values=values)
+
+        # ===== FILTER LOGIC =====
+        label_to_key = {label: key for key, label in cols}
+
+        def load_filtered():
+            label = filter_var.get().strip()
+            val = filter_val_var.get().strip().lower()
+            if not label or not val:
+                return
+
+            key = label_to_key[label]
+            filtered = [
+            r for r in self.all_staff_credentials
+            if val in str(r.get(key, "")).lower()
+            ]
+            update_table(filtered)
+
+        load_btn.bind("<Button-1>", lambda e: load_filtered())
+        load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_staff_credentials))
+
+        update_table(self.all_staff_credentials)
+
+    
     # ==============================================================================
     # ===== DASHBOARD PAGE ======
     def load_dashboard(self):

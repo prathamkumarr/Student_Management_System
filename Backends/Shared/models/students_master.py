@@ -36,3 +36,8 @@ class StudentMaster(Base):
     class_ref =relationship("Backends.Shared.models.classes_master.ClassMaster", back_populates="students")
     tc_ref = relationship("TransferCertificate", back_populates="student")
     activities = relationship("ActivityStudentMap", backref="student", cascade="all, delete")
+    admission = relationship(
+        "StudentAdmission",
+        back_populates="student_ref",
+        uselist=False
+    )

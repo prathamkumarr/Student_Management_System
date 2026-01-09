@@ -6,8 +6,10 @@ class TCCreate(BaseModel):
     reason: str
     remarks: str | None = None
     issue_date: date
+
     class Config:
         from_attributes = True
+
 
 class TCResponse(BaseModel):
     tc_id: int
@@ -15,7 +17,7 @@ class TCResponse(BaseModel):
     issue_date: date
     reason: str
     remarks: str | None
-    status: int
+    is_active: bool
 
     class Config:
         from_attributes = True
