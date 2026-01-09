@@ -4,10 +4,7 @@ from sqlalchemy.orm import Session
 from Backends.Shared.connection import get_db
 from Backends.Shared.models.classes_master import ClassMaster
 
-router = APIRouter(
-    prefix="/admin/classes",
-    tags=["Admin Classes"]
-)
+router = APIRouter(prefix="/admin/classes", tags=["Admin Classes"])
 
 
 @router.get("/")

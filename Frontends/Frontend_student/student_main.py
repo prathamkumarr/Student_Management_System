@@ -2039,12 +2039,12 @@ class StudentUI:
             data = []
 
         # === Build Table ===
-        cols = ("day", "subject", "teacher_id", "start_time", "end_time", "room_no")
+        cols = ("day", "subject", "teacher", "start_time", "end_time", "room_no")
         rows = [
             (
                 r.get("day", ""),
                 r.get("subject", ""),
-                r.get("teacher_id", ""),
+                r.get("teacher_name", ""),
                 r.get("start_time", ""),
                 r.get("end_time", ""),
                 r.get("room_no", "")
