@@ -1,6 +1,7 @@
-from sqlalchemy import Integer, String, Date, DateTime, Enum, ForeignKey, func, UniqueConstraint
+from sqlalchemy import Integer, String, Date, DateTime, Enum, ForeignKey, func, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from Backends.Shared.base import Base
+from Backends.Shared.enums.attendance_enums import AttendanceStatus
 
 class TeacherAttendance(Base):
     __tablename__ = "teacher_attendance"
@@ -13,10 +14,12 @@ class TeacherAttendance(Base):
     date: Mapped[Date] = mapped_column(Date, nullable=False)
     check_in: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     check_out: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
-    status: Mapped[str] = mapped_column(Enum("P", "A", "L", name="teacher_attendance_status"), nullable=False)
+    status = mapped_column(Enum(AttendanceStatus), nullable=False)
     remarks: Mapped[str] = mapped_column(String(255), nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[DateTime] = mapped_column(DateTime, onupdate=func.now())
+    
+    is_active = mapped_column(Boolean, default=True)
 
     # relationships
     teacher = relationship("TeacherMaster", back_populates="teacher_attendance_records")

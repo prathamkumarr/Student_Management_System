@@ -5,14 +5,12 @@ from Backends.Shared.connection import get_db
 from Backends.Shared.models.fees_models import StudentFee, FeePayment
 from Backends.Shared.models.payment_method import PaymentMethod
 from Backends.Shared.schemas.fees_schemas import (
-    PaymentMethodResponse, RazorpayOrderCreate, RazorpayVerify,
+    PaymentMethodResponse,
     FeePaymentCreate, 
     FeePaymentResponse,
 )
-from Backends.Shared.razorpay_client import razorpay_client
 from fastapi.responses import FileResponse
-from fpdf import FPDF  # lightweight lib for generating PDFs
-import os
+from fpdf import FPDF  
 
 router = APIRouter(prefix="/fees", tags=["Fees Management"])
 
@@ -74,69 +72,6 @@ def pay_fee(data: FeePaymentCreate, db: Session = Depends(get_db)):
         status=payment.status,
         created_at=payment.created_at
     )
-
-# endpoint to create order using razorpay
-@router.post("/create-order")
-def create_order(payload: RazorpayOrderCreate, db: Session = Depends(get_db)):
-
-    invoice = db.query(StudentFee).filter(StudentFee.invoice_id == payload.invoice_id).first()
-    if not invoice:
-        raise HTTPException(404, "Invoice not found")
-
-    # Convert amount to paise → ₹100 = 10000
-    amount_paise = int(float(payload.amount) * 100)
-
-    order = razorpay_client.order.create({
-        "amount": amount_paise,
-        "currency": "INR",
-        "receipt": f"inv_{invoice.invoice_id}",
-        "payment_capture": 1
-    })
-
-    return {
-        "order_id": order["id"],
-        "amount": payload.amount,
-        "currency": "INR",
-        "invoice_id": invoice.invoice_id,
-        "key_id": os.getenv("RAZORPAY_KEY_ID")
-    }
-
-# endpoint for verification
-@router.post("/verify")
-def verify_payment(data: RazorpayVerify, db: Session = Depends(get_db)):
-
-    params_dict = {
-        "razorpay_order_id": data.razorpay_order_id,
-        "razorpay_payment_id": data.razorpay_payment_id,
-        "razorpay_signature": data.razorpay_signature
-    }
-
-    try:
-        razorpay_client.utility.verify_payment_signature(params_dict)
-    except:
-        raise HTTPException(400, "Payment signature verification failed")
-
-    # Store payment record
-    payment = FeePayment(
-        invoice_id=data.invoice_id,
-        student_id=data.student_id,
-        amount=data.amount,
-        payment_method_id=data.method_id,  # Razorpay method
-        status="success"
-    )
-    db.add(payment)
-
-    # Update invoice
-    invoice = db.query(StudentFee).get(data.invoice_id)
-    invoice.amount_paid += data.amount
-
-    if invoice.amount_paid >= invoice.amount_due:
-        invoice.status = "paid"
-    else:
-        invoice.status = "partially_paid"
-
-    db.commit()
-    return {"message": "Payment verified & recorded successfully"}
 
 # endpoint to store & track that payment
 @router.get("/history/{student_id}", response_model=list[FeePaymentResponse])

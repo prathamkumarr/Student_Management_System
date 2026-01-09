@@ -56,6 +56,8 @@ from Backends.Shared.models.credentials_models import (
     StudentCredential, StaffCredential, TeacherCredential
 )
 
+from Backends.Backend_admin.routers.credential_router import credential_router
+
 app = FastAPI(
     title="ERP's Backend",
     description="Admissions, Fees, Attendance Management area!",
@@ -121,8 +123,7 @@ app.include_router(subjects_details_router)
 app.include_router(students_details_router)
 
 app.include_router(auth_router)
-
-
+app.include_router(credential_router)
 
 @app.get("/")
 def root():

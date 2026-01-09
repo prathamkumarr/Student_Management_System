@@ -10,3 +10,5 @@ class SubjectMaster(Base):
     
     # relationships
     attendance_records = relationship("AttendanceRecord", back_populates="subject")
+    teachers = relationship("TeacherOnboarding", back_populates="subject")
+

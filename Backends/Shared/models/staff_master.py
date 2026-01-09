@@ -1,6 +1,6 @@
 # Backends/Shared/models/staff_master.py
 
-from sqlalchemy import Integer, String, Date
+from sqlalchemy import Integer, String, Date, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from Backends.Shared.base import Base
 
@@ -14,6 +14,7 @@ class StaffMaster(Base):
     address: Mapped[str] = mapped_column(String(255), nullable=False)
     department: Mapped[str] = mapped_column(String(120), nullable=False)
     role: Mapped[str] = mapped_column(String(120), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     email: Mapped[str] = mapped_column(String(100), unique=True, nullable=True)
     phone: Mapped[str] = mapped_column(String(20), unique=True, nullable=True)

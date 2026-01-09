@@ -1,47 +1,102 @@
 # Backends/Backend_admin/schemas/fees_schemas.py
 from pydantic import BaseModel, Field
 from datetime import date, datetime
-from typing import Optional, Annotated
+from typing import Optional
 from decimal import Decimal
+from Backends.Shared.enums.student_fees_enums import StudentFeeStatus
+from Backends.Shared.enums.fee_payments_enums import FeePaymentStatus
+from Backends.Shared.enums.fees_enums import BillingType, FeeFrequency, ChargeTrigger, FeeGeneratedBy
+from Backends.Shared.enums.fee_payments_enums import (
+    PaymentSource, PaymentReceivedBy
+)
+from Backends.Shared.enums.fee_audit_enums import (
+    FeeAuditEntity, FeeAuditAction, AuditActorRole, AuditSource
+)
+
 
 # ----Fee Master (for class-level fees)----
 class FeeMasterCreate(BaseModel):
     class_id: int
     fee_type: str
-    amount: Decimal = Field(..., ge=0, le=9999999999, description="Fee amount (up to 10 digits, 2 decimals)")
+
+    billing_type: BillingType
+    frequency: FeeFrequency | None = None
+    charge_trigger: ChargeTrigger = ChargeTrigger.ACADEMIC_CYCLE
+
+    amount: Decimal
+    currency: str = "INR"
+
+    allow_proration: bool = False
+    is_mandatory: bool = True
+
     effective_from: Optional[date] = None
     effective_to: Optional[date] = None
     notes: Optional[str] = None
+    display_order: int = 1
+
     class Config:
         from_attributes = True
+
 
 class FeeMasterResponse(FeeMasterCreate):
     fee_id: int
     is_active: bool
-    currency: str = "INR"
     created_at: datetime
+    updated_at: datetime | None
+
     class Config:
         from_attributes = True
+
+
+class FeeMasterUpdate(BaseModel):
+    fee_type: Optional[str]
+    amount: Optional[Decimal]
+    effective_from: Optional[date]
+    effective_to: Optional[date]
+    notes: Optional[str]
+
+    class Config:
+        from_attributes = True
+        
+
 
 # ----Student Fee (invoice / due details)----
 class StudentFeeCreate(BaseModel):
     student_id: int
     class_id: int
     fee_id: Optional[int]
-    amount_due: Decimal = Field(..., gt=0, le=9999999999, description="Fee amount (up to 10 digits, 2 decimals)")
+    amount_due: Decimal = Field(..., gt=0)
     due_date: date
     class Config:
         from_attributes = True
+
+
 
 class StudentFeeOut(BaseModel):
     invoice_id: int
     student_id: int
     class_id: int
-    fee_id: Optional[int] = None
-    amount_due: float
-    amount_paid: float
+    fee_id: Optional[int]
+
+    amount_due: Decimal
+    amount_paid: Decimal
+
     due_date: date
-    status: str
+    status: StudentFeeStatus
+
+    billing_type: BillingType
+    frequency: FeeFrequency | None
+    charge_trigger: ChargeTrigger
+
+    billing_period_start: Optional[date]
+    billing_period_end: Optional[date]
+
+    generated_by: FeeGeneratedBy
+    is_active: bool
+
+    created_at: datetime
+    updated_at: datetime | None
+
     class Config:
         from_attributes = True
 
@@ -51,26 +106,42 @@ class StudentFeeOut(BaseModel):
 class FeePaymentCreate(BaseModel):
     invoice_id: int
     student_id: int
-    amount: Annotated[Decimal, Field(max_digits=10, decimal_places=2)]
-    payment_method: str
-    payment_provider: Optional[str] = None
+    amount: Decimal
+
+    payment_method_id: int
     payer_id: Optional[int] = None
-    payment_method_id: int = Field(..., gt=0)
+
+    payment_source: PaymentSource
+    billing_cycle: Optional[date] = None
+    is_partial_payment: bool = False
+    received_by: PaymentReceivedBy = PaymentReceivedBy.ONLINE
+    remarks: Optional[str] = None
+
     class Config:
         from_attributes = True
+
+
 
 class FeePaymentResponse(BaseModel):
     payment_id: int
     invoice_id: int
     student_id: int
+
     amount: Decimal
-    method_id: int
-    payment_method: str       
-    payment_method_name: str      
-    status: str
+    payment_method_id: int
+    payment_method_name: str
+
+    status: FeePaymentStatus
+    payment_source: PaymentSource
+    received_by: PaymentReceivedBy
+    is_partial_payment: bool
+
     created_at: datetime
+
     class Config:
         from_attributes = True
+
+
 
 
 # ----payment method schemas----
@@ -106,23 +177,31 @@ class UploadReceiptResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# ---razorpay---
-class RazorpayOrderCreate(BaseModel):
+
+
+
+# ---- Fee Audit Schemas ----
+class FeeAuditResponse(BaseModel):
+    audit_id: int
     invoice_id: int
-    student_id: int
-    amount: Decimal
+    changed_by: int
+
+    entity_type: FeeAuditEntity
+    action: FeeAuditAction
+    changed_by_role: AuditActorRole
+    reason: Optional[str]
+    source: AuditSource
+
+    before_change: dict | None
+    after_change: dict | None
+    ts: datetime
+
     class Config:
         from_attributes = True
 
-class RazorpayVerify(BaseModel):
-    invoice_id: int
-    student_id: int
-    amount: Decimal
-    method_id: int
 
-    razorpay_order_id: str
-    razorpay_payment_id: str
-    razorpay_signature: str
+class FeeAuditListResponse(BaseModel):
+    items: list[FeeAuditResponse]
+    total: int
     class Config:
         from_attributes = True
-

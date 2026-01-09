@@ -5,12 +5,14 @@ from datetime import date
 from typing import List
 # Schemas
 from Backends.Shared.schemas.attendance_schemas import (
-    StudentAttendanceCreate, AttendanceSummary, AttendanceOut,
-    StudentAttendanceResponse, AttendanceFilter,
-    TeacherAttendanceCreate, TeacherAttendanceSummary,
+    AttendanceSummary, AttendanceOut, StudentAttendanceResponse,
+    AttendanceFilter, UpdateAttendanceItem,
+    TeacherAttendanceUpdate, TeacherAttendanceSummary,
     TeacherAttendanceResponse, StaffAttendanceResponse,
-    StaffAttendanceSummary, StaffAttendanceCreate
+    StaffAttendanceSummary, StaffAttendanceUpdate
 )
+from Backends.Shared.enums.attendance_enums import AttendanceStatus
+
 # Models
 from Backends.Shared.models.teacher_attendance_models import TeacherAttendance
 from Backends.Shared.models.attendance_models import AttendanceRecord
@@ -22,12 +24,18 @@ router = APIRouter(prefix="/admin/attendance", tags=["Admin Attendance"])
 # endpoint to view all student's attendance 
 @router.get("/student", response_model=list[StudentAttendanceResponse])
 def get_all_student_attendance(db: Session = Depends(get_db)):
-    return db.query(AttendanceRecord).all()
+    return db.query(AttendanceRecord).filter(
+                    AttendanceRecord.is_active == True
+                    ).all()
 
 # endpoint to view attendance of a student using attendance_id
 @router.get("/student/{attendance_id}", response_model=StudentAttendanceResponse)
 def get_student_attendance(attendance_id: int, db: Session = Depends(get_db)):
-    record = db.query(AttendanceRecord).filter(AttendanceRecord.attendance_id == attendance_id).first()
+    record = db.query(AttendanceRecord).filter(
+        AttendanceRecord.attendance_id == attendance_id,
+        AttendanceRecord.is_active == True
+        ).first()
+    
     if not record:
         raise HTTPException(status_code=404, detail="Student attendance record not found")
     return record
@@ -46,7 +54,8 @@ def get_by_student(filter: AttendanceFilter, db: Session = Depends(get_db)):
     q = db.query(AttendanceRecord).filter(
         AttendanceRecord.student_id == student_id,
         AttendanceRecord.lecture_date >= date_from,
-        AttendanceRecord.lecture_date <= date_to
+        AttendanceRecord.lecture_date <= date_to,
+        AttendanceRecord.is_active == True
     )
 
     # Subject filtering ONLY if valid
@@ -74,12 +83,13 @@ def get_by_student(filter: AttendanceFilter, db: Session = Depends(get_db)):
 def summary(student_id: int, date_from: date, date_to: date, db: Session = Depends(get_db)):
     q = db.query(AttendanceRecord).filter(
         AttendanceRecord.student_id == student_id,
-        AttendanceRecord.lecture_date.between(date_from, date_to)
+        AttendanceRecord.lecture_date.between(date_from, date_to),
+        AttendanceRecord.is_active == True
     )
     total = q.count()
-    present = q.filter(AttendanceRecord.status == "P").count()
-    absent = q.filter(AttendanceRecord.status == "A").count()
-    late = q.filter(AttendanceRecord.status == "L").count()
+    present = q.filter(AttendanceRecord.status == AttendanceStatus.P).count()
+    absent = q.filter(AttendanceRecord.status == AttendanceStatus.A).count()
+    late = q.filter(AttendanceRecord.status == AttendanceStatus.L).count()
     percentage = round((present / total) * 100, 2) if total else 0.0
 
     return AttendanceSummary(
@@ -93,14 +103,16 @@ def summary(student_id: int, date_from: date, date_to: date, db: Session = Depen
 
 # endpoint to update any students attendance using attendance_id 
 @router.put("/student/update/{attendance_id}", response_model=StudentAttendanceResponse)
-def update_student_attendance(attendance_id: int, payload: StudentAttendanceCreate, db: Session = Depends(get_db)):
-    record = db.query(AttendanceRecord).filter(AttendanceRecord.attendance_id == attendance_id).first()
+def update_student_attendance(attendance_id: int, payload: UpdateAttendanceItem, db: Session = Depends(get_db)):
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.attendance_id == attendance_id,
+                                               AttendanceRecord.is_active == True
+                                            ).first()
     
     if not record:
         raise HTTPException(status_code=404, detail="Student attendance not found")
 
-    for key, value in payload.model_dump().items():
-        setattr(record, key, value)
+    record.status = payload.status
+    record.remarks = payload.remarks
 
     db.commit()
     db.refresh(record)
@@ -109,12 +121,15 @@ def update_student_attendance(attendance_id: int, payload: StudentAttendanceCrea
 # endpoint to delete attendance of any student using attendance_id
 @router.delete("/student/delete/{attendance_id}")
 def delete_student_attendance(attendance_id: int, db: Session = Depends(get_db)):
-    record = db.query(AttendanceRecord).filter(AttendanceRecord.attendance_id == attendance_id).first()
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.attendance_id == attendance_id,
+                                               AttendanceRecord.is_active == True
+                                            ).first()
 
     if not record:
         raise HTTPException(status_code=404, detail="Student attendance not found")
 
-    db.delete(record)
+    record.is_active = False
+
     db.commit()
     return {"message": "Student attendance deleted"}
 
@@ -123,12 +138,17 @@ def delete_student_attendance(attendance_id: int, db: Session = Depends(get_db))
 # endpoint to view teachers attendance
 @router.get("/teacher", response_model=list[TeacherAttendanceResponse])
 def get_all_teacher_attendance(db: Session = Depends(get_db)):
-    return db.query(TeacherAttendance).all()
+    return(
+        db.query(TeacherAttendance).filter(
+        TeacherAttendance.is_active == True).all()
+    )
 
 # endpoint to view teacher's attendance using record_id
 @router.get("/teacher/{record_id}", response_model=TeacherAttendanceResponse)
 def get_teacher_attendance(record_id: int, db: Session = Depends(get_db)):
-    record = db.query(TeacherAttendance).filter(TeacherAttendance.record_id == record_id).first()
+    record = db.query(TeacherAttendance).filter(TeacherAttendance.record_id == record_id,
+                                                TeacherAttendance.is_active == True
+                                                ).first()
     if not record:
         raise HTTPException(status_code=404, detail="Teacher attendance not found")
     return record
@@ -138,13 +158,14 @@ def get_teacher_attendance(record_id: int, db: Session = Depends(get_db)):
 def teacher_summary(teacher_id: int, date_from: date, date_to: date, db: Session = Depends(get_db)):
     q = db.query(TeacherAttendance).filter(
         TeacherAttendance.teacher_id == teacher_id,
-        TeacherAttendance.date.between(date_from, date_to)
+        TeacherAttendance.date.between(date_from, date_to),
+        TeacherAttendance.is_active == True
     )
 
     total = q.count()
-    present = q.filter(TeacherAttendance.status == "P").count()
-    absent = q.filter(TeacherAttendance.status == "A").count()
-    leave = q.filter(TeacherAttendance.status == "L").count()
+    present = q.filter(TeacherAttendance.status == AttendanceStatus.P).count()
+    absent = q.filter(TeacherAttendance.status == AttendanceStatus.A).count()
+    leave = q.filter(TeacherAttendance.status == AttendanceStatus.LE).count()
 
     percentage = round((present / total) * 100, 2) if total else 0.0
 
@@ -159,14 +180,20 @@ def teacher_summary(teacher_id: int, date_from: date, date_to: date, db: Session
 
 # endpoint to update attendance of any teacher
 @router.put("/teacher/update/{record_id}", response_model=TeacherAttendanceResponse)
-def update_teacher_attendance(record_id: int, payload: TeacherAttendanceCreate, db: Session = Depends(get_db)):
-    record = db.query(TeacherAttendance).filter(TeacherAttendance.record_id == record_id).first()
+def update_teacher_attendance(record_id: int, payload: TeacherAttendanceUpdate, db: Session = Depends(get_db)):
+    record = db.query(TeacherAttendance).filter(TeacherAttendance.record_id == record_id,
+                                                TeacherAttendance.is_active == True
+                                                ).first()
 
     if not record:
         raise HTTPException(status_code=404, detail="Teacher attendance not found")
 
-    for key, value in payload.model_dump().items():
-        setattr(record, key, value)
+    if payload.check_out is not None:
+        record.check_out = payload.check_out
+    if payload.status is not None:
+        record.status = payload.status
+    if payload.remarks is not None:
+        record.remarks = payload.remarks
 
     db.commit()
     db.refresh(record)
@@ -175,13 +202,16 @@ def update_teacher_attendance(record_id: int, payload: TeacherAttendanceCreate, 
 # endpoint to delete attendance record of any teacher using record_id
 @router.delete("/teacher/delete/{record_id}")
 def delete_teacher_attendance(record_id: int, db: Session = Depends(get_db)):
-    record = db.query(TeacherAttendance).filter(TeacherAttendance.record_id == record_id).first()
+    record = db.query(TeacherAttendance).filter(TeacherAttendance.record_id == record_id,
+                                                TeacherAttendance.is_active == True
+                                                ).first()
 
     if not record:
         raise HTTPException(status_code=404, detail="Teacher attendance not found")
 
-    db.delete(record)
+    record.is_active = False
     db.commit()
+
     return {"message": "Teacher attendance deleted"}
 
 
@@ -189,12 +219,17 @@ def delete_teacher_attendance(record_id: int, db: Session = Depends(get_db)):
 # endpoint to view staff's attendance
 @router.get("/staff", response_model=list[StaffAttendanceResponse])
 def get_all_staff_attendance(db: Session = Depends(get_db)):
-    return db.query(StaffAttendance).all()
+    return(
+        db.query(StaffAttendance).filter(
+        StaffAttendance.is_active == True).all()
+    )
 
 # endpoint to view staff's attendance using record_id
 @router.get("/staff/{record_id}", response_model=StaffAttendanceResponse)
 def get_staff_attendance(record_id: int, db: Session = Depends(get_db)):
-    record = db.query(StaffAttendance).filter(StaffAttendance.record_id == record_id).first()
+    record = db.query(StaffAttendance).filter(StaffAttendance.record_id == record_id,
+                                              StaffAttendance.is_active == True
+                                            ).first()
     if not record:
         raise HTTPException(status_code=404, detail="Staff attendance not found")
     return record
@@ -204,13 +239,14 @@ def get_staff_attendance(record_id: int, db: Session = Depends(get_db)):
 def staff_summary(staff_id: int, date_from: date, date_to: date, db: Session = Depends(get_db)):
     q = db.query(StaffAttendance).filter(
         StaffAttendance.staff_id == staff_id,
-        StaffAttendance.date.between(date_from, date_to)
+        StaffAttendance.date.between(date_from, date_to),
+        StaffAttendance.is_active == True
     )
 
     total = q.count()
-    present = q.filter(StaffAttendance.status == "P").count()
-    absent = q.filter(StaffAttendance.status == "A").count()
-    leave = q.filter(StaffAttendance.status == "L").count()
+    present = q.filter(StaffAttendance.status == AttendanceStatus.P).count()
+    absent = q.filter(StaffAttendance.status == AttendanceStatus.A).count()
+    leave = q.filter(StaffAttendance.status == AttendanceStatus.LE).count()
 
     percentage = round((present / total) * 100, 2) if total else 0.0
 
@@ -225,14 +261,20 @@ def staff_summary(staff_id: int, date_from: date, date_to: date, db: Session = D
 
 # endpoint to update attendance of any staff member
 @router.put("/staff/update/{record_id}", response_model=StaffAttendanceResponse)
-def update_staff_attendance(record_id: int, payload: StaffAttendanceCreate, db: Session = Depends(get_db)):
-    record = db.query(StaffAttendance).filter(StaffAttendance.record_id == record_id).first()
+def update_staff_attendance(record_id: int, payload: StaffAttendanceUpdate, db: Session = Depends(get_db)):
+    record = db.query(StaffAttendance).filter(StaffAttendance.record_id == record_id,
+                                              StaffAttendance.is_active == True
+                                            ).first()
 
     if not record:
         raise HTTPException(status_code=404, detail="Staff member attendance not found")
 
-    for key, value in payload.model_dump().items():
-        setattr(record, key, value)
+    if payload.check_out is not None:
+        record.check_out = payload.check_out
+    if payload.status is not None:
+        record.status = payload.status
+    if payload.remarks is not None:
+        record.remarks = payload.remarks
 
     db.commit()
     db.refresh(record)
@@ -241,11 +283,13 @@ def update_staff_attendance(record_id: int, payload: StaffAttendanceCreate, db: 
 # endpoint to delete attendance record of any staff member using record_id
 @router.delete("/staff/delete/{record_id}")
 def delete_staff_attendance(record_id: int, db: Session = Depends(get_db)):
-    record = db.query(StaffAttendance).filter(StaffAttendance.record_id == record_id).first()
+    record = db.query(StaffAttendance).filter(StaffAttendance.record_id == record_id,
+                                              StaffAttendance.is_active == True
+                                            ).first()
 
     if not record:
         raise HTTPException(status_code=404, detail="Staff member attendance not found")
 
-    db.delete(record)
+    record.is_active = False
     db.commit()
     return {"message": "Staff's attendance deleted"}
