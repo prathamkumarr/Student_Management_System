@@ -13,10 +13,14 @@ from Backends.Shared.models.credentials_models import StaffCredential
 from Backends.Shared.enums.staff_onboarding_enums import StaffOnboardingStatus
 from Backends.Shared.schemas.staff_onboarding_schemas import StaffOnboardingReject
 from datetime import datetime, timezone
+from Backends.Shared.models.role_master import RoleMaster
+from Backends.Shared.dependencies.session_context import get_current_session
+from Backends.Shared.models.academic_session import AcademicSession
 
 router = APIRouter(
     prefix="/admin/staff/onboardings",
-    tags=["Staff Onboarding"]
+    tags=["Staff Onboarding"],
+    dependencies=[Depends(get_current_session)]
 )
 
 # endpoint to CREATE 
@@ -67,7 +71,10 @@ def get_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
 
 # endpoint to APPROVE 
 @router.post("/approve/{onboarding_id}")
-def approve_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
+def approve_onboarding(
+    onboarding_id: int, db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
+):
 
     entry = (
         db.query(StaffOnboarding)
@@ -84,7 +91,8 @@ def approve_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
 
     # Check duplicate staff
     exists = db.query(StaffMaster).filter(
-        StaffMaster.email == entry.email
+        StaffMaster.email == entry.email,
+        StaffMaster.is_active == True
     ).first()
 
     if exists:
@@ -103,11 +111,19 @@ def approve_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
         role=entry.role,
         email=entry.email,
         phone=entry.phone,
-        experience_years=entry.experience_years
+        experience_years=entry.experience_years,
+        academic_session_id=session.session_id
     )
 
         db.add(staff)
         db.flush()
+
+        staff_role = db.query(RoleMaster).filter(
+            RoleMaster.role_name == "staff"
+        ).first()
+
+        if not staff_role:
+            raise HTTPException(500, "Staff role not configured in role_master")
 
         # -----------------------------
         # Credentials
@@ -119,6 +135,7 @@ def approve_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
         db.add(
             StaffCredential(
                 staff_id=staff.staff_id,
+                role_id=staff_role.role_id,   
                 login_email=login_email,
                 login_password=password,
                 is_active=True
@@ -130,6 +147,7 @@ def approve_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
         # -----------------------------
         entry.status = StaffOnboardingStatus.APPROVED
         entry.approved_at = datetime.now(timezone.utc)
+        entry.academic_session_id = session.session_id
 
         db.commit()
 

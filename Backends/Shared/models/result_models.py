@@ -1,4 +1,8 @@
-from sqlalchemy import Integer, String, Numeric, DateTime, func, UniqueConstraint, ForeignKey, Boolean, Enum
+from sqlalchemy import (
+    Integer, String, Numeric, DateTime,
+    func, UniqueConstraint, ForeignKey,
+    CheckConstraint, Boolean, Enum
+)
 from sqlalchemy.orm import  mapped_column, relationship, Mapped, foreign
 from Backends.Shared.base import Base
 from Backends.Shared.enums.result_enums import ResultStatus
@@ -11,6 +15,7 @@ class ResultMaster(Base):
         "exam_id",
         name="uq_student_exam_result"
         ),
+        CheckConstraint("marks_obtained <= max_marks", name="ck_marks_valid"),
     )
 
     result_id = mapped_column(Integer, primary_key=True, autoincrement=True)

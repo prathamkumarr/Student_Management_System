@@ -13,10 +13,14 @@ from Backends.Shared.models.credentials_models import TeacherCredential
 from Backends.Shared.enums.teacher_onboarding_enums import TeacherOnboardingStatus
 from Backends.Shared.schemas.teacher_onboarding_schemas import TeacherOnboardingReject
 from datetime import datetime, timezone
+from Backends.Shared.models.role_master import RoleMaster
+from Backends.Shared.dependencies.session_context import get_current_session
+from Backends.Shared.models.academic_session import AcademicSession
 
 router = APIRouter(
     prefix="/admin/teachers/onboardings",
-    tags=["Teacher Onboarding"]
+    tags=["Teacher Onboarding"],
+    dependencies=[Depends(get_current_session)]
 )
 
 # endpoint to CREATE ONBOARDING 
@@ -68,7 +72,10 @@ def get_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
 
 # endpoint to APPROVE ONBOARDING 
 @router.post("/approve/{onboarding_id}")
-def approve_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
+def approve_onboarding(
+    onboarding_id: int, db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
+):
 
     entry = (
         db.query(TeacherOnboarding)
@@ -85,7 +92,8 @@ def approve_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
 
     # Check duplicate teacher
     exists = db.query(TeacherMaster).filter(
-        TeacherMaster.email == entry.email
+        TeacherMaster.email == entry.email,
+        TeacherMaster.is_active == True
     ).first()
 
     if exists:
@@ -104,11 +112,19 @@ def approve_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
             phone=entry.phone,
             subject_id=entry.subject_id,
             qualification=entry.qualification,
-            experience_years=entry.experience_years
+            experience_years=entry.experience_years,
+            academic_session_id=session.session_id
         )
 
         db.add(teacher)
         db.flush()
+
+        teacher_role = db.query(RoleMaster).filter(
+            RoleMaster.role_name == "teacher"
+        ).first()
+
+        if not teacher_role:
+            raise HTTPException(500, "Teacher role not configured in role_master")
 
         # -----------------------------
         # Credentials
@@ -120,6 +136,7 @@ def approve_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
         db.add(
             TeacherCredential(
                 teacher_id=teacher.teacher_id,
+                role_id=teacher_role.role_id,   
                 login_email=login_email,
                 login_password=password,
                 is_active=True
@@ -131,6 +148,7 @@ def approve_onboarding(onboarding_id: int, db: Session = Depends(get_db)):
         # -----------------------------
         entry.status = TeacherOnboardingStatus.APPROVED
         entry.approved_at = datetime.now(timezone.utc)
+        entry.academic_session_id = session.session_id
 
         db.commit()
 

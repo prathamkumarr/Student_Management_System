@@ -1,5 +1,5 @@
 from sqlalchemy import Integer, String, Boolean, ForeignKey
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import mapped_column, relationship
 from Backends.Shared.base import Base
 
 class StudentCredential(Base):
@@ -10,6 +10,14 @@ class StudentCredential(Base):
     login_email = mapped_column(String(100), unique=True)
     login_password = mapped_column(String(100))
     is_active = mapped_column(Boolean, default=True)
+    role_id = mapped_column(
+        Integer,
+        ForeignKey("role_master.role_id"),
+        nullable=False
+    )
+
+    # relationships
+    role = relationship("RoleMaster", back_populates="student")
 
 class TeacherCredential(Base):
     __tablename__ = "teacher_credentials"
@@ -19,6 +27,14 @@ class TeacherCredential(Base):
     login_email = mapped_column(String(100), unique=True)
     login_password = mapped_column(String(100))
     is_active = mapped_column(Boolean, default=True)
+    role_id = mapped_column(
+        Integer,
+        ForeignKey("role_master.role_id"),
+        nullable=False
+    )
+
+    # relationships
+    role_teacher = relationship("RoleMaster", back_populates="teacher")
 
 class StaffCredential(Base):
     __tablename__ = "staff_credentials"
@@ -28,3 +44,11 @@ class StaffCredential(Base):
     login_email = mapped_column(String(100), unique=True)
     login_password = mapped_column(String(100))
     is_active = mapped_column(Boolean, default=True)
+    role_id = mapped_column(
+        Integer,
+        ForeignKey("role_master.role_id"),
+        nullable=False
+    )
+
+    # relationships
+    role_staff = relationship("RoleMaster", back_populates="staff")

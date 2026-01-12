@@ -19,6 +19,13 @@ class AttendanceRecord(Base):
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subjects_master.subject_id"), nullable=False)
     class_id: Mapped[int] = mapped_column(Integer, ForeignKey("classes_master.class_id"), nullable=False)
     teacher_id: Mapped[int] = mapped_column(Integer, ForeignKey("teachers_master.teacher_id"), nullable=False)
+
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
     
     lecture_date: Mapped[Date] = mapped_column(Date)
     status = mapped_column(Enum(AttendanceStatus), nullable=False)

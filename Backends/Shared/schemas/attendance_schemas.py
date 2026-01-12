@@ -1,6 +1,6 @@
-from typing import Optional, Literal, Annotated, List
+from typing import Optional, Annotated, List
 from datetime import date, datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import List
 from Backends.Shared.enums.attendance_enums import AttendanceStatus
 
@@ -14,7 +14,7 @@ NoteStr = Annotated[str, Field(max_length=255)]
 class MarkAttendanceItem(BaseModel):
     student_id: int
     subject_id: int
-    class_id: int
+    teacher_id: int
     lecture_date: date
     status: AttendanceStatus = AttendanceStatus.P
     remarks: Optional[str] = None
@@ -24,6 +24,7 @@ class MarkAttendanceItem(BaseModel):
 class MarkAttendanceBulk(BaseModel):
     class_id: int
     subject_id: int
+    teacher_id: int
     lecture_date: date
     absent_ids: List[int]
     class Config:
@@ -58,6 +59,7 @@ class AttendanceSummary(BaseModel):
     present: int
     absent: int
     late: int
+    leave: int
     percentage: float
     class Config:
         from_attributes = True  
@@ -78,6 +80,7 @@ class StudentAttendanceResponse(StudentAttendanceBase):
     class Config:
         from_attributes = True
 
+
 # ---------- Teacher attendance schemas ----------
 class TeacherAttendanceBase(BaseModel):
     teacher_id: PositiveInt
@@ -89,15 +92,32 @@ class TeacherAttendanceBase(BaseModel):
     class Config:
         from_attributes = True
 
+    @model_validator(mode="after")
+    def validate_check_times(self):
+        if self.check_out and not self.check_in:
+            raise ValueError("check_out cannot exist without check_in")
+        if self.check_in and self.check_out:
+            if self.check_out < self.check_in:
+                raise ValueError("check_out cannot be before check_in")
+        return self
+    
+
 class TeacherAttendanceCreate(TeacherAttendanceBase):
     pass
 
+
 class TeacherAttendanceUpdate(BaseModel):
+    check_in: Optional[datetime] = None
     check_out: Optional[datetime] = None
     status: Optional[AttendanceStatus] = None
-    remarks: Optional[str] = None
-    class Config:
-        from_attributes = True
+    remarks: Optional[NoteStr] = None
+
+    @model_validator(mode="after")
+    def validate_update(self):
+        if self.check_out and not self.check_in:
+            raise ValueError("check_out requires check_in")
+        return self
+
 
 class TeacherAttendanceSummary(BaseModel):
     teacher_id: int
@@ -105,7 +125,8 @@ class TeacherAttendanceSummary(BaseModel):
     present: int
     absent: int
     leave: int
-    percentage: float
+    late: int
+    attendance_percentage: float
     class Config:
         from_attributes = True
 
@@ -136,6 +157,22 @@ class AttendanceFilter(BaseModel):
 
 class AttendanceListResponse(BaseModel):
     items: List[StudentAttendanceResponse]
+    total: int
+    class Config:
+        from_attributes = True
+
+
+class TeacherAttendanceFilter(BaseModel):
+    teacher_id: Optional[int] = None
+    date_from: date
+    date_to: date
+    status: Optional[AttendanceStatus] = None
+    class Config:
+        from_attributes = True
+
+
+class TeacherAttendanceListResponse(BaseModel):
+    items: List[TeacherAttendanceResponse]
     total: int
     class Config:
         from_attributes = True

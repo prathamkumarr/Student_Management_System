@@ -451,38 +451,6 @@ class StudentUI:
             return messagebox.askyesno(title, msg)
         else:
             messagebox.showinfo(title, msg)
-
-    # ------ SCROLLABLE SCREEN WRAPPER -------
-    def create_scrollable_area(self):
-        # MAIN container (takes entire content area)
-        outer = tk.Frame(self.content, bg="#ECF0F1")
-        outer.pack(fill="both", expand=True)
-
-        # Canvas inside content
-        canvas = tk.Canvas(outer, bg="#ECF0F1", highlightthickness=0)
-        canvas.pack(side="left", fill="both", expand=True)
-
-        # Scrollbar
-        scrollbar = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
-        scrollbar.pack(side="right", fill="y")
-
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Inner frame where all widgets go
-        inner = tk.Frame(canvas, bg="#ECF0F1")
-        canvas.create_window((0, 0), window=inner, anchor="n")
-
-        # *** CENTER THE SCREEN CONTENT ***
-        inner.grid_columnconfigure(0, weight=1)
-
-        # Resize scroll region
-        def update_scroll(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
-            canvas.itemconfig("inner_window", width=canvas.winfo_width())
-
-        canvas.bind("<Configure>", update_scroll)
-
-        return inner
     
     def show_mini_notification(self, message):
         toast = tk.Label(

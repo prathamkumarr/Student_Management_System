@@ -340,7 +340,7 @@ class LoginUI:
 
             data = res.json()
             role = data["role"]
-            user_id = data["id"]
+            user_id = data["user_id"]
  
         except:
             messagebox.showerror(

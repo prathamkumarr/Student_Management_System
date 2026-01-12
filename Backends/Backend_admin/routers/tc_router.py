@@ -9,10 +9,13 @@ from Backends.Shared.models.tc_models import TransferCertificate
 from Backends.Shared.schemas.tc_schemas import TCCreate, TCResponse
 from Backends.Shared.models.credentials_models import StudentCredential
 from Backends.Shared.enums.student_fees_enums import StudentFeeStatus
+from Backends.Shared.dependencies.session_context import get_current_session
+from Backends.Shared.models.academic_session import AcademicSession
 
 router = APIRouter(
     prefix="/admin/tc",
-    tags=["Transfer Certificate"]
+    tags=["Transfer Certificate"],
+    dependencies=[Depends(get_current_session)]
 )
 
 # endpoint to issue TC (REQUEST ONLY)
@@ -90,39 +93,47 @@ def get_tc(tc_id: int, db: Session = Depends(get_db)):
 
 # endpoint to approve TC (FINAL ACTION)
 @router.post("/approve/{tc_id}")
-def approve_tc(tc_id: int, db: Session = Depends(get_db)):
+def approve_tc(
+    tc_id: int, db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
+):
 
-    tc = db.query(TransferCertificate).filter(
+    tc = (
+    db.query(TransferCertificate)
+    .filter(
         TransferCertificate.tc_id == tc_id,
-        TransferCertificate.is_active == False  # only pending allowed
-    ).first()
+        TransferCertificate.is_active == False
+    )
+    .with_for_update()
+    .first()
+)
 
     if not tc:
         raise HTTPException(404, "Pending TC not found")
 
-    student = db.query(StudentMaster).filter(
+    affected = db.query(StudentMaster).filter(
         StudentMaster.student_id == tc.student_id,
         StudentMaster.is_active == True
-    ).first()
+    ).update(
+        {"is_active": False},
+        synchronize_session=False
+    )
 
-    if not student:
+    if affected == 0:
         raise HTTPException(400, "Student already inactive")
 
     try:
-        # Deactivate student
-        student.is_active = False
-
-        # Deactivate credentials
+        # deactivate credentials
         db.query(StudentCredential).filter(
             StudentCredential.student_id == tc.student_id
-        ).update({"is_active": False})
+        ).update({"is_active": False}, synchronize_session=False)
 
-        # Deactivate attendance
+        # deactivate attendance
         db.query(AttendanceRecord).filter(
             AttendanceRecord.student_id == tc.student_id
-        ).update({"is_active": False})
+        ).update({"is_active": False}, synchronize_session=False)
 
-        # Deactivate fees
+        # deactivate pending fees
         db.query(StudentFee).filter(
             StudentFee.student_id == tc.student_id,
             StudentFee.status == StudentFeeStatus.PENDING
@@ -131,17 +142,13 @@ def approve_tc(tc_id: int, db: Session = Depends(get_db)):
             synchronize_session=False
         )
 
-        # Mark TC approved
+        # approve TC
         tc.is_active = True
-
+        tc.academic_session_id = session.session_id   
+       
         db.commit()
+        return {"message": "TC Approved Successfully"}
 
-        return {
-            "message": "TC Approved Successfully",
-            "student_id": tc.student_id
-        }
-
-    except Exception:
+    except Exception as e:
         db.rollback()
-        raise HTTPException(500, "Failed to approve TC")
-
+        raise HTTPException(500, str(e))

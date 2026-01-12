@@ -1,6 +1,6 @@
 # Backends/Shared/models/staff_onboarding_models.py
 
-from sqlalchemy import Integer, String, Date, DateTime, func
+from sqlalchemy import Integer, String, Date, DateTime, func, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import Enum as SAEnum
 from Backends.Shared.base import Base
@@ -25,6 +25,12 @@ class StaffOnboarding(Base):
         SAEnum(StaffOnboardingStatus, name="staff_onboarding_status"),
         default=StaffOnboardingStatus.PENDING,
         nullable=False)
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
     
     # Job details
     department: Mapped[str] = mapped_column(String(120), nullable=False)

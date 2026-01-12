@@ -21,4 +21,8 @@ class ClassMaster(Base):
         "StudentAdmission",
         back_populates="class_ref"
     )
+    class_subjects = relationship(
+    "ClassSubject",
+    back_populates="class_obj")
+
 

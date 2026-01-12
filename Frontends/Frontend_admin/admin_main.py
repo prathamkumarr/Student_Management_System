@@ -149,6 +149,9 @@ class AdminUI:
 
         fee_btn = self.add_btn("Manage Fees")
         self.build_fees_dropdown(fee_btn)
+
+        marks_btn = self.add_btn("Manage Marks")
+        self.build_marks_dropdown(marks_btn)
         
         result_btn = self.add_btn("Manage Exams and Results")
         self.build_result_dropdown(result_btn)
@@ -240,6 +243,12 @@ class AdminUI:
         menu.add_command(label="View Fees / Deactivate Fees", command=lambda: self.load_view_fees_screen())
         menu.add_command(label="Update Fee", command=lambda: self.load_update_fee_screen())
         menu.add_command(label="Fee History", command=lambda: self.load_fee_history_screen())
+        menu.add_command(label="Record Fee Payment in DB", command=lambda: self.load_pay_fee_screen())
+        menu.add_command(label="View Fee Payments", command=lambda: self.load_view_payments_screen())
+        menu.add_command(label="Refund Fee Payment", command=lambda: self.load_refund_payment_screen())
+        menu.add_command(label="View Fee Audit Trail", command=lambda: self.load_view_fee_audit_screen())
+        menu.add_command(label="Generate Monthly Fees", command=lambda: self.load_generate_monthly_fees_screen())
+        menu.add_command(label="Generate Academic Fees", command=lambda: self.load_generate_academic_fees_screen())
 
         pm = tk.Menu(menu, tearoff=0)
         pm.add_command(label="Add Method", command=lambda: self.load_add_payment_method_screen())
@@ -407,6 +416,15 @@ class AdminUI:
         menu.add_command(label="Add Activity", command=self.load_add_activity)
 
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
+
+    # ===========================================
+    def build_marks_dropdown(self, parent_label):
+        menu = tk.Menu(self.root, tearoff=0)
+
+        menu.add_command(label="Update Marks", command=self.load_update_student_marks_screen)
+        menu.add_command(label="View Marks with Filters", command=self.load_view_student_marks_screen)
+
+        parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))    
 
 
     # ===== CHANGE SCREEN VIEW =====
@@ -2316,7 +2334,727 @@ class AdminUI:
         # ---- DEFAULT LOAD ----
         update_fee_history_table(self.all_fee_history)
 
-    
+
+    # ========================================================================
+    # ====== Button to Mark Fee Payment in DB =======
+    def load_pay_fee_screen(self):
+        self.clear_content()
+
+        tk.Label(
+        self.content,
+        text="Pay Fee",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        invoice_id = tk.StringVar()
+        amount = tk.StringVar()
+        payment_method = tk.StringVar()
+
+        # ---- Labels + Entries ----
+        fields = [
+        ("Invoice ID:", invoice_id),
+        ("Amount:", amount),
+        ("Payment Method ID:", payment_method),
+        ]
+
+        for i, (label, var) in enumerate(fields):
+            tk.Label(
+            form,
+            text=label,
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=10)
+
+            tk.Entry(
+            form,
+            textvariable=var,
+            font=("Arial", 14),
+            width=25
+            ).grid(row=i, column=1, padx=10, pady=10)
+
+        # ---- PAY FUNCTION ----
+        def pay_fee_backend():
+            import requests
+            from decimal import Decimal
+
+            if not invoice_id.get().isdigit():
+                self.show_popup("Error", "Invalid Invoice ID", "error")
+                return
+
+            try:
+                amt = Decimal(amount.get())
+                if amt <= 0:
+                    raise ValueError
+            except:
+                self.show_popup("Error", "Invalid Amount", "error")
+                return
+
+            if not payment_method.get().isdigit():
+                self.show_popup("Error", "Invalid Payment Method ID", "error")
+                return
+
+            payload = {
+            "invoice_id": int(invoice_id.get()),
+            "amount": str(amt),
+            "payment_method_id": int(payment_method.get()),
+            "payment_source": "ADMIN"
+            }
+
+            try:
+                res = requests.post(
+                "http://127.0.0.1:8000/admin/fees/pay",
+                json=payload,   
+                timeout=10
+                )
+
+                if res.status_code == 201:
+                    self.show_popup("Success", "Payment Recorded Successfully", "success")
+                    self.change_screen(
+                    "Payment Successful",
+                    add_callback=self.load_pay_fee_screen
+                    )
+                else:
+                    msg = res.json().get("detail", "Payment failed")
+                    self.show_popup("Error", msg, "error")
+
+            except requests.exceptions.RequestException as e:
+                self.show_popup("Network Error", str(e), "error")
+
+        # ---- Buttons ----
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        self.create_back_button(btn_frame, self.load_dashboard, form)
+
+        pay_btn = tk.Label(
+        btn_frame,
+        text="Pay",
+        font=("Arial", 14, "bold"),
+        bg="#000000",
+        fg="white",
+        padx=25,
+        pady=10,
+        cursor="hand2"
+        )
+        pay_btn.pack(side="left", padx=15)
+        pay_btn.bind("<Button-1>", lambda e: pay_fee_backend())
+
+
+    # ========================================================================
+    # ====== Button to View Fee Payments ======    
+    def load_view_payments_screen(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="View Fee Payments",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        invoice_id = tk.StringVar()
+
+        # ---------- INPUT ----------
+        tk.Label(
+        form,
+        text="Invoice ID:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=0, column=0, padx=10, pady=10)
+
+        tk.Entry(
+        form,
+        textvariable=invoice_id,
+        font=("Arial", 14),
+        width=25
+        ).grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- TABLE ----------
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, pady=(10, 20), padx=20)
+
+        columns = ("payment_id", "amount", "payment_method_id", "payment_source", "status", "created_at")
+
+        table = ttk.Treeview(table_frame, columns=columns, show="headings")
+        table.pack(side="left", fill="both", expand=True)
+
+        # ---- VERTICAL SCROLLBAR ----
+        y_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=table.yview)
+        y_scroll.pack(side="right", fill="y")
+
+        # ---- HORIZONTAL SCROLLBAR ----
+        x_scroll = ttk.Scrollbar(self.content, orient="horizontal", command=table.xview)
+        x_scroll.pack(fill="x", padx=20)
+
+        table.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+
+        # ---- HEADERS ----
+        for col in columns:
+            table.heading(col, text=col.replace("_", " ").title())
+            table.column(col, width=160, anchor="center")
+
+        # ---------- LOAD FUNCTION ----------
+        def load_payments():
+            import requests
+
+            inv = invoice_id.get().strip()
+            if not inv.isdigit():
+                self.show_popup("Invalid Input", "Invoice ID must be a number", "warning")
+                return
+
+            try:
+                res = requests.get(
+                f"http://127.0.0.1:8000/admin/fees/payments/{inv}",
+                timeout=10
+                )
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "Failed to load payments", "error")
+                    return
+
+                data = res.json()
+
+                table.delete(*table.get_children())
+
+                if not data:
+                    self.show_popup("Info", "No payments found for this invoice", "info")
+                    return
+
+                for row in data:
+                    table.insert("", "end", values=(
+                    row.get("payment_id"),
+                    row.get("amount"),
+                    row.get("payment_method_id"),
+                    row.get("payment_source"),
+                    row.get("status"),
+                    row.get("created_at")
+                ))
+
+            except requests.exceptions.RequestException as e:
+                self.show_popup("Network Error", str(e), "error")
+
+        # ---------- BUTTONS ----------
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=20)
+
+        self.create_back_button(btn_frame, self.load_dashboard, form)
+
+        load_btn = tk.Label(
+        btn_frame,
+        text="Load Payments",
+        font=("Arial", 14, "bold"),
+        bg="#000000",
+        fg="white",
+        padx=20,
+        pady=10,
+        cursor="hand2"
+        )
+        load_btn.pack(side="left", padx=15)
+        load_btn.bind("<Button-1>", lambda e: load_payments())
+
+        
+    # ========================================================================  
+    # ====== Button to Refund Fee Payment ======
+    def load_refund_payment_screen(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Refund Payment",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1",
+        fg="#C0392B"  # red hint (danger action)
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        payment_id = tk.StringVar()
+        reason = tk.StringVar()
+
+        # ---------- INPUTS ----------
+        fields = [
+        ("Payment ID:", payment_id),
+        ("Refund Reason (optional):", reason),
+        ]
+
+        for i, (label, var) in enumerate(fields):
+            tk.Label(
+            form,
+            text=label,
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=10, sticky="e")
+
+            tk.Entry(
+            form,
+            textvariable=var,
+            font=("Arial", 14),
+            width=30
+            ).grid(row=i, column=1, padx=10, pady=10)
+
+        # ---------- BACKEND CALL ----------
+        def refund_backend():
+            import requests
+
+            pid = payment_id.get().strip()
+            rsn = reason.get().strip() or None
+
+            if not pid.isdigit():
+                self.show_popup(
+                "Invalid Payment ID",
+                "Payment ID must be a valid number.",
+                "warning"
+                )
+                return
+
+            payload = {
+            "payment_id": int(pid),
+            "reason": rsn
+            }
+
+            try:
+                res = requests.post(
+                "http://127.0.0.1:8000/admin/fees/refund",
+                json=payload,
+                timeout=10
+                )
+
+                if res.status_code == 200:
+                    self.show_popup(
+                    "Refund Successful",
+                    "Payment has been refunded successfully.",
+                    "success"
+                    )
+                    self.change_screen(
+                    "Refund Completed",
+                    add_callback=self.load_refund_payment_screen
+                    )
+                    return
+
+                try:
+                    msg = res.json().get("detail", "Refund failed")
+                except:
+                    msg = "Refund failed"
+
+                self.show_popup("Error", msg, "error")
+
+            except requests.exceptions.RequestException as e:
+                self.show_popup("Network Error", str(e), "error")
+
+        # ---------- BUTTONS ----------
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        self.create_back_button(btn_frame, self.load_dashboard, form)
+
+        refund_btn = tk.Label(
+        btn_frame,
+        text="Refund Payment",
+        font=("Arial", 14, "bold"),
+        bg="#C0392B",
+        fg="white",
+        padx=25,
+        pady=10,
+        cursor="hand2"
+        )
+        refund_btn.pack(side="left", padx=15)
+        refund_btn.bind("<Button-1>", lambda e: refund_backend())
+
+    # ========================================================================
+    # ====== Button to View Fee Audit ======    
+    def load_view_fee_audit_screen(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="View Fee Audit Trail",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        invoice_id = tk.StringVar()
+
+        # ---------- INPUT ----------
+        tk.Label(
+        form,
+        text="Invoice ID:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=0, column=0, padx=10, pady=10)
+
+        tk.Entry(
+        form,
+        textvariable=invoice_id,
+        font=("Arial", 14),
+        width=25
+        ).grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- TABLE CONTAINER ----------
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        columns = (
+        "audit_id",
+        "entity_type",
+        "action",
+        "changed_by_role",
+        "source",
+        "reason",
+        "after_change",
+        "timestamp"
+        )
+
+        tree = ttk.Treeview(
+        table_frame,
+        columns=columns,
+        show="headings"
+        )
+        tree.pack(side="left", fill="both", expand=True)
+
+        # ---------- SCROLLBARS ----------
+        y_scroll = ttk.Scrollbar(
+        table_frame, orient="vertical", command=tree.yview)
+        x_scroll = ttk.Scrollbar(
+        table_frame, orient="horizontal", command=tree.xview)
+
+        tree.configure(
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set)
+
+        y_scroll.pack(side="right", fill="y")
+        x_scroll.pack(side="bottom", fill="x")
+
+        # ---------- HEADERS ----------
+        for col in columns:
+            tree.heading(col, text=col.replace("_", " ").title())
+            tree.column(col, width=160, anchor="center")
+
+        # ---------- LOAD FUNCTION ----------
+        def load_audit():
+            import requests
+            import json
+
+            inv = invoice_id.get().strip()
+            if not inv.isdigit():
+                self.show_popup("Invalid Input", "Invoice ID must be numeric", "warning")
+                return
+
+            try:
+                res = requests.get(
+                f"http://127.0.0.1:8000/admin/fees/audit/{inv}",
+                timeout=10
+                )
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "Failed to load audit trail", "error")
+                    return
+
+                data = res.json()
+                items = data.get("items", [])
+
+                tree.delete(*tree.get_children())
+
+                if not items:
+                    self.show_popup("Info", "No audit records found", "info")
+                    return
+
+                for row in items:
+                    tree.insert("", "end", values=(
+                    row.get("audit_id"),
+                    row.get("entity_type"),
+                    row.get("action"),
+                    row.get("changed_by_role"),
+                    row.get("source"),
+                    row.get("reason") or "-",
+                    json.dumps(row.get("after_change")) if row.get("after_change") else "-",
+                    row.get("ts")
+                ))
+
+            except requests.exceptions.RequestException as e:
+                self.show_popup("Network Error", str(e), "error")
+
+        # ---------- BUTTONS ----------
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=20)
+
+        self.create_back_button(btn_frame, self.load_dashboard, form)
+
+        load_btn = tk.Label(
+        btn_frame,
+        text="Load Audit",
+        font=("Arial", 14, "bold"),
+        bg="#000000",
+        fg="white",
+        padx=20,
+        pady=10,
+        cursor="hand2"
+        )
+        load_btn.pack(side="left", padx=15)
+        load_btn.bind("<Button-1>", lambda e: load_audit())
+
+    # ========================================================================
+    # ====== Button to Generate Monthly Fees ======    
+    def load_generate_monthly_fees_screen(self):
+        self.clear_content()
+
+        tk.Label(
+        self.content,
+        text="Generate Monthly Fees",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=15)
+
+        class_var = tk.StringVar()
+        due_date_var = tk.StringVar()
+
+        # ---------- CLASS DROPDOWN ----------
+        tk.Label(form, text="Class:", font=("Arial", 14), bg="#ECF0F1") \
+        .grid(row=0, column=0, padx=10, pady=10)
+
+        classes = fetch_classes()
+        self.class_map = {
+        f"{c['class_id']} - {c['class_name']} {c['section']}": c["class_id"]
+        for c in classes
+        }
+
+        class_dropdown = ttk.Combobox(
+        form,
+        textvariable=class_var,
+        values=list(self.class_map.keys()),
+        state="readonly",
+        width=28,
+        font=("Arial", 14)
+        )
+        class_dropdown.grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- DUE DATE ----------
+        tk.Label(form, text="Due Date:", font=("Arial", 14), bg="#ECF0F1") \
+        .grid(row=1, column=0, padx=10, pady=10)
+
+        date_entry = tk.Entry(form, textvariable=due_date_var, font=("Arial", 14), width=25)
+        date_entry.grid(row=1, column=1, padx=10, pady=10)
+
+        tk.Button(
+        form,
+        text="Calendar",
+        command=lambda: self.open_calendar_popup(date_entry, due_date_var)
+        ).grid(row=1, column=2, padx=5)
+
+        # ----- BACKEND CALL ------
+        def generate_monthly_fees():
+            import requests
+            from datetime import datetime
+
+            class_label = class_var.get().strip()
+            if class_label not in self.class_map:
+                self.show_popup("Error", "Please select a class", "warning")
+                return
+
+            class_id = self.class_map[class_label]
+            date_str = due_date_var.get().strip()
+
+            try:
+                datetime.strptime(date_str, "%Y-%m-%d")
+            except:
+                self.show_popup("Error", "Invalid date format (YYYY-MM-DD)", "error")
+                return
+
+            try:
+                res = requests.post(
+                "http://127.0.0.1:8000/admin/fees/generate/monthly",
+                params={
+                    "class_id": class_id,
+                    "due_date": date_str
+                },
+                timeout=15
+                )
+
+                if res.status_code == 200:
+                    count = res.json().get("generated_invoices", 0)
+
+                    if count == 0:
+                        msg = "No new invoices generated.\nThey may already exist for this due date."
+                    else:
+                        msg = f"{count} invoices generated successfully."
+
+                    self.show_popup(
+                    "Success", msg, "success"
+                    )
+                    self.change_screen(
+                        f"{count} invoices generated successfully", 
+                        add_callback=self.load_generate_monthly_fees_screen
+                        )
+                else:
+                    msg = res.json().get("detail", "Failed to generate fees")
+                    self.show_popup("Error", msg, "error")
+
+            except Exception as e:
+                self.show_popup("Network Error", str(e), "error")
+
+        # ----- BUTTONS ------
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        self.create_back_button(btn_frame, self.load_dashboard, form)
+
+        self.content.update_idletasks()
+
+        gen_btn = tk.Label(
+        btn_frame,
+        text="Generate Fees",
+        font=("Arial", 14, "bold"),
+        bg="#000000",
+        fg="white",
+        padx=25,
+        pady=10,
+        cursor="hand2")
+        gen_btn.pack(side="left", padx=15)
+        gen_btn.bind("<Button-1>", lambda e: generate_monthly_fees())
+
+
+    # ========================================================================
+    # ====== Button to Generate Fee Academically ======   
+    def load_generate_academic_fees_screen(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Generate Academic Fees",
+        font=("Arial", 24, "bold"),
+        bg="#ECF0F1"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        class_var = tk.StringVar()
+        due_date_var = tk.StringVar()
+
+        # ---------- CLASS ----------
+        tk.Label(
+        form,
+        text="Class:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=0, column=0, padx=10, pady=10, sticky="e")
+
+        classes = fetch_classes()
+        self.class_map = {
+        f"{c['class_id']} - {c['class_name']} {c['section']}": c["class_id"]
+        for c in classes
+        }
+
+        class_dropdown = ttk.Combobox(
+        form,
+        textvariable=class_var,
+        values=list(self.class_map.keys()),
+        font=("Arial", 14),
+        width=22,
+        state="readonly"
+        )
+        class_dropdown.grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- DUE DATE ----------
+        tk.Label(form, text="Due Date:", font=("Arial", 14), bg="#ECF0F1") \
+        .grid(row=1, column=0, padx=10, pady=10)
+
+        date_entry = tk.Entry(form, textvariable=due_date_var, font=("Arial", 14), width=25)
+        date_entry.grid(row=1, column=1, padx=10, pady=10)
+
+        tk.Button(
+        form,
+        text="Calendar",
+        command=lambda: self.open_calendar_popup(date_entry, due_date_var)
+        ).grid(row=1, column=2, padx=5)
+
+        # ---------- GENERATE FUNCTION ----------
+        def generate_academic_fees():
+            import requests
+            from datetime import datetime
+
+            class_label = class_var.get().strip()
+            if class_label not in self.class_map:
+                self.show_popup("Error", "Please select a class", "warning")
+                return
+
+            class_id = self.class_map[class_label]
+            date_str = due_date_var.get().strip()
+
+            try:
+                datetime.strptime(date_str, "%Y-%m-%d")
+            except:
+                self.show_popup("Error", "Invalid date format (YYYY-MM-DD)", "error")
+                return
+
+            try:
+                res = requests.post(
+                "http://127.0.0.1:8000/admin/fees/generate/academic",
+                params={
+                    "class_id": class_id,
+                    "due_date": date_str
+                },
+                timeout=10)
+
+                if res.status_code != 200:
+                    self.show_popup("Error", "Fee generation failed", "error")
+                    return
+
+                count = res.json().get("generated_invoices", 0)
+
+                if count == 0:
+                    msg = "No new invoices generated.\nThey may already exist for this due date."
+                else:
+                    msg = f"{count} invoices generated successfully."
+
+                self.show_popup("Success", msg, "success")
+                self.change_screen(
+                    f"{count} invoices generated successfully.",
+                    add_callback=self.load_generate_academic_fees_screen
+                    )
+
+            except requests.exceptions.RequestException as e:
+                self.show_popup("Network Error", str(e), "error")
+
+        # ---------- BUTTONS ----------
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=25)
+
+        self.create_back_button(btn_frame, self.load_dashboard, form)
+
+        self.content.update_idletasks()
+
+        gen_btn = tk.Label(
+        btn_frame,
+        text="Generate Academic Fees",
+        font=("Arial", 14, "bold"),
+        bg="#000000",
+        fg="white",
+        padx=25,
+        pady=10,
+        cursor="hand2"
+        )
+        gen_btn.pack(side="left", padx=15)
+        gen_btn.bind("<Button-1>", lambda e: generate_academic_fees())
+ 
+
     # ========================================================================
     # ====== Add Payment Methods ======
     def load_add_payment_method_screen(self):
@@ -3358,7 +4096,7 @@ class AdminUI:
         form.pack(pady=10)
 
         # ---- FORM INPUTS -----
-        subjects_data = fetch_subjects()  # <-- backend call
+        subjects_data = fetch_subjects()  
         subject_options = ["None"] + [f"{s['subject_id']} - {s['subject_name']}" for s in subjects_data]
 
         labels = ["Student ID:", "Date From (YYYY-MM-DD):", "Date To (YYYY-MM-DD):", "Subject ID (optional):"]
@@ -6761,7 +7499,10 @@ class AdminUI:
             import requests
 
             try:
-                res = requests.post(f"http://127.0.0.1:8000/admin/tc/approve/{tc_id}")
+                res = requests.post(
+                    f"http://127.0.0.1:8000/admin/tc/approve/{tc_id}",
+                    timeout=10
+                    )
 
                 if res.status_code == 200:
                     self.show_popup("Success", "TC Approved Successfully!", "info")
@@ -6770,10 +7511,15 @@ class AdminUI:
                     add_callback=self.load_approve_tc_screen
                 )
                 else:
-                    self.show_popup("Failed", "TC approval failed!", "error")
+                    try:
+                        error_msg = res.json().get("detail", "TC approval failed")
+                    except:
+                        error_msg = res.text or "TC approval failed"
 
-            except:
-                self.show_popup("Error", "Unable to approve TC!", "error")
+                    self.show_popup("Failed", error_msg, "error")
+
+            except requests.exceptions.RequestException as e:
+                self.show_popup("Network Error", str(e), "error")
 
 
     #===================================================================
@@ -16717,6 +17463,467 @@ class AdminUI:
         load_all_btn.bind("<Button-1>", lambda e: update_table(self.all_staff_credentials))
 
         update_table(self.all_staff_credentials)
+
+
+    # ===================================================================
+    #----- Button to Update marks of a student -----
+    def load_update_student_marks_screen(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Update Student Marks",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        from tkinter.ttk import Combobox
+
+        # ---------- VARIABLES ----------
+        self.update_vars = {
+        "class": tk.StringVar(),
+        "subject": tk.StringVar(),
+        "exam": tk.StringVar(),
+        "student": tk.StringVar(),
+        "marks_obtained": tk.StringVar(),
+        "max_marks": tk.StringVar(),
+        "remarks": tk.StringVar()}
+
+        # ---------- DROPDOWN DATA ----------
+        self.update_class_map = {}
+        self.update_subject_map = {}
+        self.update_exam_map = {}
+        self.update_student_map = {}  
+        self.update_marks_cache = {}
+
+        # ---------- CLASS ----------
+        tk.Label(form, text="Class:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=8, sticky="e")
+
+        classes = fetch_classes()
+        self.update_class_map = {
+        f"{c['class_name']} - {c['section']}": c["class_id"]
+        for c in classes}
+
+        class_cb = Combobox(
+        form,
+        textvariable=self.update_vars["class"],
+        values=list(self.update_class_map.keys()),
+        state="readonly",
+        width=26,
+        font=("Arial", 14))
+        class_cb.grid(row=0, column=1, padx=10, pady=8)
+
+        # ---------- SUBJECT ----------
+        tk.Label(form, text="Subject:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=1, column=0, padx=10, pady=8, sticky="e")
+
+        subject_cb = Combobox(
+        form,
+        textvariable=self.update_vars["subject"],
+        state="disabled",
+        width=26,
+        font=("Arial", 14))
+        subject_cb.grid(row=1, column=1, padx=10, pady=8)
+
+        # ---------- EXAM ----------
+        tk.Label(form, text="Exam:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=2, column=0, padx=10, pady=8, sticky="e")
+
+        exam_cb = Combobox(
+        form,
+        textvariable=self.update_vars["exam"],
+        state="disabled",
+        width=26,
+        font=("Arial", 14))
+        exam_cb.grid(row=2, column=1, padx=10, pady=8)
+
+        # ---------- STUDENT ----------
+        tk.Label(form, text="Student:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=3, column=0, padx=10, pady=8, sticky="e")
+
+        student_cb = Combobox(
+        form,
+        textvariable=self.update_vars["student"],
+        state="disabled",
+        width=26,
+        font=("Arial", 14))
+        student_cb.grid(row=3, column=1, padx=10, pady=8)
+
+        # ---------- MARKS ----------
+        tk.Label(form, text="Marks Obtained:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=4, column=0, padx=10, pady=8, sticky="e")
+
+        tk.Entry(
+        form,
+        textvariable=self.update_vars["marks_obtained"],
+        font=("Arial", 14),
+        width=28
+        ).grid(row=4, column=1, padx=10, pady=8)
+
+        tk.Label(form, text="Max Marks:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=5, column=0, padx=10, pady=8, sticky="e")
+
+        tk.Entry(
+        form,
+        textvariable=self.update_vars["max_marks"],
+        font=("Arial", 14),
+        width=28
+        ).grid(row=5, column=1, padx=10, pady=8)
+
+        tk.Label(form, text="Remarks:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=6, column=0, padx=10, pady=8, sticky="e")
+
+        tk.Entry(
+        form,
+        textvariable=self.update_vars["remarks"],
+        font=("Arial", 14),
+        width=28
+        ).grid(row=6, column=1, padx=10, pady=8)
+
+        # ---------- SUBMIT BUTTON ----------
+        submit_btn = tk.Label(
+        self.content,
+        text="Update Marks",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=25,
+        pady=12,
+        width=16,
+        cursor="arrow")
+        submit_btn.pack(pady=20)
+
+        def enable():
+            submit_btn.config(bg="#000", fg="white", cursor="hand2")
+            submit_btn.bind("<Button-1>", lambda e: submit_update())
+
+        def disable():
+            submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            submit_btn.unbind("<Button-1>")
+
+        disable()
+
+        def on_update_class_change(*args):
+            class_id = self.update_class_map.get(self.update_vars["class"].get())
+            if not class_id:
+                return
+
+            res = requests.get(
+            f"http://127.0.0.1:8000/classes/{class_id}/subjects")
+            if res.status_code != 200:
+                return
+
+            self.update_subject_map = {
+            s["subject_name"]: s["subject_id"] for s in res.json()}
+            subject_cb["values"] = list(self.update_subject_map.keys())
+            subject_cb.config(state="readonly")
+
+        def on_update_subject_change(*args):
+            subject_id = self.update_subject_map.get(self.update_vars["subject"].get())
+            if not subject_id:
+                return
+
+            exams = fetch_exams()  # should return list
+
+            self.update_exam_map = {
+                e["exam_name"]: e["exam_id"] for e in exams}
+
+            exam_cb["values"] = list(self.update_exam_map.keys())
+            exam_cb.config(state="readonly")
+
+        def on_update_exam_change(*args):
+            class_name = self.update_vars["class"].get()
+            subject_name = self.update_vars["subject"].get()
+            exam_name = self.update_vars["exam"].get()
+
+            if not class_name or not subject_name or not exam_name:
+                return
+
+            class_id = self.update_class_map[class_name]
+            subject_id = self.update_subject_map[subject_name]
+            exam_id = self.update_exam_map[exam_name]
+
+            url = (
+            "http://127.0.0.1:8000/teacher/results/marks/filter"
+            f"?class_id={class_id}&subject_id={subject_id}&exam_id={exam_id}")
+
+            res = requests.get(url)
+            if res.status_code != 200:
+                self.show_popup("Error", "No marks found", "warning")
+                return
+
+            data = res.json()
+
+            self.update_student_map = {
+                f"ID {r['student_id']}": r["mark_id"] for r in data
+            }
+
+            self.update_marks_cache = {
+                f"ID {r['student_id']}": r for r in data
+            }
+
+            student_cb["values"] = list(self.update_student_map.keys())
+            student_cb.config(state="readonly")
+
+        def on_student_select(*args):
+            key = self.update_vars["student"].get()
+
+            if not key or key not in self.update_marks_cache:
+                return
+
+            data = self.update_marks_cache[key]
+
+            self.update_vars["marks_obtained"].set(data["marks_obtained"])
+            self.update_vars["max_marks"].set(data["max_marks"])
+            self.update_vars["remarks"].set(data.get("remarks", ""))
+
+            enable()
+       
+        self.update_vars["student"].trace_add("write", on_student_select)
+        self.update_vars["class"].trace_add("write", on_update_class_change)
+        self.update_vars["subject"].trace_add("write", on_update_subject_change)
+        self.update_vars["exam"].trace_add("write", on_update_exam_change)
+
+        # ---------- SUBMIT ----------
+        def submit_update():
+            mark_id = self.update_student_map[self.update_vars["student"].get()]
+
+            if not self.update_vars["student"].get():
+                self.show_popup("Error", "Select a student", "warning")
+                return
+
+            if float(self.update_vars["marks_obtained"].get()) > float(self.update_vars["max_marks"].get()):
+                self.show_popup("Error", "Marks cannot exceed max marks", "warning")
+                return
+
+            payload = {
+            "marks_obtained": float(self.update_vars["marks_obtained"].get()),
+            "max_marks": float(self.update_vars["max_marks"].get()),
+            "remarks": self.update_vars["remarks"].get()}
+
+            import requests
+            res = requests.put(
+            f"http://127.0.0.1:8000/teacher/results/marks/{mark_id}",
+            json=payload)
+
+            if res.status_code == 200:
+                self.show_popup("Success", "Marks Updated Successfully!", "info")
+                self.change_screen("Marks Updated", add_callback=self.load_update_student_marks_screen)
+            else:
+                self.show_popup("Error", res.json().get("detail", "Update failed"), "error")
+
+    # ===================================================================
+    # ----- Button to View marks of a Student with Filters -----    
+    def load_view_student_marks_screen(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="View Student Marks",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=15)
+
+        from tkinter.ttk import Combobox
+
+        # ===== FILTER VARIABLES =====
+        self.marks_filter_vars = {
+        "exam_id": tk.StringVar(),
+        "student_id": tk.StringVar(),
+        "subject_id": tk.StringVar(),
+        "class_id": tk.StringVar()}
+
+        labels = [
+        ("Exam", "exam_id"),
+        ("Student ID", "student_id"),
+        ("Subject", "subject_id"),
+        ("Class", "class_id")]
+
+        # ===== FETCH DROPDOWN DATA =====
+        exams = fetch_exams()
+        subjects = fetch_subjects()
+        classes = fetch_classes()
+
+        exam_map = {e["exam_name"]: e["exam_id"] for e in exams}
+        subject_map = {s["subject_name"]: s["subject_id"] for s in subjects}
+        class_map = {
+        f"{c['class_name']} - {c['section']}": c["class_id"]
+        for c in classes}
+
+        dropdown_maps = {
+        "exam_id": exam_map,
+        "subject_id": subject_map,
+        "class_id": class_map}
+
+        # ===== FILTER INPUTS =====
+        for i, (label, key) in enumerate(labels):
+            tk.Label(
+            form,
+            text=f"{label}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=10, sticky="e")
+
+            if key in dropdown_maps:
+                entry = Combobox(
+                form,
+                textvariable=self.marks_filter_vars[key],
+                values=[""] + list(dropdown_maps[key].keys()),
+                state="readonly",
+                font=("Arial", 14),
+                width=25
+                )
+            else:
+                entry = tk.Entry(
+                form,
+                textvariable=self.marks_filter_vars[key],
+                font=("Arial", 14),
+                width=27
+                )
+
+            entry.grid(row=i, column=1, padx=10, pady=10)
+
+        # ===== BUTTONS =====
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=15)
+
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
+
+        filter_btn = tk.Label(
+        self.content,
+        text="Filter Marks",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=25,
+        pady=10,
+        width=16,
+        cursor="arrow")
+        filter_btn.pack(pady=10)
+
+        # ===== TABLE =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        cols = (
+        "mark_id",
+        "student_id",
+        "subject_id",
+        "exam_id",
+        "marks_obtained",
+        "max_marks",
+        "is_pass",
+        "remarks"
+        )
+
+        tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set
+        )
+        tree.pack(fill="both", expand=True)
+        y_scroll.config(command=tree.yview)
+
+        for col in cols:
+            tree.heading(col, text=col.replace("_", " ").title())
+            tree.column(col, width=140, anchor="center")
+
+        # ===== ENABLE / DISABLE FILTER =====
+        def enable():
+            filter_btn.config(bg="#000", fg="white", cursor="hand2")
+            filter_btn.bind("<Enter>", lambda e: filter_btn.config(bg="#222"))
+            filter_btn.bind("<Leave>", lambda e: filter_btn.config(bg="#000"))
+            filter_btn.bind("<Button-1>", lambda e: fetch_marks())
+
+        def disable():
+            filter_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            filter_btn.unbind("<Enter>")
+            filter_btn.unbind("<Leave>")
+            filter_btn.unbind("<Button-1>")
+
+        disable()
+
+        def validate(*args):
+            # At least one filter must be filled
+            for v in self.marks_filter_vars.values():
+                if v.get().strip():
+                    enable()
+                    return
+            disable()
+
+        for v in self.marks_filter_vars.values():
+            v.trace_add("write", validate)
+
+        # ===== FETCH MARKS =====
+        def fetch_marks():
+            params = []
+ 
+            if self.marks_filter_vars["exam_id"].get():
+                params.append(
+                f"exam_id={exam_map[self.marks_filter_vars['exam_id'].get()]}"
+                )
+
+            if self.marks_filter_vars["student_id"].get().isdigit():
+                params.append(f"student_id={self.marks_filter_vars['student_id'].get()}")
+
+            if self.marks_filter_vars["subject_id"].get():
+                params.append(
+                f"subject_id={subject_map[self.marks_filter_vars['subject_id'].get()]}"
+                )
+
+            if self.marks_filter_vars["class_id"].get():
+                params.append(
+                f"class_id={class_map[self.marks_filter_vars['class_id'].get()]}"
+                )
+
+            url = "http://127.0.0.1:8000/teacher/results/marks"
+            if params:
+                url += "?" + "&".join(params)
+
+            import requests
+            try:
+                res = requests.get(url)
+
+                for r in tree.get_children():
+                    tree.delete(r)
+
+                if res.status_code != 200:
+                    self.show_popup("No Data", "No marks found.", "info")
+                    return
+
+                for row in res.json():
+                    tree.insert("", "end", values=(
+                    row["mark_id"],
+                    row["student_id"],
+                    row["subject_id"],
+                    row["exam_id"],
+                    row["marks_obtained"],
+                    row["max_marks"],
+                    "PASS" if row["is_pass"] else "FAIL",
+                    row["remarks"]
+                ))
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")            
 
     
     # ==============================================================================

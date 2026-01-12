@@ -205,3 +205,19 @@ class FeeAuditListResponse(BaseModel):
     total: int
     class Config:
         from_attributes = True
+
+
+class FeePayCreate(BaseModel):
+    invoice_id: int
+    amount: Decimal
+    payment_method_id: int
+    payment_source: PaymentSource = PaymentSource.ADMIN
+    class Config:
+        from_attributes = True
+
+
+class FeeRefundCreate(BaseModel):
+    payment_id: int
+    reason: Optional[str] = None
+    class Config:
+        from_attributes = True
