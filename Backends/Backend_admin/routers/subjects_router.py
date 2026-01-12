@@ -4,10 +4,7 @@ from sqlalchemy.orm import Session
 from Backends.Shared.connection import get_db
 from Backends.Shared.models.subjects_master import SubjectMaster
 
-router = APIRouter(
-    prefix="/admin/subjects",
-    tags=["Admin Subjects"]
-)
+router = APIRouter(prefix="/admin/subjects", tags=["Admin Subjects"])
 
 
 @router.get("/")

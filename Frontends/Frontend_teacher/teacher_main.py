@@ -12,6 +12,54 @@ from tkcalendar import DateEntry
 
 import sys
 
+# -----------------------------
+# API Helper Functions
+# -----------------------------
+
+BASE_API_URL = "http://127.0.0.1:8000/admin"
+
+def fetch_classes():
+    try:
+        res = requests.get(f"{BASE_API_URL}/classes", timeout=5)
+        if res.status_code == 200:
+            return res.json()
+    except requests.RequestException as e:
+        print("Error fetching classes:", e)
+    return []
+
+
+def fetch_teachers():
+    try:
+        res = requests.get(f"{BASE_API_URL}/teachers", timeout=5)
+        if res.status_code == 200:
+            return res.json()
+    except requests.RequestException as e:
+        print("Error fetching teachers:", e)
+    return []
+
+
+def fetch_subjects():
+    try:
+        res = requests.get(f"{BASE_API_URL}/subjects", timeout=5)
+        if res.status_code == 200:
+            return res.json()
+    except requests.RequestException as e:
+        print("Error fetching subjects:", e)
+    return []
+
+
+def fetch_students():
+    try:
+        res = requests.get(f"{BASE_API_URL}/students", timeout=5)
+        if res.status_code == 200:
+            return res.json()
+    except requests.RequestException as e:
+        print("Error fetching students:", e)
+    return []
+
+
+
+
 if len(sys.argv) > 1:
     try:
         TEACHER_ID = int(sys.argv[1])
@@ -4902,16 +4950,18 @@ class TeacherUI:
             command=self.load_teacher_work_records
         ).pack()
 
-        # FETCH CLASSES
-        try:
-            classes = requests.get("http://127.0.0.1:8000/admin/timetable/classes").json()
-        except:
+        # ---------------- FETCH CLASSES ----------------
+        classes = fetch_classes()
+        if not isinstance(classes, list):
             classes = []
 
-        # FETCH SUBJECT NAME (since teacher is fixed)
+        # ---------------- FETCH SUBJECT  ----------------
         try:
-            t = requests.get(f"http://127.0.0.1:8000/admin/teachers/{self.teacher_id}").json()
-            subject_name = t["subject_name"]
+            t = requests.get(
+                f"http://127.0.0.1:8000/admin/teachers/{self.teacher_id}",
+                timeout=5
+            ).json()
+            subject_name = t.get("subject_name", "")
         except:
             subject_name = ""
 
@@ -4927,7 +4977,9 @@ class TeacherUI:
         }
 
         # CLASS DROPDOWN
-        tk.Label(form, text="Class:", bg="#ECF0F1", font=("Arial", 14)).grid(row=0, column=0, sticky="w", pady=6)
+        tk.Label(form, text="Class:", bg="#ECF0F1", font=("Arial", 14))\
+            .grid(row=0, column=0, sticky="w", pady=6)
+
         class_display = [f'{c["class_name"]} {c["section"]}' for c in classes]
 
         ttk.Combobox(
@@ -4939,12 +4991,21 @@ class TeacherUI:
         ).grid(row=0, column=1, pady=6, padx=10)
 
         # SUBJECT (LOCKED)
-        tk.Label(form, text="Subject:", bg="#ECF0F1", font=("Arial", 14)).grid(row=1, column=0, sticky="w", pady=6)
-        tk.Entry(form, textvariable=vars["subject"], width=32, font=("Arial", 14), state="readonly")\
-            .grid(row=1, column=1, padx=10, pady=6)
+        tk.Label(form, text="Subject:", bg="#ECF0F1", font=("Arial", 14))\
+            .grid(row=1, column=0, sticky="w", pady=6)
+
+        tk.Entry(
+            form,
+            textvariable=vars["subject"],
+            width=32,
+            font=("Arial", 14),
+            state="readonly"
+        ).grid(row=1, column=1, padx=10, pady=6)
 
         # WORK TYPE
-        tk.Label(form, text="Work Type:", bg="#ECF0F1", font=("Arial", 14)).grid(row=2, column=0, sticky="w", pady=6)
+        tk.Label(form, text="Work Type:", bg="#ECF0F1", font=("Arial", 14))\
+            .grid(row=2, column=0, sticky="w", pady=6)
+
         ttk.Combobox(
             form,
             textvariable=vars["work_type"],
@@ -4954,18 +5015,23 @@ class TeacherUI:
         ).grid(row=2, column=1, pady=6, padx=10)
 
         # TITLE
-        tk.Label(form, text="Title:", bg="#ECF0F1", font=("Arial", 14)).grid(row=3, column=0, sticky="w", pady=6)
+        tk.Label(form, text="Title:", bg="#ECF0F1", font=("Arial", 14))\
+            .grid(row=3, column=0, sticky="w", pady=6)
+
         tk.Entry(form, textvariable=vars["title"], width=32, font=("Arial", 14))\
             .grid(row=3, column=1, padx=10, pady=6)
 
         # DESCRIPTION
-        tk.Label(form, text="Description:", bg="#ECF0F1", font=("Arial", 14)).grid(row=4, column=0, sticky="w", pady=6)
+        tk.Label(form, text="Description:", bg="#ECF0F1", font=("Arial", 14))\
+            .grid(row=4, column=0, sticky="w", pady=6)
+
         tk.Entry(form, textvariable=vars["description"], width=32, font=("Arial", 14))\
             .grid(row=4, column=1, padx=10, pady=6)
 
         # DUE DATE
         tk.Label(form, text="Due Date:", bg="#ECF0F1", font=("Arial", 14))\
             .grid(row=5, column=0, sticky="w", pady=6)
+
         due_date = DateEntry(form, width=28, date_pattern='yyyy-mm-dd')
         due_date.grid(row=5, column=1, padx=10, pady=6)
 
@@ -4986,18 +5052,22 @@ class TeacherUI:
 
         tk.Button(pdf_frame, text="Choose PDF", command=choose_pdf).pack(side="left")
 
-        # SAVE BUTTON
-        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
-        btn_frame.pack(pady=20)
-
-        save_btn = tk.Button(btn_frame, text="Save Work")
-        save_btn.pack()
-
         # SAVE HANDLER
         def save():
             class_text = vars["class"].get()
-            class_id = next((c["class_id"] for c in classes
-                            if f'{c["class_name"]} {c["section"]}' == class_text), None)
+            class_id = next(
+                (c["class_id"] for c in classes
+                if f'{c["class_name"]} {c["section"]}' == class_text),
+                None
+            )
+
+            if not class_id:
+                self.show_popup("Missing Data", "Please select a class", "warning")
+                return
+
+            if not selected_file["path"]:
+                self.show_popup("Missing PDF", "Please choose a PDF file", "warning")
+                return
 
             payload = {
                 "class_id": class_id,
@@ -5009,21 +5079,27 @@ class TeacherUI:
                 "due_date": due_date.get_date().isoformat(),
             }
 
-            if not selected_file["path"]:
-                self.show_popup("Missing PDF", "Please choose a PDF file", "warning")
-                return
-
             with open(selected_file["path"], "rb") as f:
-                files = {"file": (os.path.basename(selected_file["path"]), f, "application/pdf")}
-                r = requests.post("http://127.0.0.1:8000/teacher/work/add", data=payload, files=files)
+                files = {
+                    "file": (
+                        os.path.basename(selected_file["path"]),
+                        f,
+                        "application/pdf"
+                    )
+                }
+                r = requests.post(
+                    "http://127.0.0.1:8000/teacher/work/add",
+                    data=payload,
+                    files=files
+                )
 
             if r.status_code in (200, 201):
-                self.show_popup("Success", "Work Added")
+                self.show_popup("Success", "Work Added Successfully!", "success")
                 self.load_teacher_work_records()
             else:
                 self.show_popup("Error", r.text, "error")
 
-        save_btn.config(command=save)
+        tk.Button(self.content, text="Save Work", command=save).pack(pady=20)
 
 
     def load_teacher_edit_work(self, work_id: int):
@@ -5037,7 +5113,7 @@ class TeacherUI:
             fg="#2C3E50"
         ).pack(pady=20)
 
-        # FETCH WORK (from teacher side)
+        # FETCH WORK
         try:
             res = requests.get(f"http://127.0.0.1:8000/admin/work/{work_id}")
             if res.status_code != 200:
@@ -5048,46 +5124,56 @@ class TeacherUI:
             self.show_popup("Error", "Server error", "error")
             return
 
-        # SECURITY: teacher can edit only their own work
         if work["teacher_name"] != self.teacher_full_name:
             self.show_popup("Not Allowed", "You can edit only your own work.", "warning")
             return
 
-        # FETCH CLASSES
-        try:
-            classes = requests.get("http://127.0.0.1:8000/admin/timetable/classes").json()
-        except:
+        # ---------------- FETCH CLASSES ----------------
+        classes = fetch_classes()
+        if not isinstance(classes, list):
             classes = []
 
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
 
         vars = {
-            "class": tk.StringVar(value=f'{work.get("class_name","")} {work.get("section","")}'.strip()),
-            "subject": tk.StringVar(value=work.get("subject")),
-            "title": tk.StringVar(value=work.get("title")),
-            "work_type": tk.StringVar(value=work.get("work_type")),
-            "description": tk.StringVar(value=work.get("description")),
+            "class": tk.StringVar(value=f'{work["class_name"]} {work["section"]}'),
+            "subject": tk.StringVar(value=work["subject"]),
+            "work_type": tk.StringVar(value=work["work_type"]),
+            "title": tk.StringVar(value=work["title"]),
+            "description": tk.StringVar(value=work["description"]),
         }
 
         # CLASS
         tk.Label(form, text="Class:", font=("Arial", 14), bg="#ECF0F1")\
             .grid(row=0, column=0, sticky="w", pady=6)
+
         class_display = [f'{c["class_name"]} {c["section"]}' for c in classes]
+
         ttk.Combobox(
-            form, textvariable=vars["class"], values=class_display,
-            state="readonly", width=30
+            form,
+            textvariable=vars["class"],
+            values=class_display,
+            state="readonly",
+            width=30
         ).grid(row=0, column=1, pady=6, padx=10)
 
         # SUBJECT
         tk.Label(form, text="Subject:", font=("Arial", 14), bg="#ECF0F1")\
             .grid(row=1, column=0, sticky="w", pady=6)
-        tk.Entry(form, textvariable=vars["subject"], font=("Arial", 14),
-                width=30, state="readonly").grid(row=1, column=1, padx=10)
+
+        tk.Entry(
+            form,
+            textvariable=vars["subject"],
+            width=30,
+            font=("Arial", 14),
+            state="readonly"
+        ).grid(row=1, column=1, padx=10)
 
         # WORK TYPE
         tk.Label(form, text="Work Type:", font=("Arial", 14), bg="#ECF0F1")\
             .grid(row=2, column=0, sticky="w", pady=6)
+
         ttk.Combobox(
             form,
             textvariable=vars["work_type"],
@@ -5099,33 +5185,24 @@ class TeacherUI:
         # TITLE
         tk.Label(form, text="Title:", font=("Arial", 14), bg="#ECF0F1")\
             .grid(row=3, column=0, sticky="w", pady=6)
+
         tk.Entry(form, textvariable=vars["title"], width=32, font=("Arial", 14))\
             .grid(row=3, column=1, padx=10, pady=6)
 
         # DESCRIPTION
         tk.Label(form, text="Description:", font=("Arial", 14), bg="#ECF0F1")\
             .grid(row=4, column=0, sticky="w", pady=6)
+
         tk.Entry(form, textvariable=vars["description"], width=32, font=("Arial", 14))\
             .grid(row=4, column=1, padx=10, pady=6)
 
         # DUE DATE
         tk.Label(form, text="Due Date:", font=("Arial", 14), bg="#ECF0F1")\
             .grid(row=5, column=0, sticky="w", pady=6)
+
         due_entry = DateEntry(form, width=28, date_pattern='yyyy-mm-dd')
         due_entry.set_date(work["due_date"])
         due_entry.grid(row=5, column=1, padx=10, pady=6)
-
-        # BUTTONS
-        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
-        btn_frame.pack(pady=20)
-
-        tk.Button(btn_frame, text="Back", command=self.load_teacher_work_records)\
-            .pack(side="left", padx=10)
-        tk.Button(btn_frame, text="Cancel", command=self.load_teacher_work_records)\
-            .pack(side="left", padx=10)
-
-        save_btn = tk.Button(btn_frame, text="Save Changes")
-        save_btn.pack(side="left", padx=10)
 
         def save():
             class_text = vars["class"].get()
@@ -5145,15 +5222,18 @@ class TeacherUI:
                 "due_date": due_entry.get_date().isoformat(),
             }
 
-            r = requests.put(f"http://127.0.0.1:8000/teacher/work/{work_id}", json=payload)
+            r = requests.put(
+                f"http://127.0.0.1:8000/teacher/work/{work_id}",
+                json=payload
+            )
 
             if r.status_code == 200:
-                self.show_popup("Success", "Work Updated", "info")
+                self.show_popup("Success", "Work Updated Successfully!", "success")
                 self.load_teacher_work_records()
             else:
                 self.show_popup("Error", r.text, "error")
 
-        save_btn.config(command=save)
+        tk.Button(self.content, text="Save Changes", command=save).pack(pady=20)
 
 
     #-------HELPER FUNCTIONS FOR RIGHT-CLICK MENU--------
