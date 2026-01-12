@@ -13,7 +13,7 @@ from Backends.Shared.models.fees_models import StudentFee
 from Backends.Shared.models.fees_master import FeeMaster
 from Backends.Shared.schemas.fees_schemas import (
     FeeMasterCreate, FeeMasterResponse, FeeMasterUpdate,
-    StudentFeeCreate, StudentFeeOut
+    StudentFeeCreate, StudentFeeOut, FeeRefundCreate
 )
 from Backends.Shared.enums.student_fees_enums import StudentFeeStatus
 from Backends.Shared.enums.fees_enums import (
@@ -26,10 +26,16 @@ from Backends.Shared.enums.fee_audit_enums import (
     FeeAuditEntity, FeeAuditAction, AuditActorRole, AuditSource
 )
 from Backends.Shared.models.fees_models import FeePayment, StudentFee, FeeAudit
-from Backends.Shared.enums.fee_payments_enums import FeePaymentStatus, PaymentSource, PaymentReceivedBy
+from Backends.Shared.enums.fee_payments_enums import FeePaymentStatus, PaymentReceivedBy
 from Backends.Shared.enums.student_fees_enums import StudentFeeStatus
+from Backends.Shared.schemas.fees_schemas import FeePayCreate
+from Backends.Shared.dependencies.session_context import get_current_session
+from Backends.Shared.models.academic_session import AcademicSession
 
-router = APIRouter(prefix="/admin/fees", tags=["Admin Fees Management"])
+router = APIRouter(
+    prefix="/admin/fees", tags=["Admin Fees Management"],
+    dependencies=[Depends(get_current_session)]
+    )
 
 
 # ========================================================================
@@ -200,7 +206,10 @@ def delete_fee(fee_id: int, db: Session = Depends(get_db)):
 
 # endpoint to assign fees to a student 
 @router.post("/assign", response_model=StudentFeeOut, status_code=status.HTTP_201_CREATED)
-def assign_fee(payload: StudentFeeCreate, db: Session = Depends(get_db)):
+def assign_fee(
+    payload: StudentFeeCreate, db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
+):
 
     student = db.query(StudentMaster).filter(
         StudentMaster.student_id == payload.student_id
@@ -248,6 +257,7 @@ def assign_fee(payload: StudentFeeCreate, db: Session = Depends(get_db)):
         billing_type=fee.billing_type,
         frequency=fee.frequency,
         charge_trigger=fee.charge_trigger,
+        academic_session_id = session.session_id,
         generated_by=FeeGeneratedBy.ADMIN
     )
 
@@ -280,14 +290,11 @@ def get_all_student_fees(
 
 @router.post("/pay", status_code=201)
 def pay_fee(
-    invoice_id: int,
-    amount: Decimal,
-    payment_method_id: int,
-    payment_source: PaymentSource,
-    db: Session = Depends(get_db)
+    payload: FeePayCreate, db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
 ):
     invoice = db.query(StudentFee).filter(
-        StudentFee.invoice_id == invoice_id,
+        StudentFee.invoice_id == payload.invoice_id,
         StudentFee.is_active == True
     ).first()
 
@@ -296,19 +303,27 @@ def pay_fee(
 
     if invoice.status == StudentFeeStatus.PAID:
         raise HTTPException(400, "Invoice already paid")
+    
+    remaining = invoice.amount_due - invoice.amount_paid
+    if payload.amount > remaining:
+        raise HTTPException(
+            400,
+            f"Payment exceeds due amount. Remaining: {remaining}"
+            )
 
     payment = FeePayment(
         invoice_id=invoice.invoice_id,
         student_id=invoice.student_id,
-        amount=amount,
-        payment_method_id=payment_method_id,
+        amount=payload.amount,
+        payment_method_id=payload.payment_method_id,
         payment_method_name="AUTO",
-        payment_source=payment_source,
+        payment_source=payload.payment_source,
         status=FeePaymentStatus.SUCCESS,
-        received_by=PaymentReceivedBy.ONLINE
+        received_by=PaymentReceivedBy.ONLINE,
+        academic_session_id = session.session_id
     )
 
-    invoice.amount_paid += amount
+    invoice.amount_paid += payload.amount
 
     if invoice.amount_paid >= invoice.amount_due:
         invoice.status = StudentFeeStatus.PAID
@@ -325,13 +340,14 @@ def pay_fee(
         after_change={
             "amount_paid": str(invoice.amount_paid),
             "status": invoice.status.value
-        }
+        },
+        academic_session_id = session.session_id
     )
 
     db.add_all([payment, audit])
     db.commit()
 
-    return {"message": "Payment successful", "invoice_id": invoice_id}
+    return {"message": "Payment successful", "invoice_id": payload.invoice_id}
 
 # ----------------------------------
 @router.get("/payments/{invoice_id}")
@@ -345,13 +361,9 @@ def get_payments(invoice_id: int, db: Session = Depends(get_db)):
 
 # -----------------------------------
 @router.post("/refund")
-def refund_payment(
-    payment_id: int,
-    reason: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
+def refund_payment(payload: FeeRefundCreate, db: Session = Depends(get_db)):
     payment = db.query(FeePayment).filter(
-        FeePayment.payment_id == payment_id
+        FeePayment.payment_id == payload.payment_id
     ).first()
 
     if not payment:
@@ -368,7 +380,7 @@ def refund_payment(
         entity_type=FeeAuditEntity.PAYMENT,
         action=FeeAuditAction.PAYMENT_REVERSED,
         changed_by_role=AuditActorRole.ADMIN,
-        reason=reason,
+        reason=payload.reason,
         source=AuditSource.UI
     )
 
@@ -402,7 +414,8 @@ def get_fee_audit(invoice_id: int, db: Session = Depends(get_db)):
 def generate_monthly_fees(
     class_id: int,
     due_date: date,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
 ):
     fees = db.query(FeeMaster).filter(
         FeeMaster.class_id == class_id,
@@ -437,6 +450,7 @@ def generate_monthly_fees(
                 due_date=due_date,
                 billing_type=fee.billing_type,
                 frequency=fee.frequency,
+                academic_session_id=session.session_id,
                 charge_trigger=fee.charge_trigger
             )
 
@@ -452,7 +466,8 @@ def generate_monthly_fees(
 def generate_academic_fees(
     class_id: int,
     due_date: date,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
 ):
     fees = db.query(FeeMaster).filter(
         FeeMaster.class_id == class_id,
@@ -484,7 +499,8 @@ def generate_academic_fees(
                 amount_due=fee.amount,
                 due_date=due_date,
                 billing_type=fee.billing_type,
-                charge_trigger=fee.charge_trigger
+                charge_trigger=fee.charge_trigger,
+                academic_session_id=session.session_id
             )
 
             db.add(invoice)
@@ -506,7 +522,7 @@ def get_fees_by_class(class_id: int, db: Session = Depends(get_db)):
     return fees
 
 
-
+# ------------------------------------------
 @router.get("/student/{student_id}/class")
 def get_student_active_class(student_id: int, db: Session = Depends(get_db)):
     student = db.query(StudentMaster).filter(

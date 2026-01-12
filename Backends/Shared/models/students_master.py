@@ -23,6 +23,13 @@ class StudentMaster(Base):
 
     # Academic
     class_id: Mapped[int] = mapped_column(Integer, ForeignKey("classes_master.class_id"))
+    # session
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
     is_active = mapped_column(Boolean, default=True)
 
     # relationships

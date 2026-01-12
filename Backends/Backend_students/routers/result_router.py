@@ -7,7 +7,7 @@ from reportlab.pdfgen import canvas
 
 from Backends.Shared.models.result_models import ResultMaster
 from Backends.Shared.models.student_marks_models import StudentMarks
-from Backends.Shared.models.subjects_master import SubjectMaster
+from Backends.Shared.models.students_master import StudentMaster
 
 router = APIRouter(prefix="/student/result", tags=["Marks and Results"])
 
@@ -35,45 +35,59 @@ def get_exam_result(student_id: int, exam_id: int, db: Session = Depends(get_db)
 @router.get("/final/{student_id}")
 def get_final_year_result(student_id: int, db: Session = Depends(get_db)):
 
-    results = db.query(ResultMaster).filter(
-        ResultMaster.student_id == student_id
-    ).all()
+    results = (
+        db.query(ResultMaster)
+        .filter(
+            ResultMaster.student_id == student_id,
+            ResultMaster.is_active == True
+        )
+        .all()
+    )
 
     if not results:
-        raise HTTPException(404, "No results found")
+        raise HTTPException(
+            status_code=404,
+            detail="No results found"
+        )
 
     exam_info = []
-    total_obt = 0
-    total_max = 0
+    total_obtained = 0.0
+    total_max = 0.0
 
     for r in results:
         exam_info.append({
             "exam_id": r.exam_id,
-            "total_marks": r.total_marks,
-            "grade": r.grade
+            "obtained_marks": float(r.obtained_marks),
+            "total_marks": float(r.total_marks),
+            "percentage": float(r.percentage),
+            "grade": r.grade,
+            "status": r.result_status.value
         })
 
-        total_obt += r.total_marks
-        total_max += 100  # standard exam max
+        total_obtained += float(r.obtained_marks)
+        total_max += float(r.total_marks)
 
-    percentage = round((total_obt / total_max) * 100, 2)
+    overall_percentage = (
+        round((total_obtained / total_max) * 100, 2)
+        if total_max > 0 else 0.0
+    )
 
-    # grade calculator
-    def calc(percentage):
-        if percentage >= 90: return "A+"
-        if percentage >= 80: return "A"
-        if percentage >= 70: return "B"
-        if percentage >= 60: return "C"
-        if percentage >= 50: return "D"
+    # ---- FINAL GRADE CALCULATION ----
+    def calc_grade(p):
+        if p >= 90: return "A+"
+        if p >= 80: return "A"
+        if p >= 70: return "B"
+        if p >= 60: return "C"
+        if p >= 50: return "D"
         return "F"
 
     return {
         "student_id": student_id,
         "exam_count": len(results),
-        "total_marks": total_obt,
-        "max_marks": total_max,
-        "percentage": percentage,
-        "final_grade": calc(percentage),
+        "total_obtained_marks": round(total_obtained, 2),
+        "total_max_marks": round(total_max, 2),
+        "overall_percentage": overall_percentage,
+        "final_grade": calc_grade(overall_percentage),
         "exam_wise_details": exam_info
     }
 
@@ -138,3 +152,42 @@ def get_subject_wise_marks(
         }
         for m in marks
     ]
+
+
+@router.get("/exam/{student_id}/{exam_id}")
+def get_exam_result(student_id: int, exam_id: int, db: Session = Depends(get_db)):
+
+    student = db.query(StudentMaster).filter(
+        StudentMaster.student_id == student_id
+    ).first()
+    if not student:
+        raise HTTPException(404, "Student not found")
+
+    result = db.query(ResultMaster).filter(
+        ResultMaster.student_id == student_id,
+        ResultMaster.exam_id == exam_id
+    ).first()
+
+    if not result:
+        raise HTTPException(404, "Result not found")
+
+    marks = db.query(StudentMarks).filter(
+        StudentMarks.student_id == student_id,
+        StudentMarks.exam_id == exam_id
+    ).all()
+
+    return {
+        "student_id": student_id,
+        "exam_id": exam_id,
+        "total_marks": result.total_marks,
+        "percentage": result.percentage,
+        "grade": result.grade,
+        "subject_wise_marks": [
+            {
+                "subject_id": m.subject_id,
+                "marks_obtained": m.marks_obtained,
+                "max_marks": m.max_marks,
+                "is_pass": m.is_pass
+            } for m in marks
+        ]
+    }

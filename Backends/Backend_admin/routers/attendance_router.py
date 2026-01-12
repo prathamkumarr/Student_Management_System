@@ -90,6 +90,8 @@ def summary(student_id: int, date_from: date, date_to: date, db: Session = Depen
     present = q.filter(AttendanceRecord.status == AttendanceStatus.P).count()
     absent = q.filter(AttendanceRecord.status == AttendanceStatus.A).count()
     late = q.filter(AttendanceRecord.status == AttendanceStatus.L).count()
+    leave = q.filter(AttendanceRecord.status == AttendanceStatus.LE).count()
+
     percentage = round((present / total) * 100, 2) if total else 0.0
 
     return AttendanceSummary(
@@ -98,6 +100,7 @@ def summary(student_id: int, date_from: date, date_to: date, db: Session = Depen
         present=present,
         absent=absent,
         late=late,
+        leave=leave,
         percentage=percentage
     )
 

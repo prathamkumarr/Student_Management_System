@@ -15,10 +15,15 @@ from Backends.Shared.models.fees_master import FeeMaster
 from Backends.Shared.models.fees_models import StudentFee
 from Backends.Shared.models.credentials_models import StudentCredential
 from Backends.Shared.enums.student_fees_enums import StudentFeeStatus
+from Backends.Shared.models.role_master import RoleMaster
+from Backends.Shared.dependencies.session_context import get_current_session
+from Backends.Shared.models.academic_session import AcademicSession
+
 
 router = APIRouter(
     prefix="/admin/admissions",
-    tags=["Student Admissions"]
+    tags=["Student Admissions"],
+    dependencies=[Depends(get_current_session)]
 )
 
 # endpoint to create new admission
@@ -137,7 +142,10 @@ def generate_roll_number(db, class_id):
 
 # endpoint to Approve Admission
 @router.post("/{admission_id}/approve")
-def approve_admission(admission_id: int, db: Session = Depends(get_db)):
+def approve_admission(
+    admission_id: int, db: Session = Depends(get_db), 
+    session: AcademicSession = Depends(get_current_session)
+):
 
     entry = (
         db.query(StudentAdmission)
@@ -177,10 +185,18 @@ def approve_admission(admission_id: int, db: Session = Depends(get_db)):
             mother_name=entry.mother_name,
             parent_phone=entry.parent_phone,
             parent_email=entry.parent_email,
-            class_id=class_obj.class_id
+            class_id=class_obj.class_id,
+            academic_session_id=session.session_id
         )
         db.add(new_student)
         db.flush() 
+
+        student_role = db.query(RoleMaster).filter(
+            RoleMaster.role_name == "student"
+        ).first()
+
+        if not student_role:
+            raise HTTPException(500, "Student role not configured in role_master")
 
         # -----------------------------
         # Credentials
@@ -192,6 +208,7 @@ def approve_admission(admission_id: int, db: Session = Depends(get_db)):
         db.add(
             StudentCredential(
                 student_id=new_student.student_id,
+                role_id=student_role.role_id,
                 login_email=email,
                 login_password=password,
                 is_active=True
@@ -281,6 +298,7 @@ def approve_admission(admission_id: int, db: Session = Depends(get_db)):
         # -----------------------------
         entry.student_id = new_student.student_id
         entry.status = AdmissionStatus.APPROVED
+        entry.academic_session_id = session.session_id
         entry.approved_at = datetime.now(timezone.utc)
 
         db.commit()

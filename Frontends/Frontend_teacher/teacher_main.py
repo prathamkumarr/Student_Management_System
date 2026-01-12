@@ -144,6 +144,9 @@ class TeacherUI:
         work_btn = self.add_btn("Manage Work")
         self.build_work_dropdown(work_btn)
 
+        marks_btn = self.add_btn("Upload / View Marks")
+        self.build_marks_dropdown(marks_btn)
+
         # ------- LOGOUT BUTTON -------
         self.logout_btn = tk.Label(
             self.sidebar,
@@ -183,6 +186,7 @@ class TeacherUI:
         
         teacher = tk.Menu(menu, tearoff=0)
         teacher.add_command(label="Mark Self Attendance", command=self.load_mark_self_attendance)
+        teacher.add_command(label="Mark Check-Out", command=self.load_teacher_check_out_screen)
         teacher.add_command(label="View All Attendance", command=self.load_teacher_attendance_filter)
         teacher.add_command(label="Attendance Summary", command=self.load_teacher_attendance_summary_screen)
 
@@ -192,7 +196,7 @@ class TeacherUI:
     # ===========================================
     def build_result_dropdown(self, parent_label):
         menu = tk.Menu(self.root, tearoff=0)
-        menu.add_command(label="Generate and Download Result of a Student", command=lambda: self.load_generate_and_download_result_of_student())
+        menu.add_command(label="Generate and Download Result of a Student", command=lambda: self.load_view_and_download_exam_result_of_student())
         menu.add_command(label="Generate and Download Final Result of a Student", command=lambda: self.load_generate_and_download_final_result_of_student())
         menu.add_command(label="View all Result for an Exam", command=lambda: self.load_view_all_results_for_exam())
         menu.add_command(label="Generate and Download all students Results for a class", command=lambda: self.load_view_and_download_all_students_results_for_a_class())
@@ -200,7 +204,7 @@ class TeacherUI:
         
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
         
-
+    # ===========================================
     def build_work_dropdown(self, parent_label):
         menu = tk.Menu(self.root, tearoff=0)
 
@@ -209,6 +213,16 @@ class TeacherUI:
 
         parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))
 
+    # ===========================================
+    def build_marks_dropdown(self, parent_label):
+        menu = tk.Menu(self.root, tearoff=0)
+
+        menu.add_command(label="Add Marks", command=self.load_add_single_student_marks)
+        menu.add_command(label="Bulk Enter Marks", command=self.load_bulk_marks_entry_screen)
+        menu.add_command(label="Update Marks", command=self.load_update_student_marks_screen)
+        menu.add_command(label="View Marks with Filters", command=self.load_view_student_marks_screen)
+
+        parent_label.bind("<Button-1>", lambda e: menu.tk_popup(e.x_root, e.y_root))    
 
     # ===== CHANGE SCREEN VIEW =====
     def change_screen(self, message, back_callback=None, add_callback=None):
@@ -482,39 +496,6 @@ class TeacherUI:
             return messagebox.askyesno(title, msg)
         else:
             messagebox.showinfo(title, msg)
-
-
-    # ------ SCROLLABLE SCREEN WRAPPER -------
-    def create_scrollable_area(self):
-        # MAIN container (takes entire content area)
-        outer = tk.Frame(self.content, bg="#ECF0F1")
-        outer.pack(fill="both", expand=True)
-
-        # Canvas inside content
-        canvas = tk.Canvas(outer, bg="#ECF0F1", highlightthickness=0)
-        canvas.pack(side="left", fill="both", expand=True)
-
-        # Scrollbar
-        scrollbar = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
-        scrollbar.pack(side="right", fill="y")
-
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Inner frame where all widgets go
-        inner = tk.Frame(canvas, bg="#ECF0F1")
-        canvas.create_window((0, 0), window=inner, anchor="n")
-
-        # *** CENTER THE SCREEN CONTENT ***
-        inner.grid_columnconfigure(0, weight=1)
-
-        # Resize scroll region
-        def update_scroll(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
-            canvas.itemconfig("inner_window", width=canvas.winfo_width())
-
-        canvas.bind("<Configure>", update_scroll)
-
-        return inner
     
     def show_mini_notification(self, message):
         toast = tk.Label(
@@ -533,6 +514,31 @@ class TeacherUI:
     # ========================================================================
     # ----- STUDENT ATTENDANCE ------
     # ===== Button to Mark Students Attendances =====
+    def on_student_change(self, *args):
+            sid = self.mark_vars["student_id"].get().strip()
+            if not sid.isdigit():
+                return
+
+            try:
+                import requests
+                res = requests.get(
+                f"http://127.0.0.1:8000/students/{sid}/subjects")
+                if res.status_code != 200:
+                    return
+
+                subjects = res.json()
+                self.subject_map = {
+                s["subject_name"]: s["subject_id"]
+                for s in subjects
+                }
+
+                self.subject_combobox["values"] = list(self.subject_map.keys())
+                self.subject_combobox.config(state="readonly")
+                self.mark_vars["subject_id"].set("")
+
+            except Exception as e:
+                print(e)
+
     def load_mark_student_attendance_screen(self):
         self.clear_content()
 
@@ -551,32 +557,18 @@ class TeacherUI:
 
         fields = [
         ("Student ID", "student_id"),
-        ("Class ID", "class_id"),
         ("Subject ID", "subject_id"),
         ("Lecture Date (YYYY-MM-DD)", "lecture_date"),
-        ("Status (P/A/L)", "status"),
+        ("Status", "status"),
         ("Remarks", "remarks"),
         ]
 
         self.mark_vars = {}
         
         # ===== FETCH DROPDOWN DATA =====
-        classes = fetch_classes()
-        subjects = fetch_subjects()
-
-        self.class_map = {
-            f"{c['class_name']} - {c['section']}": c["class_id"]
-            for c in classes
-            }
-
-        self.subject_map = {
-            f"{s['subject_name']}": s["subject_id"]
-            for s in subjects
-            }
-
-        class_values = list(self.class_map.keys())
-        subject_values = list(self.subject_map.keys())
-        status_values = ["P", "A", "L"]
+        self.subject_map = {}
+        subject_values = []
+        status_values = ["P", "A", "L", "LE"]
 
         from tkinter.ttk import Combobox
 
@@ -593,18 +585,7 @@ class TeacherUI:
             self.mark_vars[key] = var
 
             # ===== DROPDOWNS =====
-            if key == "class_id":
-                entry = Combobox(
-                form,
-                textvariable=var,
-                values=class_values,
-                state="readonly",
-                font=("Arial", 14),
-                width=26
-                )
-                entry.grid(row=i, column=1, padx=10, pady=8)
-
-            elif key == "subject_id":
+            if key == "subject_id":
                 entry = Combobox(
                 form,
                 textvariable=var,
@@ -614,6 +595,8 @@ class TeacherUI:
                 width=26
                 )
                 entry.grid(row=i, column=1, padx=10, pady=8)
+                self.subject_combobox = entry
+                self.subject_combobox.config(state="disabled")
 
             elif key == "status":
                 entry = Combobox(
@@ -680,9 +663,6 @@ class TeacherUI:
             if not data["student_id"].isdigit():
                 disable(); return
 
-            if data["class_id"] not in self.class_map:
-                disable(); return
-
             if data["subject_id"] not in self.subject_map:
                 disable(); return
 
@@ -690,7 +670,7 @@ class TeacherUI:
             if not re.match(r"^\d{4}-\d{2}-\d{2}$", data["lecture_date"]):
                 disable(); return
 
-            if data["status"] not in ["P", "A", "L"]:
+            if data["status"] not in ["P", "A", "L", "LE"]:
                 disable(); return
 
             enable()
@@ -709,12 +689,17 @@ class TeacherUI:
 
         for v in self.mark_vars.values():
             v.trace_add("write", lambda *args: validate())
- 
+
+        self.mark_vars["student_id"].trace_add("write", self.on_student_change)
+    
         # ===== SUBMIT FUNCTION =====
         def submit():
             data = {k: v.get().strip() for k, v in self.mark_vars.items()}
+
             # ---- missing fields ----
-            missing = [k for k, v in data.items() if not v]
+            required_fields = ["student_id", "subject_id", "lecture_date", "status"]
+            missing = [f for f in required_fields if not data[f]]
+
             if missing:
                 # show which fields are missing (friendly labels)
                 pretty = ", ".join([m.replace("_", " ").title() for m in missing])
@@ -724,11 +709,11 @@ class TeacherUI:
 
             payload = {
                 "student_id": int(data["student_id"]),
-                "class_id": self.class_map[data["class_id"]],
                 "subject_id": self.subject_map[data["subject_id"]],
                 "lecture_date": data["lecture_date"],
                 "status": data["status"],
-                "remarks": data["remarks"]
+                "remarks": data["remarks"],
+                "teacher_id": self.teacher_id
                 }
 
             try:
@@ -769,6 +754,39 @@ class TeacherUI:
 
     # ==========================================================================
     # ===== Button to Mark Attendance in Bulk =====
+    def on_bulk_class_change(self, *args):
+        class_val = self.bulk_vars["class_id"].get()
+        if class_val not in self.bulk_class_map:
+            return
+
+        class_id = self.bulk_class_map[class_val]
+
+        try: 
+            import requests
+            res = requests.get(
+            f"http://127.0.0.1:8000/classes/{class_id}/subjects"
+            )
+            if res.status_code != 200:
+                return
+
+            subjects = res.json()
+            if not subjects:
+                self.show_popup(
+                "No Subjects",
+                "No subjects assigned to this class",
+                "warning")
+                return
+
+            self.bulk_subject_map = {
+            s["subject_name"]: s["subject_id"] for s in subjects}
+
+            self.bulk_subject_combobox["values"] = list(self.bulk_subject_map.keys())
+            self.bulk_subject_combobox.config(state="readonly")
+            self.bulk_vars["subject_id"].set("")
+
+        except Exception as e:
+            print(e)    
+
     def load_mark_bulk_attendance_screen(self):
         self.clear_content()
 
@@ -798,20 +816,15 @@ class TeacherUI:
 
         # ===== FETCH DROPDOWN DATA =====
         classes = fetch_classes()
-        subjects = fetch_subjects()
 
         self.bulk_class_map = {
             f"{c['class_name']} - {c['section']}": c["class_id"]
             for c in classes
             }
 
-        self.bulk_subject_map = {
-            f"{s['subject_name']}": s["subject_id"]
-            for s in subjects
-            }
-
         class_values = list(self.bulk_class_map.keys())
-        subject_values = list(self.bulk_subject_map.keys())
+        self.bulk_subject_map = {}    
+        subject_values = [] 
 
         for i, (label, key) in enumerate(labels):
 
@@ -842,11 +855,12 @@ class TeacherUI:
                 form,
                 textvariable=var,
                 values=subject_values,
-                state="readonly",
+                state="disabled",
                 font=("Arial", 14),
                 width=26
                 )
                 entry.grid(row=i, column=1, padx=10, pady=10)
+                self.bulk_subject_combobox = entry
 
             elif key == "lecture_date":
                 entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=28)
@@ -922,20 +936,34 @@ class TeacherUI:
 
             if abs_vals:
                 for p in abs_vals.split(","):
-                    if not p.strip().isdigit():
-                        disable(); return
+                    p = p.strip()
+                    if p == "":
+                        continue   
+                    if not p.isdigit():
+                        disable()
+                        return
 
             enable()
   
         for v in self.bulk_vars.values():
             v.trace_add("write", validate)
 
+        self.bulk_vars["class_id"].trace_add("write", self.on_bulk_class_change)
+    
         # -------- SUBMIT FUNCTION --------
         def submit_bulk():
             class_id = self.bulk_class_map[self.bulk_vars["class_id"].get()]
             subject_id = self.bulk_subject_map[self.bulk_vars["subject_id"].get()]
             lecture_date = self.bulk_vars["lecture_date"].get().strip()
-            abs_vals = self.bulk_vars["absent_ids"].get().strip()
+            
+            raw_ids = self.bulk_vars["absent_ids"].get().strip()
+
+            try:
+                absent_ids = [int(x.strip()) for x in raw_ids.split(",") if x.strip()]
+            except ValueError:
+                self.show_popup("Invalid Input", "Absent IDs must be comma-separated numbers (e.g. 76,101,77)","warning")
+                return
+
 
             if not all([class_id, subject_id, lecture_date]):
                 self.show_popup("Missing Values", "Enter all the Fields", "warning")
@@ -945,8 +973,9 @@ class TeacherUI:
             payload = {
             "class_id": class_id,
             "subject_id": subject_id,
+            "teacher_id": self.teacher_id,
             "lecture_date": lecture_date,
-            "absent_ids": abs_vals  # e.g. "8,7"
+            "absent_ids": absent_ids
             }
 
             import requests
@@ -990,6 +1019,40 @@ class TeacherUI:
 
     # ==========================================================================
     # ===== Button to Filter Student Attendance by Date =====
+    def on_filter_student_change(self, *args):
+        sid = self.filter_vars["student_id"].get().strip()
+
+        if not sid.isdigit() or int(sid) <= 0:
+            # ---- reset subject dropdown if invalid ----
+            self.subject_combobox.set("")
+            self.subject_combobox["values"] = [""]
+            self.subject_combobox.config(state="disabled")
+            self.filter_subject_map = {}
+            self.subject_id_to_name = {}
+            return
+
+        try:
+            import requests
+            res = requests.get(f"http://127.0.0.1:8000/students/{sid}/subjects")
+            if res.status_code != 200:
+                return
+
+            subjects = res.json()
+            if not subjects:
+                return
+            
+            self.filter_subject_map = {
+                s["subject_name"]: s["subject_id"] for s in subjects}
+            
+            self.subject_id_to_name = {
+            v: k for k, v in self.filter_subject_map.items()}
+
+            self.subject_combobox["values"] = [""] + list(self.filter_subject_map.keys())
+            self.subject_combobox.config(state="readonly")
+
+        except Exception as e:
+            print(e)
+
     def load_filter_student_attendance_screen(self):
         self.clear_content()
 
@@ -1018,14 +1081,9 @@ class TeacherUI:
         from tkinter.ttk import Combobox
 
         # ===== FETCH SUBJECTS FOR DROPDOWN =====
-        subjects = fetch_subjects()
-
-        self.filter_subject_map = {
-            f"{s['subject_name']}": s["subject_id"]
-            for s in subjects
-            }
-
-        subject_values = [""] + list(self.filter_subject_map.keys())  
+        self.filter_subject_map = {}
+        self.subject_id_to_name = {}
+        subject_values = [""]
 
         for i, (text_lbl, key) in enumerate(labels):
             tk.Label(
@@ -1048,6 +1106,8 @@ class TeacherUI:
                 width=23
                 )
                 entry.grid(row=i, column=1, padx=10)
+                self.subject_combobox = entry
+
             else:
                 entry = tk.Entry(
                 form,
@@ -1119,7 +1179,7 @@ class TeacherUI:
         x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
         x_scroll.pack(side="bottom", fill="x")
 
-        cols = ("attendance_id", "student_id", "subject_id", "class_id",
+        cols = ("attendance_id", "student_id", "subject_id",
             "lecture_date", "status", "remarks")
 
         self.attendance_tree = ttk.Treeview(
@@ -1161,25 +1221,23 @@ class TeacherUI:
             import re
             date_regex = r"^\d{4}-\d{2}-\d{2}$"
 
-            # ----- Disable until fields filled -----
-            if d1 == "" or d2 == "":
+            if not d1 or not d2:
                 disable()
                 return
 
-            # ----- Validate ONLY when length = 10 -----
-            if (len(d1) == 10 and not re.match(date_regex, d1)) or \
-               (len(d2) == 10 and not re.match(date_regex, d2)):
+            if not re.match(date_regex, d1) or not re.match(date_regex, d2):
                 disable()
-                self.show_popup("Invalid Date Format", "Use YYYY-MM-DD format.", "error")
+                return
+              
+            if d1 > d2:
+                disable()
+                self.show_popup(
+                    "Invalid Date Range",
+                    "'Date From' cannot be after 'Date To'",
+                    "warning")
                 return
 
             if not data["student_id"].isdigit():
-                disable()
-                return
-            
-            sub = data["subject_id"]
-
-            if sub and sub not in self.filter_subject_map:
                 disable()
                 return
 
@@ -1187,6 +1245,8 @@ class TeacherUI:
 
         for v in self.filter_vars.values():
             v.trace_add("write", validate)
+
+        self.filter_vars["student_id"].trace_add("write", self.on_filter_student_change)    
 
         disable()
 
@@ -1221,16 +1281,23 @@ class TeacherUI:
                 if not data:
                     self.show_popup("No Records", "No attendance found in this range.", "info")
                     return
+                
+                STATUS_LABELS = {"P": "Present", "A": "Absent", "L": "Late", "LE": "Leave"}
 
                 for item in data:
+                    subject_name = self.subject_id_to_name.get(
+                    item["subject_id"], f"ID {item['subject_id']}")
+
+                    status_label = STATUS_LABELS.get(
+                    item["status"], item["status"])
+
                     self.attendance_tree.insert("", "end", values=(
-                    item["attendance_id"],
-                    item["student_id"],
-                    item["subject_id"],
-                    item["class_id"],
-                    item["lecture_date"],
-                    item["status"],
-                    item["remarks"]
+                        item["attendance_id"],
+                        item["student_id"],
+                        subject_name,         
+                        item["lecture_date"],
+                        status_label,         
+                        item["remarks"]
                     ))
 
             except Exception as e:
@@ -1339,6 +1406,7 @@ class TeacherUI:
         "present": tk.StringVar(),
         "absent": tk.StringVar(),
         "late": tk.StringVar(),
+        "leave": tk.StringVar(), 
         "percentage": tk.StringVar()
         }
 
@@ -1387,33 +1455,45 @@ class TeacherUI:
             import re
             date_regex = r"^\d{4}-\d{2}-\d{2}$"
 
-            if d1 == "" or d2 == "":
-                disable()
-                return
-
             if (len(d1) == 10 and not re.match(date_regex, d1)) or \
                (len(d2) == 10 and not re.match(date_regex, d2)):
                 disable()
                 self.show_popup("Invalid Date", "Date should be in format YYYY-MM-DD", "warning")
                 return
 
-            if re.match(date_regex, d1) and re.match(date_regex, d2):
-                enable()
-            else:
-                disable()
-
+            # student id first
             if not sid.isdigit():
                 disable()
-                self.show_popup("Invalid Student ID", "Student ID must be numeric.", "warning")
                 return
+
+            # dates empty
+            if not d1 or not d2:
+                disable()
+                return
+
+            # format
+            if not re.match(date_regex, d1) or not re.match(date_regex, d2):
+                disable()
+                return
+
+            # logical range
+            if d1 > d2:
+                disable()
+                self.show_popup("Invalid Date Range", "'Date From' cannot be after 'Date To'", "warning")
+                return
+
+            enable()
 
         for v in self.summary_vars.values():
             v.trace_add("write", validate)
 
         # ===== CLEAR FIELDS =====
         def clear():
+            for var in self.summary_vars.values():
+                var.set("")
             for var in summary_labels.values():
                 var.set("")
+            disable()
 
         clear_btn.bind("<Button-1>", lambda e: clear())
 
@@ -1438,6 +1518,7 @@ class TeacherUI:
                 summary_labels["present"].set(data["present"])
                 summary_labels["absent"].set(data["absent"])
                 summary_labels["late"].set(data["late"])
+                summary_labels["leave"].set(data["leave"])
                 summary_labels["percentage"].set(str(data["percentage"]) + "%")
 
             except Exception as e:
@@ -1609,52 +1690,17 @@ class TeacherUI:
 
         # ===== VALIDATE EVERY CHANGE =====
         def validate_entries(*args):
-            data = {k: v.get().strip() for k, v in self.update_vars.items()}
-
-            # --- First normalize Status field ---
-            status_raw = data.get("status", "").strip().lower()
-
-            if status_raw.startswith("p"):
-                self.update_vars["status"].set("P")
-                data["status"] = "P"
-
-            elif status_raw.startswith("a"):
-                self.update_vars["status"].set("A")
-                data["status"] = "A"
-
-            elif status_raw.startswith("l"):
-                self.update_vars["status"].set("L")
-                data["status"] = "L"
-
-            else:
+            status = self.update_vars["status"].get().strip()
+            remarks = self.update_vars["remarks"].get().strip()
+ 
+            if status not in ("P", "A", "L"):
                 disable_update()
                 return
 
-            # --- NOW check for emptiness ---
-            if not all(data.values()):
+            if remarks == "":
                 disable_update()
                 return
 
-            # --- Numeric validations ---
-            if not data["student_id"].isdigit():
-                disable_update()
-                return
-
-            if data["subject_id"] not in self.subject_map:
-                disable_update()
-                return
-
-            if data["class_id"] not in self.class_map:
-                disable_update()
-                return
-
-            # --- Date format ---
-            import re
-            if not re.match(r"^\d{4}-\d{2}-\d{2}$", data["lecture_date"]):
-                disable_update()
-                return
-
-            # --- All good ---
             enable_update()
 
         for v in self.update_vars.values():
@@ -1681,9 +1727,12 @@ class TeacherUI:
 
                 data = res.json()
 
-                # Enable fields
-                for entry in self.update_entries.values():
-                    entry.config(state="normal")
+                # Enable only editable fields
+                for key, entry in self.update_entries.items():
+                    if key in ("status", "remarks"):
+                        entry.config(state="normal")
+                    else:
+                        entry.config(state="disabled")
 
                 # Fill data
                 self.update_vars["student_id"].set(data["student_id"])
@@ -1726,25 +1775,10 @@ class TeacherUI:
         def update_attendance():
             att_id = att_id_var.get().strip()
 
-            subject_label = self.update_vars["subject_id"].get().strip()
-            class_label = self.update_vars["class_id"].get().strip()
- 
-            if not subject_label or subject_label not in self.subject_map:
-                self.show_popup("Invalid Subject", "Please select a valid subject.", "warning")
-                return
-
-            if not class_label or class_label not in self.class_map:
-                self.show_popup("Invalid Class", "Please select a valid class.", "warning")
-                return
-
             payload = {
-                "student_id": int(self.update_vars["student_id"].get()),
-                "subject_id": self.subject_map[subject_label],
-                "class_id": self.class_map[class_label],
-                "lecture_date": self.update_vars["lecture_date"].get(),
                 "status": self.update_vars["status"].get(),
                 "remarks": self.update_vars["remarks"].get()
-                }
+            }
 
             import requests
             try:
@@ -1825,7 +1859,7 @@ class TeacherUI:
 
         # ------- ENABLE/DISABLE LOGIC -------
         def enable_delete():
-            delete_btn.config(bg="#000000", fg="white", cursor="arrow")
+            delete_btn.config(bg="#000000", fg="white", cursor="hand2")
             delete_btn.bind("<Enter>", lambda e: delete_btn.config(bg="#222222"))
             delete_btn.bind("<Leave>", lambda e: delete_btn.config(bg="#000000"))
             delete_btn.bind("<Button-1>", lambda e: perform_delete())
@@ -1841,18 +1875,15 @@ class TeacherUI:
             val = att_id_var.get().strip()
 
             if not val:
-                self.show_popup("Missing Values", "Entry Fields can not be empty", "error")
                 disable_delete()
                 return
 
             if not val.isdigit():
-                self.show_popup("Invalid Attendance ID", "Attendance ID should be numeric only.", "warning")
                 att_id_var.set("")
                 disable_delete()
                 return
 
             if int(val) <= 0:
-                self.show_popup("Invalid Attendance ID", "Attendance ID must be a positive number.", "warning")
                 att_id_var.set("")
                 disable_delete()
                 return
@@ -1931,21 +1962,21 @@ class TeacherUI:
         
         # Status dropdown
         tk.Label(
-    form,
-    text="Status (P/A/L):",
-    font=("Arial", 14),
-    bg="#ECF0F1"
-).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        form,
+        text="Status:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=2, column=0, padx=10, pady=10, sticky="w")
 
         status_var = tk.StringVar()
         status_dropdown = ttk.Combobox(
-    form,
-    textvariable=status_var,
-    values=["P", "A", "L"],
-    state="readonly",
-    width=23,
-    font=("Arial", 14)
-)
+        form,
+        textvariable=status_var,
+        values=["P", "A", "L", "LE"],
+        state="readonly",
+        width=23,
+        font=("Arial", 14)
+        )
         status_dropdown.grid(row=2, column=1, padx=10, pady=10)
         status_dropdown.set("P")  # default
 
@@ -1979,7 +2010,7 @@ class TeacherUI:
 
         # ------- ENABLE/DISABLE LOGIC -------
         def enable_btn():
-            mark_btn.config(bg="#000000", fg="white", cursor="arrow")
+            mark_btn.config(bg="#000000", fg="white", cursor="hand2")
             mark_btn.bind("<Enter>", lambda e: mark_btn.config(bg="#222222"))
             mark_btn.bind("<Leave>", lambda e: mark_btn.config(bg="#000000"))
             mark_btn.bind("<Button-1>", lambda e: perform_mark())
@@ -1991,46 +2022,22 @@ class TeacherUI:
             mark_btn.unbind("<Button-1>")
 
         def validate(*args):
-            status_text = status_var.get().strip().lower()
-
-    # No status entered → disable
-            if not status_text:
+            if status_var.get() in ("P", "A", "L", "LE"):
+                enable_btn()
+            else:
                 disable_btn()
-                return
-
-    # Recognize status using startswith
-            if status_text.startswith("p"):
-                status_var.set("P")   # Normalize
-                enable_btn()
-                return
-
-            elif status_text.startswith("a"):
-                status_var.set("A")
-                enable_btn()
-                return
-
-            elif status_text.startswith("l"):
-                status_var.set("L")
-                enable_btn()
-                return
-
-    # If neither P/A/L matched → disable
-            disable_btn()
 
         status_var.trace_add("write", validate)
 
         # ------- API CALL FUNCTION -------
         def perform_mark():
-            from datetime import datetime
             import requests
 
             payload = {
-    "teacher_id": int(teacher_id_var.get().strip()),
-    "date": date_var.get().strip(),
-    "check_in": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-    "status": status_var.get(),   # P / A / L
-    "remarks": "Self Attendance Marked"
-}
+            "teacher_id": self.teacher_id,
+            "date": date_var.get(),
+            "status": status_var.get(),
+            "remarks": "Self Attendance Marked"}
 
             try:
                 res = requests.post(
@@ -2061,6 +2068,167 @@ class TeacherUI:
 
 
     # ==========================================================================
+    # ===== Button to Mark Check-Out =====            
+    def load_teacher_check_out_screen(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Teacher Check-Out",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=20)
+
+        # ---------- Teacher ID ----------
+        tk.Label(
+        form, text="Teacher ID:", font=("Arial", 14), bg="#ECF0F1"
+        ).grid(row=0, column=0, padx=10, pady=10, sticky="e")
+ 
+        teacher_id_var = tk.StringVar(value=str(self.teacher_id))
+        tk.Entry(
+        form, textvariable=teacher_id_var,
+        font=("Arial", 14), width=25, state="readonly"
+        ).grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- Date ----------
+        from datetime import datetime
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        tk.Label(
+        form, text="Date:", font=("Arial", 14), bg="#ECF0F1"
+        ).grid(row=1, column=0, padx=10, pady=10, sticky="e")
+   
+        date_var = tk.StringVar(value=today)
+        tk.Entry(
+        form, textvariable=date_var,
+        font=("Arial", 14), width=25, state="readonly"
+        ).grid(row=1, column=1, padx=10, pady=10)
+
+        # ---------- STATUS ----------
+        tk.Label(
+        form, text="Current Status:", font=("Arial", 14), bg="#ECF0F1"
+        ).grid(row=2, column=0, padx=10, pady=10, sticky="e")
+
+        status_var = tk.StringVar(value="Fetching...")
+        tk.Entry(
+        form, textvariable=status_var,
+        font=("Arial", 14), width=25, state="readonly"
+        ).grid(row=2, column=1, padx=10, pady=10)
+
+        self.content.update_idletasks()
+
+        # ---------- CHECK OUT BUTTON ----------
+        checkout_btn = tk.Label(
+        self.content,
+        text="Check Out",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=30,
+        pady=12,
+        width=14,
+        cursor="arrow")
+        checkout_btn.pack(pady=20)
+
+        def enable_btn():
+            checkout_btn.config(bg="#000000", fg="white", cursor="hand2")
+            checkout_btn.bind("<Enter>", lambda e: checkout_btn.config(bg="#222222"))
+            checkout_btn.bind("<Leave>", lambda e: checkout_btn.config(bg="#000000"))
+            checkout_btn.bind("<Button-1>", lambda e: do_checkout())
+
+        def disable_btn():
+            checkout_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            checkout_btn.unbind("<Enter>")
+            checkout_btn.unbind("<Leave>")
+            checkout_btn.unbind("<Button-1>")
+
+        disable_btn()
+
+        # ---------- FETCH TODAY ATTENDANCE ----------
+        def fetch_today_attendance():
+            import requests
+            try:
+                res = requests.get(
+                f"http://127.0.0.1:8000/teacher/attendance/today/{self.teacher_id}"
+                )
+
+                if res.status_code != 200:
+                    status_var.set("Not Marked")
+                    return
+
+                data = res.json()
+                self.today_record_id = data["record_id"]
+
+                if data["check_out"]:
+                    status_var.set("Checked Out")
+                    disable_btn()
+                else:
+                    status_var.set(data["status"])
+                    enable_btn()
+
+            except Exception as e:
+                status_var.set("Error")
+
+        fetch_today_attendance()
+
+        # ---------- CHECK OUT ----------
+        def do_checkout():
+            import requests
+            try:
+                res = requests.put(
+                f"http://127.0.0.1:8000/teacher/attendance/check-out/{self.today_record_id}"
+                )
+
+                if res.status_code == 200:
+                    self.show_popup(
+                    "Success",
+                    "Check-out successful!",
+                    "info")
+                    self.change_screen(
+                        "Check-out successful!",
+                        add_callback=self.load_teacher_check_out_screen
+                        )
+                    return
+
+                if res.status_code == 400:
+                    self.show_popup(
+                    "Already Checked Out",
+                    "You have already checked out.",
+                    "warning"
+                    )
+                    return
+
+                if res.status_code == 404:
+                    self.show_popup(
+                    "Not Found",
+                    "Attendance record not found.",
+                    "error"
+                    )
+                    disable_btn()
+                    return
+
+                self.show_popup("Error", res.text, "error")
+
+            except Exception as e:
+                self.show_popup("Backend Error", str(e), "error")
+
+        # ---------- BACK ----------
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(pady=10)
+
+        self.create_back_button(
+        parent=back_frame,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
+
+
+    # ==========================================================================
     # ===== Button to View Filtered Teacher Attendance by Date =====
     def load_teacher_attendance_filter(self):
         self.clear_content()
@@ -2084,22 +2252,49 @@ class TeacherUI:
         tk.Entry(form, textvariable=teacher_id_var, font=("Arial", 14), width=25, state="readonly").grid(row=0, column=1)
 
         # Date From
-        tk.Label(form, text="Date From (YYYY-MM-DD):", font=("Arial", 14), bg="#ECF0F1").grid(row=1, column=0, padx=10)
-        date_from_var = tk.StringVar()
-        tk.Entry(form, textvariable=date_from_var, font=("Arial", 14), width=25).grid(row=1, column=1)
+        tk.Label(
+        form,
+        text="Date From (YYYY-MM-DD):",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=1, column=0, padx=10)
 
-        # Calendar button
+        date_from_var = tk.StringVar()
+
+        date_from_entry = tk.Entry(
+        form,
+        textvariable=date_from_var,
+        font=("Arial", 14),
+        width=25)
+        date_from_entry.grid(row=1, column=1)
+
         tk.Button(
-        form, text="Calendar", command=lambda: self.open_calendar_popup(form.grid_slaves(row=1, column=1)[0], date_from_var)
+        form,
+        text="Calendar",
+        command=lambda: self.open_calendar_popup(date_from_entry, date_from_var)
         ).grid(row=1, column=2, padx=5)
 
         # Date To
-        tk.Label(form, text="Date To (YYYY-MM-DD):", font=("Arial", 14), bg="#ECF0F1").grid(row=2, column=0, padx=10)
+        tk.Label(
+        form,
+        text="Date To (YYYY-MM-DD):",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=2, column=0, padx=10)
+
         date_to_var = tk.StringVar()
-        tk.Entry(form, textvariable=date_to_var, font=("Arial", 14), width=25).grid(row=2, column=1)
+
+        date_to_entry = tk.Entry(
+        form,
+        textvariable=date_to_var,
+        font=("Arial", 14),
+        width=25)
+        date_to_entry.grid(row=2, column=1)
 
         tk.Button(
-        form, text="Calendar", command=lambda: self.open_calendar_popup(form.grid_slaves(row=2, column=1)[0], date_to_var)
+        form,
+        text="Calendar",
+        command=lambda: self.open_calendar_popup(date_to_entry, date_to_var)
         ).grid(row=2, column=2, padx=5)
 
         # ---------- FILTER BUTTON ----------
@@ -2141,6 +2336,7 @@ class TeacherUI:
 
         # ---------- VALIDATION ----------
         def validate(*args):
+            import re
             r = r"^\d{4}-\d{2}-\d{2}$"
             d1 = date_from_var.get().strip()
             d2 = date_to_var.get().strip()
@@ -2150,6 +2346,10 @@ class TeacherUI:
                 return
 
             if not re.match(r, d1) or not re.match(r, d2):
+                disable_btn()
+                return
+            
+            if d1 > d2:
                 disable_btn()
                 return
 
@@ -2184,6 +2384,10 @@ class TeacherUI:
                 if res.status_code != 200:
                     self.show_popup("Error", "Could not fetch attendance!", "error")
                     return
+                
+                if res.status_code == 404:
+                    self.show_popup("No Records", "No attendance found for selected dates.", "info")
+                    return
 
                 rows = res.json()
 
@@ -2194,11 +2398,11 @@ class TeacherUI:
                 # fill table
                 for r in rows:
                     tree.insert("", "end", values=(
-                    r["record_id"],
-                    r["date"],
-                    r["check_in"],
-                    r["status"],
-                    r["remarks"]
+                        r.get("record_id", ""),
+                        r.get("date", ""),
+                        r.get("check_in", ""),
+                        r.get("status", ""),
+                        r.get("remarks", "")
                     ))
 
             except Exception as e:
@@ -2298,8 +2502,7 @@ class TeacherUI:
         pady=12,
         width=15,
         relief="ridge",
-        cursor="arrow"
-    )
+        cursor="arrow")
         submit_btn.pack(pady=15)
 
         # ---- BUTTON ENABLE/DISABLE ----
@@ -2319,22 +2522,26 @@ class TeacherUI:
 
         # ---- VALIDATION ----
         def validate(*args):
+            import re
             d1 = date_from_var.get().strip()
             d2 = date_to_var.get().strip()
-
-            if not d1 or not d2:
-                disable_btn()
-                return
 
             # Date format check
             date_regex = r"^\d{4}-\d{2}-\d{2}$"
             if not re.match(date_regex, d1) or not re.match(date_regex, d2):
                 disable_btn()
                 return
+            
+            if not d1 or not d2:
+                disable_btn()
+                return
+            
+            if d1 > d2:
+                disable_btn()
+                return
 
             enable_btn()
 
-        teacher_id_var.trace_add("write", validate)
         date_from_var.trace_add("write", validate)
         date_to_var.trace_add("write", validate)
 
@@ -2380,11 +2587,20 @@ class TeacherUI:
                     fg="#000000"
                     ).grid(row=row, column=1, padx=10, pady=5, sticky="w")
 
-                make_card("Total Days:", data["total_days"], 0)
-                make_card("Present:", data["present"], 1)
-                make_card("Absent:", data["absent"], 2)
-                make_card("Leave:", data["leave"], 3)
-                make_card("Attendance %:", f"{data['percentage']}%", 4)
+                total = data["total_days"]
+                present = data["present_days"]
+                absent = data["absent_days"]
+                late = data["late_days"]
+                leave = data["leave_days"]
+
+                percentage = round((present / total) * 100, 2) if total else 0
+
+                make_card("Total Days:", total, 0)
+                make_card("Present:", present, 1)
+                make_card("Absent:", absent, 2)
+                make_card("Late:", late, 3)
+                make_card("Leave:", leave, 4)
+                make_card("Attendance %:", f"{percentage}%", 5)
 
                 self.show_popup("Success", "Summary Loaded!", "info")
 
@@ -2394,7 +2610,7 @@ class TeacherUI:
     
     # ==============================================================================
     # ----- Button to Generate and Download Result of a Student with Some Exam ID -----
-    def load_generate_and_download_result_of_student(self):
+    def load_view_and_download_exam_result_of_student(self):
         self.clear_content()
 
         # ===== TITLE =====
@@ -2624,7 +2840,7 @@ class TeacherUI:
         font=("Arial", 24, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
         # ===== FORM FRAME =====
         form = tk.Frame(self.content, bg="#ECF0F1")
@@ -2636,7 +2852,7 @@ class TeacherUI:
         text="Student ID:",
         font=("Arial", 14),
         bg="#ECF0F1"
-    ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
         sid_var = tk.StringVar()
         tk.Entry(
@@ -2644,7 +2860,7 @@ class TeacherUI:
         textvariable=sid_var,
         width=25,
         font=("Arial", 14)
-    ).grid(row=0, column=1, padx=10, pady=10)
+        ).grid(row=0, column=1, padx=10, pady=10)
 
         # ===== BACK BUTTON =====
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -2661,7 +2877,7 @@ class TeacherUI:
         "Max Marks": tk.StringVar(),
         "Percentage": tk.StringVar(),
         "Final Grade": tk.StringVar()
-    }
+        }
 
         # Create summary card layout
         for i, (label, var) in enumerate(summary_vars.items()):
@@ -2688,7 +2904,7 @@ class TeacherUI:
         text="Exam-wise Details:",
         font=("Arial", 14, "bold"),
         bg="#ECF0F1"
-    ).grid(row=len(summary_vars), column=0, columnspan=2, pady=10)
+        ).grid(row=len(summary_vars), column=0, columnspan=2, pady=10)
 
         exam_list_box = tk.Text(
         summary_frame,
@@ -2697,7 +2913,7 @@ class TeacherUI:
         font=("Arial", 12),
         state="disabled",
         bg="#F2F3F4"
-    )
+        )
         exam_list_box.grid(row=len(summary_vars) + 1, column=0, columnspan=2, padx=10, pady=5)
 
         # ====== FETCH BUTTON ======
@@ -2867,7 +3083,7 @@ class TeacherUI:
         font=("Arial", 26, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
         # ===== FORM FRAME =====
         form = tk.Frame(self.content, bg="#ECF0F1")
@@ -2878,7 +3094,7 @@ class TeacherUI:
         text="Exam ID:",
         font=("Arial", 14),
         bg="#ECF0F1"
-    ).grid(row=0, column=0, padx=10, pady=10)
+        ).grid(row=0, column=0, padx=10, pady=10)
 
         exam_var = tk.StringVar()
 
@@ -2910,7 +3126,8 @@ class TeacherUI:
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
 
-        cols = ("result_id", "student_id", "exam_id", "total_marks", "percentage", "grade")
+        cols = ("result_id", "student_id", "obtained_marks",
+                "total_marks", "percentage", "grade", "result_status")
 
         # Scrollbars
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
@@ -3002,10 +3219,11 @@ class TeacherUI:
                     values=(
                         r["result_id"],
                         r["student_id"],
-                        r["exam_id"],
+                        r["obtained_marks"],
                         r["total_marks"],
                         r["percentage"],
-                        r["grade"]
+                        r["grade"],
+                        r["result_status"]
                     )
                 )
 
@@ -3025,7 +3243,7 @@ class TeacherUI:
         font=("Arial", 24, "bold"),
         bg="#ECF0F1",
         fg="#2C3E50"
-    ).pack(pady=20)
+        ).pack(pady=20)
 
         # ===== FORM =====
         form = tk.Frame(self.content, bg="#ECF0F1")
@@ -3082,7 +3300,7 @@ class TeacherUI:
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
         table_frame.pack(fill="both", expand=True, padx=20, pady=15)
 
-        cols = ("student_id", "full_name", "exam_id", "total_marks", "percentage", "grade")
+        cols = ("student_id", "full_name", "obtained_marks", "total_marks", "percentage", "grade", "result_status")
 
         y_scroll = tk.Scrollbar(table_frame, orient="vertical")
         y_scroll.pack(side="right", fill="y")
@@ -3161,6 +3379,8 @@ class TeacherUI:
 
         # ===== LOAD RESULTS FUNCTION =====
         def load_results():
+            self.show_mini_notification("Loading results, please wait…")
+
             class_raw = class_var.get().strip()
             exam_raw = exam_var.get().strip()
 
@@ -3199,10 +3419,11 @@ class TeacherUI:
                     values=(
                         r["student_id"],
                         stu_data["full_name"],
-                        r["exam_id"],
+                        r["obtained_marks"],
                         r["total_marks"],
                         r["percentage"],
-                        r["grade"]
+                        r["grade"],
+                        r["result_status"]
                     )
                 )
 
@@ -3279,7 +3500,8 @@ class TeacherUI:
         f"{c['class_id']} - {c['class_name']} {c['section']}": c["class_id"]
         for c in available_classes
         }
-        
+        self.class_values = list(self.class_map.keys())
+
         class_dd = ttk.Combobox(
         form,
         textvariable=class_var,
@@ -3373,7 +3595,6 @@ class TeacherUI:
 
         # ===== LOAD FINAL RESULTS (TABLE VIEW) =====
         def load_results():
-            class_raw = class_var.get().strip()
             class_id = self.class_map[class_var.get()]
 
             # Clear table
@@ -3451,6 +3672,842 @@ class TeacherUI:
             except Exception as e:
                 self.show_popup("Error", str(e), "error")
 
+
+    # ==============================================================================
+    # ----- Button to Add Marks of Single Student ------   
+    def load_add_single_student_marks(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Add Student Marks",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+ 
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        from tkinter.ttk import Combobox
+        import requests
+
+        self.marks_vars = {}
+
+        fields = [
+        ("Class", "class_id"),
+        ("Subject", "subject_id"),
+        ("Exam", "exam_id"),
+        ("Student ID", "student_id"),
+        ("Max Marks", "max_marks"),
+        ("Marks Obtained", "marks_obtained"),
+        ("Remarks", "remarks")
+        ]
+
+        # ---------- FETCH DATA ----------
+        classes = fetch_classes()
+        exams = fetch_exams()
+
+        self.class_map = {
+        f"{c['class_name']} - {c['section']}": c["class_id"]
+        for c in classes
+        }
+
+        self.exam_map = {e["exam_name"]: e["exam_id"] for e in exams}
+        self.subject_map = {}
+
+        for i, (label, key) in enumerate(fields):
+            tk.Label(
+            form,
+            text=label + ":",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=10, sticky="e")
+
+            var = tk.StringVar()
+            self.marks_vars[key] = var
+
+            if key == "class_id":
+                cb = Combobox(
+                form,
+                textvariable=var,
+                values=list(self.class_map.keys()),
+                state="readonly",
+                width=26)
+                cb.grid(row=i, column=1)
+
+            elif key == "subject_id":
+                self.subject_cb = Combobox(
+                form,
+                textvariable=var,
+                state="disabled",
+                width=26)
+                self.subject_cb.grid(row=i, column=1)
+
+            elif key == "exam_id":
+                cb = Combobox(
+                form,
+                textvariable=var,
+                values=list(self.exam_map.keys()),
+                state="readonly",
+                width=26)
+                cb.grid(row=i, column=1)
+
+            else:
+                tk.Entry(
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=28).grid(row=i, column=1)
+
+        # ---------- LOAD SUBJECTS ----------
+        def on_class_change(*args):
+            class_val = self.marks_vars["class_id"].get()
+            if class_val not in self.class_map:
+                return
+
+            class_id = self.class_map[class_val]
+            res = requests.get(f"http://127.0.0.1:8000/classes/{class_id}/subjects")
+
+            if res.status_code != 200:
+                return
+
+            subjects = res.json()
+            self.subject_map = {
+            s["subject_name"]: s["subject_id"] for s in subjects
+            }
+
+            self.subject_cb.config(
+            values=list(self.subject_map.keys()),
+            state="readonly"
+            )
+            self.marks_vars["subject_id"].set("")
+
+        self.marks_vars["class_id"].trace_add("write", on_class_change)
+
+        # ---------- SUBMIT ----------
+        submit_btn = tk.Label(
+        self.content,
+        text="Submit",
+        font=("Arial", 16, "bold"),
+        bg="#000000",
+        fg="white",
+        padx=25,
+        pady=12,
+        cursor="hand2")
+        submit_btn.pack(pady=20)
+
+        def submit_marks():
+            try:
+                payload = {
+                "student_id": int(self.marks_vars["student_id"].get()),
+                "subject_id": self.subject_map[self.marks_vars["subject_id"].get()],
+                "exam_id": self.exam_map[self.marks_vars["exam_id"].get()],
+                "marks_obtained": float(self.marks_vars["marks_obtained"].get()),
+                "max_marks": float(self.marks_vars["max_marks"].get()),
+                "remarks": self.marks_vars["remarks"].get()
+            }
+
+                res = requests.post(
+                "http://127.0.0.1:8000/teacher/results/marks/add",
+                json=payload
+            )
+
+                if res.status_code == 200:
+                    self.show_popup("Success", "Marks added successfully!", "info")
+                    self.change_screen("Marks added successfully!", add_callback=self.load_add_single_student_marks)
+                    return
+
+                self.show_popup("Error", res.text, "error")
+
+            except Exception as e:
+                self.show_popup("Invalid Input", str(e), "error")
+
+        submit_btn.bind("<Button-1>", lambda e: submit_marks())
+
+        # ---------- BACK ----------
+        back_row = tk.Frame(self.content, bg="#ECF0F1")
+        back_row.pack(pady=10)
+
+        self.create_back_button(back_row, self.load_dashboard, form_frame=form)         
+
+
+    # ===================================================================
+    # ----- Button to Add Marks in Bulk -----  
+    def load_bulk_marks_entry_screen(self):
+        self.clear_content()
+
+        import requests
+        from tkinter import ttk
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Bulk Marks Entry",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        self.bulk_marks_vars = {}
+  
+        # ---------- CLASS ----------
+        tk.Label(form, text="Class:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=10, sticky="e")
+
+        class_var = tk.StringVar()
+        self.bulk_marks_vars["class"] = class_var
+
+        classes = fetch_classes()
+        self.class_map = {
+        f"{c['class_name']} - {c['section']}": c["class_id"]
+        for c in classes
+        }
+
+        class_cb = ttk.Combobox(
+        form,
+        textvariable=class_var,
+        values=list(self.class_map.keys()),
+        state="readonly",
+        width=25
+        )
+        class_cb.grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- SUBJECT ----------
+        tk.Label(form, text="Subject:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=1, column=0, padx=10, pady=10, sticky="e")
+
+        subject_var = tk.StringVar()
+        self.bulk_marks_vars["subject"] = subject_var
+        self.subject_map = {}
+
+        subject_cb = ttk.Combobox(
+        form,
+        textvariable=subject_var,
+        state="disabled",
+        width=25
+        )
+        subject_cb.grid(row=1, column=1, padx=10, pady=10)
+
+        # ---------- EXAM ----------
+        tk.Label(form, text="Exam:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=2, column=0, padx=10, pady=10, sticky="e")
+
+        exam_var = tk.StringVar()
+        self.bulk_marks_vars["exam"] = exam_var
+        self.exam_map = {}
+
+        exam_cb = ttk.Combobox(
+        form,
+        textvariable=exam_var,
+        state="readonly",
+        width=25
+        )
+        exam_cb.grid(row=2, column=1, padx=10, pady=10)
+
+        # ---------- MAX MARKS ----------
+        tk.Label(form, text="Max Marks:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=3, column=0, padx=10, pady=10, sticky="e")
+
+        max_marks_var = tk.StringVar()
+        tk.Entry(form, textvariable=max_marks_var, font=("Arial", 14), width=27)\
+        .grid(row=3, column=1, padx=10, pady=10)
+
+        # ---------- LOAD EXAMS ----------
+        try:
+            res = requests.get("http://127.0.0.1:8000/admin/exams")
+            exams = res.json()
+            self.exam_map = {e["exam_name"]: e["exam_id"] for e in exams}
+            exam_cb["values"] = list(self.exam_map.keys())
+        except:
+            pass
+
+        # ---------- TABLE ----------
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, pady=20)
+
+        cols = ("student_id", "student_name", "marks")
+        tree = ttk.Treeview(table_frame, columns=cols, show="headings", height=13)
+        tree.pack(fill="both", expand=True)
+ 
+        for c in cols:
+            tree.heading(c, text=c.replace("_", " ").title())
+            tree.column(c, width=180, anchor="center")
+
+        marks_entries = {}
+
+        # ---------- LOAD SUBJECTS ----------
+        def on_class_change(*args):
+            tree.delete(*tree.get_children())
+            subject_cb.set("")
+            subject_cb.config(state="disabled")
+
+            class_id = self.class_map.get(class_var.get())
+            if not class_id:
+                return
+
+            res = requests.get(
+            f"http://127.0.0.1:8000/classes/{class_id}/subjects"
+            )
+            subjects = res.json()
+            self.subject_map = {
+            s["subject_name"]: s["subject_id"] for s in subjects
+            }
+
+            subject_cb["values"] = list(self.subject_map.keys())
+            subject_cb.config(state="readonly")
+
+        class_var.trace_add("write", on_class_change)
+
+        # ---------- LOAD STUDENTS ----------
+        def load_students(*args):
+            tree.delete(*tree.get_children())
+            marks_entries.clear()
+  
+            class_id = self.class_map.get(class_var.get())
+            if not class_id:
+                return
+
+            res = requests.get(
+            f"http://127.0.0.1:8000/classes/{class_id}/students"
+            )
+            students = res.json()
+ 
+            for s in students:
+                iid = tree.insert(
+                "",
+                "end",
+                values=(s["student_id"], s["student_name"], "")
+                )
+                marks_entries[iid] = tk.StringVar()
+
+        subject_var.trace_add("write", load_students)
+
+        # ---------- SUBMIT ----------
+        submit_btn = tk.Label(
+        self.content,
+        text="Submit Marks",
+        font=("Arial", 16, "bold"),
+        bg="#000000",
+        fg="white",
+        padx=25,
+        pady=12,
+        cursor="hand2"
+        )
+        submit_btn.pack(pady=10)
+
+        def submit_bulk():
+            try:
+                payload = {
+                "class_id": self.class_map[class_var.get()],
+                "subject_id": self.subject_map[subject_var.get()],
+                "exam_id": self.exam_map[exam_var.get()],
+                "max_marks": float(max_marks_var.get()),
+                "marks": []
+            }
+
+                for iid in tree.get_children():
+                    student_id = int(tree.item(iid)["values"][0])
+                    marks = tree.item(iid)["values"][2]
+
+                    if marks == "":
+                        continue
+
+                    payload["marks"].append({
+                    "student_id": student_id,
+                    "marks_obtained": float(marks)
+                    })
+
+                res = requests.post(
+                "http://127.0.0.1:8000/teacher/results/marks/add-bulk",
+                json=payload
+            )
+
+                if res.status_code == 201:
+                    self.show_popup("Success", "Marks entered successfully!", "info")
+                    self.change_screen("Marks Added", add_callback=self.load_bulk_marks_entry_screen)
+                    return
+
+                self.show_popup("Error", res.text, "error")
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")
+
+        submit_btn.bind("<Button-1>", lambda e: submit_bulk())
+
+        # ---------- BACK ----------
+        back_row = tk.Frame(self.content, bg="#ECF0F1")
+        back_row.pack(pady=10)
+
+        self.create_back_button(back_row, self.load_dashboard, form_frame=form) 
+
+
+    # ===================================================================
+    #----- Button to Update marks of a student -----
+    def load_update_student_marks_screen(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Update Student Marks",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=10)
+
+        from tkinter.ttk import Combobox
+
+        # ---------- VARIABLES ----------
+        self.update_vars = {
+        "class": tk.StringVar(),
+        "subject": tk.StringVar(),
+        "exam": tk.StringVar(),
+        "student": tk.StringVar(),
+        "marks_obtained": tk.StringVar(),
+        "max_marks": tk.StringVar(),
+        "remarks": tk.StringVar()}
+
+        # ---------- DROPDOWN DATA ----------
+        self.update_class_map = {}
+        self.update_subject_map = {}
+        self.update_exam_map = {}
+        self.update_student_map = {}  
+        self.update_marks_cache = {}
+
+        # ---------- CLASS ----------
+        tk.Label(form, text="Class:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=0, column=0, padx=10, pady=8, sticky="e")
+
+        classes = fetch_classes()
+        self.update_class_map = {
+        f"{c['class_name']} - {c['section']}": c["class_id"]
+        for c in classes}
+
+        class_cb = Combobox(
+        form,
+        textvariable=self.update_vars["class"],
+        values=list(self.update_class_map.keys()),
+        state="readonly",
+        width=26,
+        font=("Arial", 14))
+        class_cb.grid(row=0, column=1, padx=10, pady=8)
+
+        # ---------- SUBJECT ----------
+        tk.Label(form, text="Subject:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=1, column=0, padx=10, pady=8, sticky="e")
+
+        subject_cb = Combobox(
+        form,
+        textvariable=self.update_vars["subject"],
+        state="disabled",
+        width=26,
+        font=("Arial", 14))
+        subject_cb.grid(row=1, column=1, padx=10, pady=8)
+
+        # ---------- EXAM ----------
+        tk.Label(form, text="Exam:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=2, column=0, padx=10, pady=8, sticky="e")
+
+        exam_cb = Combobox(
+        form,
+        textvariable=self.update_vars["exam"],
+        state="disabled",
+        width=26,
+        font=("Arial", 14))
+        exam_cb.grid(row=2, column=1, padx=10, pady=8)
+
+        # ---------- STUDENT ----------
+        tk.Label(form, text="Student:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=3, column=0, padx=10, pady=8, sticky="e")
+
+        student_cb = Combobox(
+        form,
+        textvariable=self.update_vars["student"],
+        state="disabled",
+        width=26,
+        font=("Arial", 14))
+        student_cb.grid(row=3, column=1, padx=10, pady=8)
+
+        # ---------- MARKS ----------
+        tk.Label(form, text="Marks Obtained:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=4, column=0, padx=10, pady=8, sticky="e")
+
+        tk.Entry(
+        form,
+        textvariable=self.update_vars["marks_obtained"],
+        font=("Arial", 14),
+        width=28
+        ).grid(row=4, column=1, padx=10, pady=8)
+
+        tk.Label(form, text="Max Marks:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=5, column=0, padx=10, pady=8, sticky="e")
+
+        tk.Entry(
+        form,
+        textvariable=self.update_vars["max_marks"],
+        font=("Arial", 14),
+        width=28
+        ).grid(row=5, column=1, padx=10, pady=8)
+
+        tk.Label(form, text="Remarks:", font=("Arial", 14), bg="#ECF0F1")\
+        .grid(row=6, column=0, padx=10, pady=8, sticky="e")
+
+        tk.Entry(
+        form,
+        textvariable=self.update_vars["remarks"],
+        font=("Arial", 14),
+        width=28
+        ).grid(row=6, column=1, padx=10, pady=8)
+
+        # ---------- SUBMIT BUTTON ----------
+        submit_btn = tk.Label(
+        self.content,
+        text="Update Marks",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=25,
+        pady=12,
+        width=16,
+        cursor="arrow")
+        submit_btn.pack(pady=20)
+
+        def enable():
+            submit_btn.config(bg="#000", fg="white", cursor="hand2")
+            submit_btn.bind("<Button-1>", lambda e: submit_update())
+
+        def disable():
+            submit_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            submit_btn.unbind("<Button-1>")
+
+        disable()
+
+        def on_update_class_change(*args):
+            class_id = self.update_class_map.get(self.update_vars["class"].get())
+            if not class_id:
+                return
+
+            res = requests.get(
+            f"http://127.0.0.1:8000/classes/{class_id}/subjects")
+            if res.status_code != 200:
+                return
+
+            self.update_subject_map = {
+            s["subject_name"]: s["subject_id"] for s in res.json()}
+            subject_cb["values"] = list(self.update_subject_map.keys())
+            subject_cb.config(state="readonly")
+
+        def on_update_subject_change(*args):
+            subject_id = self.update_subject_map.get(self.update_vars["subject"].get())
+            if not subject_id:
+                return
+
+            exams = fetch_exams()  # should return list
+
+            self.update_exam_map = {
+                e["exam_name"]: e["exam_id"] for e in exams}
+
+            exam_cb["values"] = list(self.update_exam_map.keys())
+            exam_cb.config(state="readonly")
+
+        def on_update_exam_change(*args):
+            class_name = self.update_vars["class"].get()
+            subject_name = self.update_vars["subject"].get()
+            exam_name = self.update_vars["exam"].get()
+
+            if not class_name or not subject_name or not exam_name:
+                return
+
+            class_id = self.update_class_map[class_name]
+            subject_id = self.update_subject_map[subject_name]
+            exam_id = self.update_exam_map[exam_name]
+
+            url = (
+            "http://127.0.0.1:8000/teacher/results/marks/filter"
+            f"?class_id={class_id}&subject_id={subject_id}&exam_id={exam_id}")
+
+            res = requests.get(url)
+            if res.status_code != 200:
+                self.show_popup("Error", "No marks found", "warning")
+                return
+
+            data = res.json()
+
+            self.update_student_map = {
+                f"ID {r['student_id']}": r["mark_id"] for r in data
+            }
+
+            self.update_marks_cache = {
+                f"ID {r['student_id']}": r for r in data
+            }
+
+            student_cb["values"] = list(self.update_student_map.keys())
+            student_cb.config(state="readonly")
+
+        def on_student_select(*args):
+            key = self.update_vars["student"].get()
+
+            if not key or key not in self.update_marks_cache:
+                return
+
+            data = self.update_marks_cache[key]
+
+            self.update_vars["marks_obtained"].set(data["marks_obtained"])
+            self.update_vars["max_marks"].set(data["max_marks"])
+            self.update_vars["remarks"].set(data.get("remarks", ""))
+
+            enable()
+       
+        self.update_vars["student"].trace_add("write", on_student_select)
+        self.update_vars["class"].trace_add("write", on_update_class_change)
+        self.update_vars["subject"].trace_add("write", on_update_subject_change)
+        self.update_vars["exam"].trace_add("write", on_update_exam_change)
+
+        # ---------- SUBMIT ----------
+        def submit_update():
+            mark_id = self.update_student_map[self.update_vars["student"].get()]
+
+            if not self.update_vars["student"].get():
+                self.show_popup("Error", "Select a student", "warning")
+                return
+
+            if float(self.update_vars["marks_obtained"].get()) > float(self.update_vars["max_marks"].get()):
+                self.show_popup("Error", "Marks cannot exceed max marks", "warning")
+                return
+
+            payload = {
+            "marks_obtained": float(self.update_vars["marks_obtained"].get()),
+            "max_marks": float(self.update_vars["max_marks"].get()),
+            "remarks": self.update_vars["remarks"].get()}
+
+            import requests
+            res = requests.put(
+            f"http://127.0.0.1:8000/teacher/results/marks/{mark_id}",
+            json=payload)
+
+            if res.status_code == 200:
+                self.show_popup("Success", "Marks Updated Successfully!", "info")
+                self.change_screen("Marks Updated", add_callback=self.load_update_student_marks_screen)
+            else:
+                self.show_popup("Error", res.json().get("detail", "Update failed"), "error")
+
+    # ===================================================================
+    # ----- Button to View marks of a Student with Filters -----    
+    def load_view_student_marks_screen(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="View Student Marks",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=15)
+
+        from tkinter.ttk import Combobox
+
+        # ===== FILTER VARIABLES =====
+        self.marks_filter_vars = {
+        "exam_id": tk.StringVar(),
+        "student_id": tk.StringVar(),
+        "subject_id": tk.StringVar(),
+        "class_id": tk.StringVar()}
+
+        labels = [
+        ("Exam", "exam_id"),
+        ("Student ID", "student_id"),
+        ("Subject", "subject_id"),
+        ("Class", "class_id")]
+
+        # ===== FETCH DROPDOWN DATA =====
+        exams = fetch_exams()
+        subjects = fetch_subjects()
+        classes = fetch_classes()
+
+        exam_map = {e["exam_name"]: e["exam_id"] for e in exams}
+        subject_map = {s["subject_name"]: s["subject_id"] for s in subjects}
+        class_map = {
+        f"{c['class_name']} - {c['section']}": c["class_id"]
+        for c in classes}
+
+        dropdown_maps = {
+        "exam_id": exam_map,
+        "subject_id": subject_map,
+        "class_id": class_map}
+
+        # ===== FILTER INPUTS =====
+        for i, (label, key) in enumerate(labels):
+            tk.Label(
+            form,
+            text=f"{label}:",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=i, column=0, padx=10, pady=10, sticky="e")
+
+            if key in dropdown_maps:
+                entry = Combobox(
+                form,
+                textvariable=self.marks_filter_vars[key],
+                values=[""] + list(dropdown_maps[key].keys()),
+                state="readonly",
+                font=("Arial", 14),
+                width=25
+                )
+            else:
+                entry = tk.Entry(
+                form,
+                textvariable=self.marks_filter_vars[key],
+                font=("Arial", 14),
+                width=27
+                )
+
+            entry.grid(row=i, column=1, padx=10, pady=10)
+
+        # ===== BUTTONS =====
+        btn_frame = tk.Frame(self.content, bg="#ECF0F1")
+        btn_frame.pack(pady=15)
+
+        self.create_back_button(
+        parent=btn_frame,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
+
+        filter_btn = tk.Label(
+        self.content,
+        text="Filter Marks",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=25,
+        pady=10,
+        width=16,
+        cursor="arrow")
+        filter_btn.pack(pady=10)
+
+        # ===== TABLE =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        cols = (
+        "mark_id",
+        "student_id",
+        "subject_id",
+        "exam_id",
+        "marks_obtained",
+        "max_marks",
+        "is_pass",
+        "remarks"
+        )
+
+        tree = ttk.Treeview(
+        table_frame,
+        columns=cols,
+        show="headings",
+        yscrollcommand=y_scroll.set
+        )
+        tree.pack(fill="both", expand=True)
+        y_scroll.config(command=tree.yview)
+
+        for col in cols:
+            tree.heading(col, text=col.replace("_", " ").title())
+            tree.column(col, width=140, anchor="center")
+
+        # ===== ENABLE / DISABLE FILTER =====
+        def enable():
+            filter_btn.config(bg="#000", fg="white", cursor="hand2")
+            filter_btn.bind("<Enter>", lambda e: filter_btn.config(bg="#222"))
+            filter_btn.bind("<Leave>", lambda e: filter_btn.config(bg="#000"))
+            filter_btn.bind("<Button-1>", lambda e: fetch_marks())
+
+        def disable():
+            filter_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            filter_btn.unbind("<Enter>")
+            filter_btn.unbind("<Leave>")
+            filter_btn.unbind("<Button-1>")
+
+        disable()
+
+        def validate(*args):
+            # At least one filter must be filled
+            for v in self.marks_filter_vars.values():
+                if v.get().strip():
+                    enable()
+                    return
+            disable()
+
+        for v in self.marks_filter_vars.values():
+            v.trace_add("write", validate)
+
+        # ===== FETCH MARKS =====
+        def fetch_marks():
+            params = []
+ 
+            if self.marks_filter_vars["exam_id"].get():
+                params.append(
+                f"exam_id={exam_map[self.marks_filter_vars['exam_id'].get()]}"
+                )
+
+            if self.marks_filter_vars["student_id"].get().isdigit():
+                params.append(f"student_id={self.marks_filter_vars['student_id'].get()}")
+
+            if self.marks_filter_vars["subject_id"].get():
+                params.append(
+                f"subject_id={subject_map[self.marks_filter_vars['subject_id'].get()]}"
+                )
+
+            if self.marks_filter_vars["class_id"].get():
+                params.append(
+                f"class_id={class_map[self.marks_filter_vars['class_id'].get()]}"
+                )
+
+            url = "http://127.0.0.1:8000/teacher/results/marks"
+            if params:
+                url += "?" + "&".join(params)
+
+            import requests
+            try:
+                res = requests.get(url)
+
+                for r in tree.get_children():
+                    tree.delete(r)
+
+                if res.status_code != 200:
+                    self.show_popup("No Data", "No marks found.", "info")
+                    return
+
+                for row in res.json():
+                    tree.insert("", "end", values=(
+                    row["mark_id"],
+                    row["student_id"],
+                    row["subject_id"],
+                    row["exam_id"],
+                    row["marks_obtained"],
+                    row["max_marks"],
+                    "PASS" if row["is_pass"] else "FAIL",
+                    row["remarks"]
+                ))
+
+            except Exception as e:
+                self.show_popup("Error", str(e), "error")        
+
+
+    # ===================================================================
     #-----Timetable Screen-----
     def load_teacher_timetable(self):
         self.clear_content()

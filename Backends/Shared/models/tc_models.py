@@ -12,6 +12,13 @@ class TransferCertificate(Base):
     student_id = mapped_column(Integer, ForeignKey("students_master.student_id"), nullable=False)
     issue_date = mapped_column(Date)
     reason = mapped_column(String(255))
+    # session
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
     remarks = mapped_column(String(255))
     is_active = mapped_column(Boolean, default=True)
     created_at = mapped_column(DateTime, server_default=func.now())

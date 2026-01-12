@@ -66,6 +66,13 @@ class StudentFee(Base):
         Enum(ChargeTrigger),
         nullable=False
         )
+    # session
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
     billing_period_start: Mapped[Date | None] = mapped_column(Date, nullable=True)
     billing_period_end: Mapped[Date | None] = mapped_column(Date, nullable=True)
 
@@ -123,6 +130,13 @@ class FeePayment(Base):
         Enum(PaymentSource),
         nullable=False
         )
+    # session
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
     billing_cycle: Mapped[Date | None] = mapped_column(Date, nullable=True)
     is_partial_payment: Mapped[bool] = mapped_column(Boolean, default=False)
     received_by: Mapped[PaymentReceivedBy] = mapped_column(
@@ -171,6 +185,13 @@ class FeeAudit(Base):
     source: Mapped[AuditSource] = mapped_column(
     Enum(AuditSource),
     default=AuditSource.UI
+    )
+    # session
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
     )
 
     ts: Mapped[DateTime] = mapped_column(DateTime, default=func.now())

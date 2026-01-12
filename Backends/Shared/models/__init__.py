@@ -1,6 +1,8 @@
 from Backends.Shared.models.students_master import StudentMaster
 from Backends.Shared.models.classes_master import ClassMaster
-from Backends.Shared.models.fees_models import StudentFee
+from Backends.Shared.models.fees_models import (
+    StudentFee, FeePayment, FeeAudit
+)
 from Backends.Shared.models.fees_master import FeeMaster
 from Backends.Shared.models.payment_method import PaymentMethod
 from Backends.Shared.models.teachers_master import TeacherMaster
@@ -34,3 +36,7 @@ from Backends.Shared.models.activity_models import ExtraCurricularActivity
 from Backends.Shared.models.credentials_models import StudentCredential
 from Backends.Shared.models.credentials_models import TeacherCredential
 from Backends.Shared.models.credentials_models import StaffCredential
+
+from Backends.Shared.models.role_master import RoleMaster
+from Backends.Shared.models.class_subjects_model import ClassSubject
+from Backends.Shared.models.academic_session import AcademicSession

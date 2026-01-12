@@ -32,6 +32,12 @@ class TeacherOnboarding(Base):
     subject_id: Mapped[int] = mapped_column(Integer, ForeignKey("subjects_master.subject_id"), nullable=False)
     qualification: Mapped[str] = mapped_column(String(120), nullable=True)
     experience_years: Mapped[int] = mapped_column(Integer, default=0)
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
 
     # meta
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())

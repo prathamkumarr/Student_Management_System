@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Date, Boolean
+from sqlalchemy import Integer, String, Date, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from Backends.Shared.base import Base
 
@@ -21,6 +21,13 @@ class TeacherMaster(Base):
     department: Mapped[str] = mapped_column(String(120), nullable=True)  
     qualification: Mapped[str] = mapped_column(String(120), nullable=True)
     experience_years: Mapped[int] = mapped_column(Integer, default=0)
+    # session
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
     # relationships

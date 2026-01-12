@@ -1,6 +1,6 @@
 # Backends/Shared/models/staff_master.py
 
-from sqlalchemy import Integer, String, Date, Boolean
+from sqlalchemy import Integer, String, Date, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from Backends.Shared.base import Base
 
@@ -20,6 +20,13 @@ class StaffMaster(Base):
     phone: Mapped[str] = mapped_column(String(20), unique=True, nullable=True)
     
     experience_years: Mapped[int] = mapped_column(Integer, default=0)
+    # session
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
 
     # relationships
     separation_ref = relationship("StaffSeparation", back_populates="staff")

@@ -12,10 +12,13 @@ from Backends.Shared.schemas.staff_separation_schemas import (
 )
 from Backends.Shared.models.credentials_models import StaffCredential
 from Backends.Shared.enums.separation_enums import SeparationStatus
+from Backends.Shared.dependencies.session_context import get_current_session
+from Backends.Shared.models.academic_session import AcademicSession
 
 router = APIRouter(
     prefix="/admin/staff/separation",
-    tags=["staff Separation"]
+    tags=["staff Separation"],
+    dependencies=[Depends(get_current_session)]
 )
 
 # endpoint to issue separation
@@ -76,7 +79,10 @@ def get_separation(sep_id: int, db: Session = Depends(get_db)):
 
 # endpoint to approve separation
 @router.post("/approve/{sep_id}")
-def approve_separation(sep_id: int, db: Session = Depends(get_db)):
+def approve_separation(
+    sep_id: int, db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
+):
 
     sep = (
         db.query(StaffSeparation)
@@ -119,6 +125,7 @@ def approve_separation(sep_id: int, db: Session = Depends(get_db)):
         # update separation
         sep.status = SeparationStatus.APPROVED
         sep.approved_at = datetime.now(timezone.utc)
+        sep.academic_session_id = session.session_id
 
         db.commit()
 

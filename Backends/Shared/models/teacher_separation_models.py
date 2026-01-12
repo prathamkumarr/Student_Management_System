@@ -28,6 +28,12 @@ class TeacherSeparation(Base):
 
     approved_at = mapped_column(DateTime, nullable=True)
     rejected_at = mapped_column(DateTime, nullable=True)
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
 
     created_at = mapped_column(
         DateTime,

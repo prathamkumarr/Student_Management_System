@@ -1,196 +1,236 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import List
+from sqlalchemy.exc import IntegrityError
 
 from Backends.Shared.connection import get_db
 from Backends.Shared.schemas.attendance_schemas import (
-    MarkAttendanceBulk, MarkAttendanceItem, AttendanceFilter,
-    UpdateAttendanceItem, AttendanceOut,
-    StudentAttendanceResponse, AttendanceSummary,
-    TeacherAttendanceCreate, TeacherAttendanceSummary,
+    MarkAttendanceBulk,
+    MarkAttendanceItem,
+    AttendanceFilter,
+    UpdateAttendanceItem,
+    AttendanceOut,
+    StudentAttendanceResponse,
+    AttendanceSummary,
+    TeacherAttendanceCreate,
     TeacherAttendanceResponse,
 )
+from Backends.Shared.models.students_master import StudentMaster
+from Backends.Shared.models.subjects_master import SubjectMaster
 from Backends.Shared.models.teacher_attendance_models import TeacherAttendance
 from Backends.Shared.models.teachers_master import TeacherMaster
 from Backends.Shared.models.attendance_models import AttendanceRecord
+from Backends.Shared.enums.attendance_enums import AttendanceStatus
+from Backends.Shared.models.class_subjects_model import ClassSubject
+from Backends.Shared.dependencies.session_context import get_current_session
+from Backends.Shared.models.academic_session import AcademicSession
 
-router = APIRouter(prefix="/teacher/attendance", tags=["Teacher Attendance Management"])
+router = APIRouter(
+    prefix="/teacher/attendance",
+    tags=["Teacher Attendance Management"],
+    dependencies=[Depends(get_current_session)]
+)
 
-# ----STUDENT ATTENDANCE----
-# endpoint for marking attendance indiviually
+# =====================================================
+# STUDENT ATTENDANCE
+# =====================================================
+
 @router.post("/student/mark", status_code=201)
-def mark_attendance(attendance: MarkAttendanceItem, db: Session = Depends(get_db)):
-    
-    student = db.execute(
-        text("SELECT full_name, is_active FROM students_master WHERE student_id = :sid"),
-        {"sid": attendance.student_id}
-    ).fetchone()
+def mark_attendance(
+    payload: MarkAttendanceItem, db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
+):
+
+    student = db.query(StudentMaster).filter(
+        StudentMaster.student_id == payload.student_id
+        ).first()
 
     if not student:
-        raise HTTPException(status_code=404, detail=f"Student ID {attendance.student_id} not found")
+        raise HTTPException(404, "Student not found")
 
-    if student[1] == 0:  # 0 = inactive
+    if not student.is_active:
         raise HTTPException(
-            status_code=400,
-            detail=f"Attendance cannot be marked — Student {attendance.student_id} has been issued a TC"
+        status_code=400,
+        detail="Attendance cannot be marked — student is inactive"
         )
 
-    # Checking subject existence
-    subject = db.execute(
-        text("SELECT subject_name FROM subjects_master WHERE subject_id = :subid"),
-        {"subid": attendance.subject_id}
-    ).fetchone()
-    if not subject:
-        raise HTTPException(status_code=404, detail=f"Subject ID {attendance.subject_id} not found")
+    subject = db.query(SubjectMaster).filter(
+        SubjectMaster.subject_id == payload.subject_id
+        ).first()
 
-    # Checking for existing attendance
+    if not subject:
+        raise HTTPException(404, "Subject not found")
+    
+    exists = db.query(ClassSubject).filter(
+        ClassSubject.class_id == student.class_id,
+        ClassSubject.subject_id == payload.subject_id,
+        ClassSubject.is_active == True
+    ).first()
+
+    if not exists:
+        raise HTTPException(
+        status_code=400,
+        detail="Subject not assigned to student's class"
+        )
+    student = db.get(StudentMaster, payload.student_id)
+    if not student:
+        raise HTTPException(404, "Student not found")
+
     existing = db.query(AttendanceRecord).filter(
-        AttendanceRecord.student_id == attendance.student_id,
-        AttendanceRecord.subject_id == attendance.subject_id,
-        AttendanceRecord.class_id == attendance.class_id,
-        AttendanceRecord.lecture_date == attendance.lecture_date
+        AttendanceRecord.student_id == payload.student_id,
+        AttendanceRecord.subject_id == payload.subject_id,
+        AttendanceRecord.class_id == student.class_id,
+        AttendanceRecord.lecture_date == payload.lecture_date
     ).one_or_none()
 
     if existing:
         raise HTTPException(
             status_code=400,
-            detail=f"Attendance already marked for student {attendance.student_id} on {attendance.lecture_date}"
+            detail="Attendance already marked for this lecture"
         )
 
-    # Insert new attendance record
-    new_record = AttendanceRecord(
-        student_id=attendance.student_id,
-        subject_id=attendance.subject_id,
-        class_id=attendance.class_id,
-        lecture_date=attendance.lecture_date,
-        status=attendance.status,
-        remarks=attendance.remarks,
-        student_name=student.full_name,  # or student[0]
-        subject_name=subject[0]
+    record = AttendanceRecord(
+        student_id=payload.student_id,
+        subject_id=payload.subject_id,
+        class_id=student.class_id,
+        teacher_id=payload.teacher_id,
+        lecture_date=payload.lecture_date,
+        status=AttendanceStatus(payload.status),
+        remarks=payload.remarks,
+        academic_session_id=session.session_id
     )
 
-    db.add(new_record)
-    db.commit()
-    db.refresh(new_record)
+    db.add(record)
 
-    return {
-        "id": new_record.attendance_id,
-        "student_id": new_record.student_id,
-        "student_name": new_record.student_name,
-        "subject_id": new_record.subject_id,
-        "subject_name": new_record.subject_name,
-        "date": new_record.lecture_date,
-        "status": new_record.status,
-        "remarks": new_record.remarks
-    }
-
-# endpoint for marking attendance in bulk 
-@router.post("/student/mark-bulk", status_code=201)
-def mark_bulk(payload: MarkAttendanceBulk, db: Session = Depends(get_db)):
-
-    # Parse absent IDs
     try:
-        absentees = [
-            int(x.strip()) for x in payload.absent_ids.split(",") if x.strip()
-        ]
-    except:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
         raise HTTPException(
-            status_code=400,
-            detail="Absent IDs must be comma-separated numbers"
+        status_code=400,
+        detail="Attendance already marked for this lecture")
+
+    db.refresh(record)
+
+    return record
+
+
+# -----------------------------------------------------
+
+@router.post("/student/mark-bulk", status_code=201)
+def mark_bulk(
+    payload: MarkAttendanceBulk, db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
+):
+
+    absentees = payload.absent_ids
+
+    students = db.query(StudentMaster).filter(
+        StudentMaster.class_id == payload.class_id
+        ).all()
+
+    if not students:
+        raise HTTPException(404, "No students found for this class")
+    
+    subject = db.query(SubjectMaster).filter(
+        SubjectMaster.subject_id == payload.subject_id
+        ).first()
+
+    if not subject:
+        raise HTTPException(404, "Subject not found")
+    
+    exists = db.query(ClassSubject).filter(
+        ClassSubject.class_id == payload.class_id,
+        ClassSubject.subject_id == payload.subject_id,
+        ClassSubject.is_active == True
+    ).first()
+
+    if not exists:
+        raise HTTPException(
+        status_code=400,
+        detail="Subject not assigned to student's class"
         )
-
-    class_id = payload.class_id
-    subject_id = payload.subject_id
-    lecture_date = payload.lecture_date
-
-    # Fetch subject name
-    subject_row = db.execute(
-        text("SELECT subject_name FROM subjects_master WHERE subject_id = :sid"),
-        {"sid": subject_id}
-    ).fetchone()
-
-    if not subject_row:
-        raise HTTPException(status_code=404, detail="Subject not found")
-
-    subject_name = subject_row[0]
-
-    # Fetch all students of this class including is_active
-    student_data = db.execute(
-        text("""
-            SELECT student_id, full_name, is_active 
-            FROM students_master 
-            WHERE class_id = :cid
-        """),
-        {"cid": class_id}
-    ).fetchall()
-
-    if not student_data:
-        raise HTTPException(status_code=404, detail="No students found for this class")
-
+    
     processed = 0
 
-    for sid, student_name, is_active in student_data:
-
-        # Skip if student has TC (inactive)
-        if is_active == 0:
+    for student in students:
+        if not student.is_active:
             continue
 
-        status = "A" if sid in absentees else "P"
-        remarks = "Absent" if sid in absentees else "Present"
+        student_id = student.student_id
 
-        existing = db.query(AttendanceRecord).filter(
-            AttendanceRecord.student_id == sid,
-            AttendanceRecord.class_id == class_id,
-            AttendanceRecord.subject_id == subject_id,
-            AttendanceRecord.lecture_date == lecture_date
+        status = (AttendanceStatus.A if student_id in absentees else AttendanceStatus.P)
+
+        remarks = ("Absent" if status == AttendanceStatus.A else "Present")
+
+        record = db.query(AttendanceRecord).filter(
+            AttendanceRecord.student_id == student_id,
+            AttendanceRecord.subject_id == payload.subject_id,
+            AttendanceRecord.class_id == payload.class_id,
+            AttendanceRecord.lecture_date == payload.lecture_date
         ).one_or_none()
 
-        if existing:
-            existing.status = status
-            existing.remarks = remarks
-            existing.subject_name = subject_name
-            existing.student_name = student_name
+        if record:
+            record.status = status
+            record.remarks = remarks
         else:
             db.add(AttendanceRecord(
-                student_id=sid,
-                student_name=student_name,
-                subject_id=subject_id,
-                subject_name=subject_name,
-                class_id=class_id,
-                lecture_date=lecture_date,
+                student_id=student_id,
+                subject_id=payload.subject_id,
+                class_id=payload.class_id,
+                teacher_id=payload.teacher_id,
+                lecture_date=payload.lecture_date,
                 status=status,
+                academic_session_id=session.session_id,
                 remarks=remarks
             ))
 
         processed += 1
 
-    db.commit()
+    
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+        status_code=400,
+        detail="Some attendance records were already marked"
+        )
+    return {"message": f"{processed} attendance records processed"}
 
-    msg = f"{processed} attendance records processed"
 
-    return {"message": msg}
+# =====================================================
+# VIEW / UPDATE / DELETE
+# =====================================================
 
-
-# endpoint to view attendance of a student using attendance_id
 @router.get("/student/{attendance_id}", response_model=StudentAttendanceResponse)
 def get_student_attendance(attendance_id: int, db: Session = Depends(get_db)):
-    record = db.query(AttendanceRecord).filter(AttendanceRecord.attendance_id == attendance_id).first()
+    record = db.query(AttendanceRecord).filter(
+        AttendanceRecord.attendance_id == attendance_id
+    ).first()
+
     if not record:
-        raise HTTPException(status_code=404, detail="Student attendance record not found")
+        raise HTTPException(404, "Attendance record not found")
+
     return record
 
 
-# endpoint to update any students attendance using attendance_id 
 @router.put("/student/update/{attendance_id}", response_model=StudentAttendanceResponse)
-def update_student_attendance(attendance_id: int, payload: UpdateAttendanceItem, db: Session = Depends(get_db)):
-    record = db.query(AttendanceRecord).filter(AttendanceRecord.attendance_id == attendance_id).first()
-    
-    if not record:
-        raise HTTPException(status_code=404, detail="Student attendance not found")
+def update_student_attendance(
+    attendance_id: int,
+    payload: UpdateAttendanceItem,
+    db: Session = Depends(get_db)
+):
+    record = db.query(AttendanceRecord).filter(
+        AttendanceRecord.attendance_id == attendance_id
+    ).first()
 
-    for key, value in payload.model_dump().items():
+    if not record:
+        raise HTTPException(404, "Attendance record not found")
+
+    for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(record, key, value)
 
     db.commit()
@@ -198,90 +238,163 @@ def update_student_attendance(attendance_id: int, payload: UpdateAttendanceItem,
     return record
 
 
-# endpoint to delete any attendance of a student
-@router.delete("/student/delete/{attendance_id}", status_code=204)
-def delete_attendance(attendance_id: int, db: Session = Depends(get_db)):
-    rec = db.query(AttendanceRecord).get(attendance_id)
-    if not rec:
-        raise HTTPException(status_code=404, detail="Record not found")
-    db.delete(rec)
+# endpoint to delete attendance of any student using attendance_id
+@router.delete("/student/delete/{attendance_id}")
+def delete_student_attendance(attendance_id: int, db: Session = Depends(get_db)):
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.attendance_id == attendance_id,
+                                               AttendanceRecord.is_active == True
+                                            ).first()
+
+    if not record:
+        raise HTTPException(status_code=404, detail="Student attendance not found")
+
+    record.is_active = False
+
     db.commit()
-    return {"message": "Attendance record deleted successfully"}
+    return {"message": "Student attendance deleted"}
 
-# ----TEACHER's OWN ATTENDANCE----
-# endpoint for teacher to mark self attendance
+
+# =====================================================
+# TEACHER SELF ATTENDANCE
+# =====================================================
+
 @router.post("/mark-self", response_model=TeacherAttendanceResponse, status_code=status.HTTP_201_CREATED)
-def mark_teacher_attendance(payload: TeacherAttendanceCreate, db: Session = Depends(get_db)):
-    # Verify teacher
-    teacher = db.query(TeacherMaster).filter_by(teacher_id=payload.teacher_id).first()
-    if not teacher:
-        raise HTTPException(status_code=404, detail=f"Teacher ID {payload.teacher_id} not found")
+def mark_teacher_attendance(
+    payload: TeacherAttendanceCreate, db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
+):
+    teacher = db.query(TeacherMaster).filter(
+        TeacherMaster.teacher_id == payload.teacher_id
+    ).first()
 
-    # Prevent duplicate entry
+    if not teacher:
+        raise HTTPException(404, "Teacher not found")
+
+    if not teacher.is_active:
+        raise HTTPException(
+            status_code=400,
+            detail="Attendance cannot be marked — teacher is inactive"
+        )
     existing = db.query(TeacherAttendance).filter(
         TeacherAttendance.teacher_id == payload.teacher_id,
         TeacherAttendance.date == payload.date
     ).first()
 
     if existing:
-        raise HTTPException(status_code=400, detail="Attendance already marked for this date")
+        raise HTTPException(
+        status_code=400,
+        detail="Attendance already marked for today"
+    )
 
-    new_attendance = TeacherAttendance(
+    record = TeacherAttendance(
         teacher_id=payload.teacher_id,
         date=payload.date,
-        check_in=payload.check_in or datetime.now(),
+        check_in = datetime.now(timezone.utc),
         status=payload.status,
+        academic_session_id=session.session_id,
         remarks=payload.remarks
     )
 
-    db.add(new_attendance)
+    db.add(record)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Attendance already marked"
+        )
+
+    db.refresh(record)
+    return record
+
+
+@router.put("/check-out/{record_id}", response_model=TeacherAttendanceResponse)
+def teacher_check_out(record_id: int, db: Session = Depends(get_db)):
+    record = db.query(TeacherAttendance).filter(
+        TeacherAttendance.record_id == record_id,
+        TeacherAttendance.is_active == True
+    ).first()
+
+    if not record:
+        raise HTTPException(404, "Attendance record not found")
+
+    if record.check_out:
+        raise HTTPException(400, "Already checked out")
+
+    record.check_out = datetime.now()
+
+    if (
+        record.status == AttendanceStatus.P
+        and record.check_out.date() > record.date
+    ):
+        record.status = AttendanceStatus.L   # Late
+
     db.commit()
-    db.refresh(new_attendance)
-    return new_attendance
+    db.refresh(record)
+    return record
 
 
-# ----FETCH ATTENDANCE RECORDS----
-# endpoint to view student's attendance records(all)
-@router.get("/students/attendance", response_model=list[StudentAttendanceResponse])
-def get_all_student_attendance(db: Session = Depends(get_db)):
-    records = db.query(AttendanceRecord).all()
-    return records
+# ----------------------------------------------------
+@router.get("/today/{teacher_id}")
+def get_today_attendance(teacher_id: int, db: Session = Depends(get_db)):
+    today = date.today()
 
-# endpoint to view student's attendance records(using date filters)
+    record = db.query(TeacherAttendance).filter(
+        TeacherAttendance.teacher_id == teacher_id,
+        TeacherAttendance.date == today,
+        TeacherAttendance.is_active == True
+    ).first()
+
+    if not record:
+        raise HTTPException(404, "Attendance not marked")
+
+    return {
+        "record_id": record.record_id,
+        "status": record.status,
+        "check_out": record.check_out
+    }
+
+
+# =====================================================
+# REPORTS
+# =====================================================
+
 @router.post("/student/by-date", response_model=List[AttendanceOut])
 def get_by_student(filter: AttendanceFilter, db: Session = Depends(get_db)):
     q = db.query(AttendanceRecord).filter(
         AttendanceRecord.student_id == filter.student_id,
-        AttendanceRecord.lecture_date.between(filter.date_from, filter.date_to)
+        AttendanceRecord.lecture_date.between(
+            filter.date_from, filter.date_to
+        ),
+        AttendanceRecord.is_active == True
     )
+
     if filter.subject_id:
         q = q.filter(AttendanceRecord.subject_id == filter.subject_id)
-    recs = q.order_by(AttendanceRecord.lecture_date.asc()).all()
 
-    return [
-        AttendanceOut(
-            attendance_id=r.attendance_id,
-            student_id=r.student_id,
-            subject_id=r.subject_id,
-            class_id=r.class_id,
-            lecture_date=r.lecture_date,
-            status=r.status,
-            remarks=r.remarks
-        )
-        for r in recs
-    ]
+    return q.order_by(AttendanceRecord.lecture_date).all()
 
-# endpoint to see summary of attendance of a student using filters
+
 @router.get("/student/summary/{student_id}", response_model=AttendanceSummary)
-def summary(student_id: int, date_from: date, date_to: date, db: Session = Depends(get_db)):
+def summary(
+    student_id: int,
+    date_from: date,
+    date_to: date,
+    db: Session = Depends(get_db)
+):
     q = db.query(AttendanceRecord).filter(
         AttendanceRecord.student_id == student_id,
         AttendanceRecord.lecture_date.between(date_from, date_to)
     )
+
     total = q.count()
     present = q.filter(AttendanceRecord.status == "P").count()
     absent = q.filter(AttendanceRecord.status == "A").count()
     late = q.filter(AttendanceRecord.status == "L").count()
+    leave = q.filter(AttendanceRecord.status == "LE").count()
+
     percentage = round((present / total) * 100, 2) if total else 0.0
 
     return AttendanceSummary(
@@ -290,49 +403,106 @@ def summary(student_id: int, date_from: date, date_to: date, db: Session = Depen
         present=present,
         absent=absent,
         late=late,
-        percentage=percentage
-    )
-
-# ----SELF RECORDS----
-# ----SELF FILTERED ATTENDANCE (DATE RANGE)----
-@router.get("/self/{teacher_id}", response_model=list[TeacherAttendanceResponse])
-def get_teacher_attendance_filtered(
-    teacher_id: int,
-    date_from: date,
-    date_to: date,
-    db: Session = Depends(get_db)
-    ):
-    records = (
-        db.query(TeacherAttendance)
-        .filter(
-            TeacherAttendance.teacher_id == teacher_id,
-            TeacherAttendance.date.between(date_from, date_to)
-        )
-        .order_by(TeacherAttendance.date.asc())
-        .all()
-    )
-    return records
-
-# endpoint to view summary of a teacher's attendance using filters
-@router.get("/summary/{teacher_id}", response_model=TeacherAttendanceSummary)
-def teacher_summary(teacher_id: int, date_from: date, date_to: date, db: Session = Depends(get_db)):
-    q = db.query(TeacherAttendance).filter(
-        TeacherAttendance.teacher_id == teacher_id,
-        TeacherAttendance.date.between(date_from, date_to)
-    )
-
-    total = q.count()
-    present = q.filter(TeacherAttendance.status == "P").count()
-    absent = q.filter(TeacherAttendance.status == "A").count()
-    leave = q.filter(TeacherAttendance.status == "L").count()
-
-    percentage = round((present / total) * 100, 2) if total else 0.0
-
-    return TeacherAttendanceSummary(
-        teacher_id=teacher_id,
-        total_days=total,
-        present=present,
-        absent=absent,
         leave=leave,
         percentage=percentage
     )
+
+
+# =====================================================
+# SELF REPORTS
+# =====================================================
+@router.get("/self/{teacher_id}")
+def get_teacher_attendance_range(
+    teacher_id: int,
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    db: Session = Depends(get_db)
+):
+    # ---- validate teacher ----
+    teacher = db.query(TeacherMaster).filter(
+        TeacherMaster.teacher_id == teacher_id
+    ).first()
+
+    if not teacher:
+        raise HTTPException(
+            status_code=404,
+            detail="Teacher not found"
+        )
+
+    if date_from > date_to:
+        raise HTTPException(
+            status_code=400,
+            detail="date_from cannot be after date_to"
+        )
+
+    records = db.query(TeacherAttendance).filter(
+        TeacherAttendance.teacher_id == teacher_id,
+        TeacherAttendance.date >= date_from,
+        TeacherAttendance.date <= date_to,
+        TeacherAttendance.is_active == True
+    ).order_by(TeacherAttendance.date.asc()).all()
+
+    if not records:
+        raise HTTPException(
+            status_code=404,
+            detail="No attendance records found for given date range"
+        )
+
+    return records
+
+
+@router.get("/summary/{teacher_id}")
+def get_teacher_attendance_summary(
+    teacher_id: int,
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    db: Session = Depends(get_db)
+):
+    # ---- validate teacher ----
+    teacher = db.query(TeacherMaster).filter(
+        TeacherMaster.teacher_id == teacher_id
+    ).first()
+
+    if not teacher:
+        raise HTTPException(
+            status_code=404,
+            detail="Teacher not found"
+        )
+
+    if date_from > date_to:
+        raise HTTPException(
+            status_code=400,
+            detail="date_from cannot be after date_to"
+        )
+
+    # ---- base query ----
+    records = db.query(TeacherAttendance).filter(
+        TeacherAttendance.teacher_id == teacher_id,
+        TeacherAttendance.date >= date_from,
+        TeacherAttendance.date <= date_to,
+        TeacherAttendance.is_active == True
+    ).all()
+
+    if not records:
+        raise HTTPException(
+            status_code=404,
+            detail="No attendance records found for given date range"
+        )
+
+    # ---- summary counts ----
+    total_days = len(records)
+    present = sum(1 for r in records if r.status == AttendanceStatus.P)
+    absent = sum(1 for r in records if r.status == AttendanceStatus.A)
+    late = sum(1 for r in records if r.status == AttendanceStatus.L)
+    leave = sum(1 for r in records if r.status == AttendanceStatus.LE)
+
+    return {
+        "teacher_id": teacher_id,
+        "date_from": date_from,
+        "date_to": date_to,
+        "total_days": total_days,
+        "present_days": present,
+        "absent_days": absent,
+        "late_days": late,
+        "leave_days": leave
+    }

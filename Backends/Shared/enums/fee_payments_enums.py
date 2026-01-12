@@ -1,10 +1,10 @@
 from enum import Enum
 
 class FeePaymentStatus(str, Enum):
-    INITIATED = "initiated"
-    SUCCESS = "success"
-    FAILED = "failed"
-    REFUNDED = "refunded"
+    INITIATED = "INITIATED"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    REFUNDED = "REFUNDED"
 
 class PaymentSource(str, Enum):
     STUDENT = "STUDENT"

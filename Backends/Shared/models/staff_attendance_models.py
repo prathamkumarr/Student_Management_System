@@ -15,6 +15,12 @@ class StaffAttendance(Base):
     check_in: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     check_out: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     status = mapped_column(Enum(AttendanceStatus), nullable=False)
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
     remarks: Mapped[str] = mapped_column(String(255), nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
     updated_at:Mapped[DateTime] = mapped_column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())

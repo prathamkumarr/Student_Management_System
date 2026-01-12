@@ -21,6 +21,13 @@ class StudentMarks(Base):
 
     marks_obtained = mapped_column(Numeric(6, 2))
     max_marks = mapped_column(Float, nullable=False)
+    # session
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
 
     remarks = mapped_column(String(255))
 

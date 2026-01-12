@@ -6,37 +6,69 @@ from Backends.Shared.models.credentials_models import (
     TeacherCredential,
     StaffCredential
 )
+from Backends.Shared.models.role_master import RoleMaster
 
 router = APIRouter(prefix="/auth", tags=["Login"])
 
-@router.post("/login")
+
+@router.post("/login", response_model=None)
 def login(email: str, password: str, db: Session = Depends(get_db)):
 
-    # Student Login
-    stu = db.query(StudentCredential).filter_by(
-        login_email=email,
-        login_password=password
-    ).first()
+    # ---------- STUDENT ----------
+    stu = (
+        db.query(StudentCredential, RoleMaster)
+        .join(RoleMaster, StudentCredential.role_id == RoleMaster.role_id)
+        .filter(
+            StudentCredential.login_email == email,
+            StudentCredential.login_password == password,
+            StudentCredential.is_active == True
+        )
+        .first()
+    )
 
     if stu:
-        return {"role": "student", "id": stu.student_id}
+        student, role = stu
+        return {
+            "user_id": student.student_id,
+            "role": role.role_name
+        }
 
-    # Teacher Login
-    t = db.query(TeacherCredential).filter_by(
-        login_email=email,
-        login_password=password
-    ).first()
+    # ---------- TEACHER ----------
+    teacher = (
+        db.query(TeacherCredential, RoleMaster)
+        .join(RoleMaster, TeacherCredential.role_id == RoleMaster.role_id)
+        .filter(
+            TeacherCredential.login_email == email,
+            TeacherCredential.login_password == password,
+            TeacherCredential.is_active == True
+        )
+        .first()
+    )
 
-    if t:
-        return {"role": "teacher", "id": t.teacher_id}
+    if teacher:
+        teacher_obj, role = teacher
+        return {
+            "user_id": teacher_obj.teacher_id,
+            "role": role.role_name
+        }
 
-    # Staff Login
-    st = db.query(StaffCredential).filter_by(
-        login_email=email,
-        login_password=password
-    ).first()
+    # ---------- STAFF ----------
+    staff = (
+        db.query(StaffCredential, RoleMaster)
+        .join(RoleMaster, StaffCredential.role_id == RoleMaster.role_id)
+        .filter(
+            StaffCredential.login_email == email,
+            StaffCredential.login_password == password,
+            StaffCredential.is_active == True
+        )
+        .first()
+    )
 
-    if st:
-        return {"role": "staff", "id": st.staff_id}
+    if staff:
+        staff_obj, role = staff
+        return {
+            "user_id": staff_obj.staff_id,
+            "role": role.role_name
+        }
 
-    raise HTTPException(status_code=401, detail="Invalid Login Credentials")
+    raise HTTPException(status_code=401, detail="Invalid login credentials")

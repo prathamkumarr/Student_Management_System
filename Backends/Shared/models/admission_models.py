@@ -81,6 +81,14 @@ class StudentAdmission(Base):
         nullable=True
     )
 
+    # session
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
+
     # -------------------------------
     # Meta
     # -------------------------------

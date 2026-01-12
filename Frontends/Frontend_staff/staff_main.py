@@ -123,6 +123,7 @@ class StaffUI:
         menu = tk.Menu(self.root, tearoff=0)
   
         menu.add_command(label="Mark Self Attendance", command=self.load_mark_self_attendance)
+        menu.add_command(label="Mark Check-Out", command=self.load_staff_check_out_screen)
         menu.add_command(label="View All Attendance", command=self.load_staff_attendance_filter)
         menu.add_command(label="Attendance Summary", command=self.load_staff_attendance_summary_screen)
 
@@ -399,41 +400,7 @@ class StaffUI:
         elif type == "confirm":
             return messagebox.askyesno(title, msg)
         else:
-            messagebox.showinfo(title, msg)
-
-
-    # ------ SCROLLABLE SCREEN WRAPPER -------
-    def create_scrollable_area(self):
-        # MAIN container (takes entire content area)
-        outer = tk.Frame(self.content, bg="#ECF0F1")
-        outer.pack(fill="both", expand=True)
-
-        # Canvas inside content
-        canvas = tk.Canvas(outer, bg="#ECF0F1", highlightthickness=0)
-        canvas.pack(side="left", fill="both", expand=True)
-
-        # Scrollbar
-        scrollbar = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
-        scrollbar.pack(side="right", fill="y")
-
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # Inner frame where all widgets go
-        inner = tk.Frame(canvas, bg="#ECF0F1")
-        canvas.create_window((0, 0), window=inner, anchor="n")
-
-        # *** CENTER THE SCREEN CONTENT ***
-        inner.grid_columnconfigure(0, weight=1)
-
-        # Resize scroll region
-        def update_scroll(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
-            canvas.itemconfig("inner_window", width=canvas.winfo_width())
-
-        canvas.bind("<Configure>", update_scroll)
-
-        return inner
-    
+            messagebox.showinfo(title, msg)    
 
     # ==========================================================================
     # ===== Button to Mark Self Attendance =====
@@ -453,7 +420,6 @@ class StaffUI:
         form.pack(pady=10)
 
         # ------- INPUTS -------
-        # Staff ID (auto-filled, not editable)
         tk.Label(
         form,
         text="Staff ID:",
@@ -484,21 +450,21 @@ class StaffUI:
         
         # Status dropdown
         tk.Label(
-    form,
-    text="Status (P/A/L):",
-    font=("Arial", 14),
-    bg="#ECF0F1"
-).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        form,
+        text="Status:",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=2, column=0, padx=10, pady=10, sticky="w")
 
         status_var = tk.StringVar()
         status_dropdown = ttk.Combobox(
-    form,
-    textvariable=status_var,
-    values=["P", "A", "L"],
-    state="readonly",
-    width=23,
-    font=("Arial", 14)
-)
+        form,
+        textvariable=status_var,
+        values=["P", "A", "L", "LE"],
+        state="readonly",
+        width=23,
+        font=("Arial", 14)
+        )
         status_dropdown.grid(row=2, column=1, padx=10, pady=10)
         status_dropdown.set("P")  # default
 
@@ -532,7 +498,7 @@ class StaffUI:
 
         # ------- ENABLE/DISABLE LOGIC -------
         def enable_btn():
-            mark_btn.config(bg="#000000", fg="white", cursor="arrow")
+            mark_btn.config(bg="#000000", fg="white", cursor="hand2")
             mark_btn.bind("<Enter>", lambda e: mark_btn.config(bg="#222222"))
             mark_btn.bind("<Leave>", lambda e: mark_btn.config(bg="#000000"))
             mark_btn.bind("<Button-1>", lambda e: perform_mark())
@@ -544,46 +510,22 @@ class StaffUI:
             mark_btn.unbind("<Button-1>")
 
         def validate(*args):
-            status_text = status_var.get().strip().lower()
-
-    # No status entered → disable
-            if not status_text:
+            if status_var.get() in ("P", "A", "L", "LE"):
+                enable_btn()
+            else:
                 disable_btn()
-                return
-
-    # Recognize status using startswith
-            if status_text.startswith("p"):
-                status_var.set("P")   # Normalize
-                enable_btn()
-                return
-
-            elif status_text.startswith("a"):
-                status_var.set("A")
-                enable_btn()
-                return
-
-            elif status_text.startswith("l"):
-                status_var.set("L")
-                enable_btn()
-                return
-
-    # If neither P/A/L matched → disable
-            disable_btn()
 
         status_var.trace_add("write", validate)
 
         # ------- API CALL FUNCTION -------
         def perform_mark():
-            from datetime import datetime
             import requests
 
             payload = {
-    "staff_id": int(staff_id_var.get().strip()),
-    "date": date_var.get().strip(),
-    "check_in": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
-    "status": status_var.get(),   # P / A / L
-    "remarks": "Self Attendance Marked"
-}
+            "staff_id": self.staff_id,
+            "date": date_var.get(),
+            "status": status_var.get(),
+            "remarks": "Self Attendance Marked"}
 
             try:
                 res = requests.post(
@@ -604,13 +546,173 @@ class StaffUI:
                     return
 
                 if res.status_code == 404:
-                    self.show_popup("Staff member Not Found", "Invalid Staff ID!", "error")
+                    self.show_popup("Staff Not Found", "Invalid Staff ID!", "error")
                     return
 
                 self.show_popup("Error", f"Unexpected Error: {res.text}", "error")
 
             except Exception as e:
                 self.show_popup("Backend Error", f"Error: {e}", "error")
+
+
+    # ==========================================================================
+    # ===== Button to Mark Check-Out =====            
+    def load_staff_check_out_screen(self):
+        self.clear_content()
+
+        # ---------- TITLE ----------
+        tk.Label(
+        self.content,
+        text="Staff Check-Out",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        form = tk.Frame(self.content, bg="#ECF0F1")
+        form.pack(pady=20)
+
+        tk.Label(
+        form, text="Staff ID:", font=("Arial", 14), bg="#ECF0F1"
+        ).grid(row=0, column=0, padx=10, pady=10, sticky="e")
+ 
+        staff_id_var = tk.StringVar(value=str(self.staff_id))
+        tk.Entry(
+        form, textvariable=staff_id_var,
+        font=("Arial", 14), width=25, state="readonly"
+        ).grid(row=0, column=1, padx=10, pady=10)
+
+        # ---------- Date ----------
+        from datetime import datetime
+        today = datetime.now().strftime("%Y-%m-%d")
+
+        tk.Label(
+        form, text="Date:", font=("Arial", 14), bg="#ECF0F1"
+        ).grid(row=1, column=0, padx=10, pady=10, sticky="e")
+   
+        date_var = tk.StringVar(value=today)
+        tk.Entry(
+        form, textvariable=date_var,
+        font=("Arial", 14), width=25, state="readonly"
+        ).grid(row=1, column=1, padx=10, pady=10)
+
+        # ---------- STATUS ----------
+        tk.Label(
+        form, text="Current Status:", font=("Arial", 14), bg="#ECF0F1"
+        ).grid(row=2, column=0, padx=10, pady=10, sticky="e")
+
+        status_var = tk.StringVar(value="Fetching...")
+        tk.Entry(
+        form, textvariable=status_var,
+        font=("Arial", 14), width=25, state="readonly"
+        ).grid(row=2, column=1, padx=10, pady=10)
+
+        self.content.update_idletasks()
+
+        # ---------- CHECK OUT BUTTON ----------
+        checkout_btn = tk.Label(
+        self.content,
+        text="Check Out",
+        font=("Arial", 16, "bold"),
+        bg="#D5D8DC",
+        fg="#AEB6BF",
+        padx=30,
+        pady=12,
+        width=14,
+        cursor="arrow")
+        checkout_btn.pack(pady=20)
+
+        def enable_btn():
+            checkout_btn.config(bg="#000000", fg="white", cursor="hand2")
+            checkout_btn.bind("<Enter>", lambda e: checkout_btn.config(bg="#222222"))
+            checkout_btn.bind("<Leave>", lambda e: checkout_btn.config(bg="#000000"))
+            checkout_btn.bind("<Button-1>", lambda e: do_checkout())
+
+        def disable_btn():
+            checkout_btn.config(bg="#D5D8DC", fg="#AEB6BF", cursor="arrow")
+            checkout_btn.unbind("<Enter>")
+            checkout_btn.unbind("<Leave>")
+            checkout_btn.unbind("<Button-1>")
+
+        disable_btn()
+
+        # ---------- FETCH TODAY ATTENDANCE ----------
+        def fetch_today_attendance():
+            import requests
+            try:
+                res = requests.get(
+                f"http://127.0.0.1:8000/staff/attendance/today/{self.staff_id}"
+                )
+
+                if res.status_code != 200:
+                    status_var.set("Not Marked")
+                    return
+
+                data = res.json()
+                self.today_record_id = data["record_id"]
+
+                if data["check_out"]:
+                    status_var.set("Checked Out")
+                    disable_btn()
+                else:
+                    status_var.set(data["status"])
+                    enable_btn()
+
+            except Exception as e:
+                status_var.set("Error")
+
+        fetch_today_attendance()
+
+        # ---------- CHECK OUT ----------
+        def do_checkout():
+            import requests
+            try:
+                res = requests.put(
+                f"http://127.0.0.1:8000/staff/attendance/check-out/{self.today_record_id}"
+                )
+
+                if res.status_code == 200:
+                    self.show_popup(
+                    "Success",
+                    "Check-out successful!",
+                    "info")
+                    self.change_screen(
+                        "Check-out successful!",
+                        add_callback=self.load_staff_check_out_screen
+                        )
+                    return
+
+                if res.status_code == 400:
+                    self.show_popup(
+                    "Already Checked Out",
+                    "You have already checked out.",
+                    "warning"
+                    )
+                    return
+
+                if res.status_code == 404:
+                    self.show_popup(
+                    "Not Found",
+                    "Attendance record not found.",
+                    "error"
+                    )
+                    disable_btn()
+                    return
+
+                self.show_popup("Error", res.text, "error")
+
+            except Exception as e:
+                self.show_popup("Backend Error", str(e), "error")
+
+        # ---------- BACK ----------
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(pady=10)
+
+        self.create_back_button(
+        parent=back_frame,
+        go_back_callback=self.load_dashboard,
+        form_frame=form
+        )
 
 
     # ==========================================================================
@@ -631,28 +733,54 @@ class StaffUI:
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
 
-        # Staff ID (readonly)
         tk.Label(form, text="Staff ID:", font=("Arial", 14), bg="#ECF0F1").grid(row=0, column=0, padx=10, pady=10)
         staff_id_var = tk.StringVar(value=str(self.staff_id))
         tk.Entry(form, textvariable=staff_id_var, font=("Arial", 14), width=25, state="readonly").grid(row=0, column=1)
 
         # Date From
-        tk.Label(form, text="Date From (YYYY-MM-DD):", font=("Arial", 14), bg="#ECF0F1").grid(row=1, column=0, padx=10)
-        date_from_var = tk.StringVar()
-        tk.Entry(form, textvariable=date_from_var, font=("Arial", 14), width=25).grid(row=1, column=1)
+        tk.Label(
+        form,
+        text="Date From (YYYY-MM-DD):",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=1, column=0, padx=10)
 
-        # Calendar button
+        date_from_var = tk.StringVar()
+
+        date_from_entry = tk.Entry(
+        form,
+        textvariable=date_from_var,
+        font=("Arial", 14),
+        width=25)
+        date_from_entry.grid(row=1, column=1)
+
         tk.Button(
-        form, text="Calendar", command=lambda: self.open_calendar_popup(form.grid_slaves(row=1, column=1)[0], date_from_var)
+        form,
+        text="Calendar",
+        command=lambda: self.open_calendar_popup(date_from_entry, date_from_var)
         ).grid(row=1, column=2, padx=5)
 
         # Date To
-        tk.Label(form, text="Date To (YYYY-MM-DD):", font=("Arial", 14), bg="#ECF0F1").grid(row=2, column=0, padx=10)
+        tk.Label(
+        form,
+        text="Date To (YYYY-MM-DD):",
+        font=("Arial", 14),
+        bg="#ECF0F1"
+        ).grid(row=2, column=0, padx=10)
+
         date_to_var = tk.StringVar()
-        tk.Entry(form, textvariable=date_to_var, font=("Arial", 14), width=25).grid(row=2, column=1)
+
+        date_to_entry = tk.Entry(
+        form,
+        textvariable=date_to_var,
+        font=("Arial", 14),
+        width=25)
+        date_to_entry.grid(row=2, column=1)
 
         tk.Button(
-        form, text="Calendar", command=lambda: self.open_calendar_popup(form.grid_slaves(row=2, column=1)[0], date_to_var)
+        form,
+        text="Calendar",
+        command=lambda: self.open_calendar_popup(date_to_entry, date_to_var)
         ).grid(row=2, column=2, padx=5)
 
         # ---------- FILTER BUTTON ----------
@@ -679,7 +807,7 @@ class StaffUI:
         )
 
         def enable_btn():
-            filter_btn.config(bg="#000000", fg="white", cursor="arrow")
+            filter_btn.config(bg="#000000", fg="white", cursor="hand2")
             filter_btn.bind("<Enter>", lambda e: filter_btn.config(bg="#222222"))
             filter_btn.bind("<Leave>", lambda e: filter_btn.config(bg="#000000"))
             filter_btn.bind("<Button-1>", lambda e: fetch_records())
@@ -706,6 +834,10 @@ class StaffUI:
             if not re.match(r, d1) or not re.match(r, d2):
                 disable_btn()
                 return
+            
+            if d1 > d2:
+                disable_btn()
+                return
 
             enable_btn()
 
@@ -727,17 +859,21 @@ class StaffUI:
 
         # ---------- FETCH FUNCTION ----------
         def fetch_records():
-            tid = staff_id_var.get()
+            import requests
+            sid = staff_id_var.get()
             d1 = date_from_var.get()
             d2 = date_to_var.get()
 
-            import requests
             try:
-                url = f"http://127.0.0.1:8000/staff/attendance/self/{tid}?date_from={d1}&date_to={d2}"
+                url = f"http://127.0.0.1:8000/staff/attendance/self/{sid}?date_from={d1}&date_to={d2}"
                 res = requests.get(url)
 
                 if res.status_code != 200:
                     self.show_popup("Error", "Could not fetch attendance!", "error")
+                    return
+                
+                if res.status_code == 404:
+                    self.show_popup("No Records", "No attendance found for selected dates.", "info")
                     return
 
                 rows = res.json()
@@ -749,11 +885,11 @@ class StaffUI:
                 # fill table
                 for r in rows:
                     tree.insert("", "end", values=(
-                    r["record_id"],
-                    r["date"],
-                    r["check_in"],
-                    r["status"],
-                    r["remarks"]
+                        r.get("record_id", ""),
+                        r.get("date", ""),
+                        r.get("check_in", ""),
+                        r.get("status", ""),
+                        r.get("remarks", "")
                     ))
 
             except Exception as e:
@@ -763,9 +899,6 @@ class StaffUI:
     # ===== Button to View Staff Attendance Summary =====
     def load_staff_attendance_summary_screen(self):
         self.clear_content()
-
-        import requests
-        import re
 
         # ---- TITLE ----
         tk.Label(
@@ -781,8 +914,6 @@ class StaffUI:
         form.pack(pady=10)
 
         # ====== FIELDS ======
-
-        # Staff ID
         tk.Label(
         form,
         text="Staff ID:",
@@ -804,41 +935,41 @@ class StaffUI:
 
         # Date From
         tk.Label(
-    form,
-    text="Date From (YYYY-MM-DD):",
-    font=("Arial", 14),
-    bg="#ECF0F1"
-    ).grid(row=1, column=0, padx=10, pady=10, sticky="w")
+            form,
+            text="Date From (YYYY-MM-DD):",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=1, column=0, padx=10, pady=10, sticky="w")
 
         date_from_var = tk.StringVar()
         date_from_entry = tk.Entry(form, textvariable=date_from_var, font=("Arial", 14), width=25)
         date_from_entry.grid(row=1, column=1, padx=10, pady=10)
 
-# Calendar button for Date From
+        # Calendar button for Date From
         tk.Button(
-    form,
-    text="Calendar",
-    command=lambda: self.open_calendar_popup(date_from_entry, date_from_var)
-).grid(row=1, column=2, padx=5)
+            form,
+            text="Calendar",
+            command=lambda: self.open_calendar_popup(date_from_entry, date_from_var)
+            ).grid(row=1, column=2, padx=5)
 
         # Date To
         tk.Label(
-    form,
-    text="Date To (YYYY-MM-DD):",
-    font=("Arial", 14),
-    bg="#ECF0F1"
-).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+            form,
+            text="Date To (YYYY-MM-DD):",
+            font=("Arial", 14),
+            bg="#ECF0F1"
+            ).grid(row=2, column=0, padx=10, pady=10, sticky="w")
 
         date_to_var = tk.StringVar()
         date_to_entry = tk.Entry(form, textvariable=date_to_var, font=("Arial", 14), width=25)
         date_to_entry.grid(row=2, column=1, padx=10, pady=10)
 
-# Calendar button for Date To
+        # Calendar button for Date To
         tk.Button(
-    form,
-    text="Calendar",
-    command=lambda: self.open_calendar_popup(date_to_entry, date_to_var)
-).grid(row=2, column=2, padx=5)
+            form,
+            text="Calendar",
+            command=lambda: self.open_calendar_popup(date_to_entry, date_to_var)
+            ).grid(row=2, column=2, padx=5)
 
         # ---- BACK BUTTON ----
         back_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -856,13 +987,12 @@ class StaffUI:
         pady=12,
         width=15,
         relief="ridge",
-        cursor="arrow"
-    )
+        cursor="arrow")
         submit_btn.pack(pady=15)
 
         # ---- BUTTON ENABLE/DISABLE ----
         def enable_btn():
-            submit_btn.config(bg="#000000", fg="white", cursor="arrow")
+            submit_btn.config(bg="#000000", fg="white", cursor="hand2")
             submit_btn.bind("<Enter>", lambda e: submit_btn.config(bg="#222222"))
             submit_btn.bind("<Leave>", lambda e: submit_btn.config(bg="#000000"))
             submit_btn.bind("<Button-1>", lambda e: fetch_summary())
@@ -877,22 +1007,26 @@ class StaffUI:
 
         # ---- VALIDATION ----
         def validate(*args):
+            import re
             d1 = date_from_var.get().strip()
             d2 = date_to_var.get().strip()
-
-            if not d1 or not d2:
-                disable_btn()
-                return
 
             # Date format check
             date_regex = r"^\d{4}-\d{2}-\d{2}$"
             if not re.match(date_regex, d1) or not re.match(date_regex, d2):
                 disable_btn()
                 return
+            
+            if not d1 or not d2:
+                disable_btn()
+                return
+            
+            if d1 > d2:
+                disable_btn()
+                return
 
             enable_btn()
 
-        staff_id_var.trace_add("write", validate)
         date_from_var.trace_add("write", validate)
         date_to_var.trace_add("write", validate)
 
@@ -902,12 +1036,13 @@ class StaffUI:
 
         # ---- FETCH SUMMARY FUNCTION ----
         def fetch_summary():
+            import requests
             sid = staff_id_var.get().strip()
             d1 = date_from_var.get().strip()
             d2 = date_to_var.get().strip()
 
             try:
-                url = f"http://127.0.0.1:8000/teacher/attendance/summary/{sid}?date_from={d1}&date_to={d2}"
+                url = f"http://127.0.0.1:8000/staff/attendance/summary/{sid}?date_from={d1}&date_to={d2}"
                 res = requests.get(url)
 
                 if res.status_code != 200:
@@ -938,11 +1073,20 @@ class StaffUI:
                     fg="#000000"
                     ).grid(row=row, column=1, padx=10, pady=5, sticky="w")
 
-                make_card("Total Days:", data["total_days"], 0)
-                make_card("Present:", data["present"], 1)
-                make_card("Absent:", data["absent"], 2)
-                make_card("Leave:", data["leave"], 3)
-                make_card("Attendance %:", f"{data['percentage']}%", 4)
+                total = data["total_days"]
+                present = data["present_days"]
+                absent = data["absent_days"]
+                late = data["late_days"]
+                leave = data["leave_days"]
+
+                percentage = round((present / total) * 100, 2) if total else 0
+
+                make_card("Total Days:", total, 0)
+                make_card("Present:", present, 1)
+                make_card("Absent:", absent, 2)
+                make_card("Late:", late, 3)
+                make_card("Leave:", leave, 4)
+                make_card("Attendance %:", f"{percentage}%", 5)
 
                 self.show_popup("Success", "Summary Loaded!", "info")
 
