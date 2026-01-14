@@ -15,19 +15,27 @@ from Backends.Shared.models.students_master import StudentMaster
 from Backends.Shared.models.exam_master import ExamMaster
 from Backends.Shared.models.classes_master import ClassMaster
 from Backends.Shared.schemas.result_schemas import StudentForResultResponse
+from Backends.Shared.models.academic_session import AcademicSession
+from Backends.Shared.dependencies.session_context import get_current_session
 
 router = APIRouter(
     prefix="/admin/results",
-    tags=["Result Generation"] 
+    tags=["Result Generation"],
+    dependencies=[Depends(get_current_session)]
 )
 
 
 # endpoint to GENERATE FINAL RESULT of a STUDENT
 @router.get("/final/{student_id}")
-def generate_final_result(student_id: int, db: Session = Depends(get_db)):
+def generate_final_result(
+    student_id: int, db: Session = Depends(get_db),
+    session: AcademicSession = Depends(get_current_session)
+):
 
     results = db.query(ResultMaster).filter(
-        ResultMaster.student_id == student_id
+        ResultMaster.student_id == student_id,
+        ResultMaster.is_active == True,
+        ResultMaster.academic_session_id == session.session_id
     ).all()
 
     if not results:

@@ -53,6 +53,7 @@ from Backends.Backend_admin.routers.master_router import router as master_router
 from Backends.Shared.routers.auth_router import router as auth_router
 from Backends.Shared.routers.student_lookup_routes import router as student_lookup_route
 from Backends.Shared.routers.class_subject_router import router as class_subject_router
+from Backends.Backend_students.routers.student_exams_router import router as student_exams_router
 
 from Backends.Shared.models.credentials_models import (
     StudentCredential, StaffCredential, TeacherCredential
@@ -125,6 +126,7 @@ app.include_router(subjects_details_router)
 app.include_router(students_details_router)
 app. include_router(student_lookup_route)
 app.include_router(class_subject_router)
+app.include_router(student_exams_router)
 
 app.include_router(auth_router)
 app.include_router(credential_router)

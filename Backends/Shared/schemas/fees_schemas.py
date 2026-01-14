@@ -128,7 +128,7 @@ class FeePaymentResponse(BaseModel):
     student_id: int
 
     amount: Decimal
-    payment_method_id: int
+    payment_method_id: Optional[int] = None
     payment_method_name: str
 
     status: FeePaymentStatus

@@ -398,6 +398,7 @@ class AdminUI:
         menu.add_command(label="Result Master", command=self.load_result_master)
         menu.add_command(label="Staff Master", command=self.load_staff_master)
         menu.add_command(label="Salary Master", command=self.load_salary_master)
+        menu.add_command(label="View/Activate Academic-Session", command=self.load_academic_session_table)
 
         ct = tk.Menu(menu, tearoff=0)
         ct.add_command(label="Student Credentials", command=self.load_student_credential_table)
@@ -17464,6 +17465,185 @@ class AdminUI:
 
         update_table(self.all_staff_credentials)
 
+    # ===================================================================
+    #----- Button View Academic Session or Activate a session -----    
+    def load_academic_session_table(self):
+        self.clear_content()
+
+        # ===== TITLE =====
+        tk.Label(
+        self.content,
+        text="Academic Sessions",
+        font=("Arial", 26, "bold"),
+        bg="#ECF0F1",
+        fg="#2C3E50"
+        ).pack(pady=20)
+
+        # ===== BACK BUTTON =====
+        back_frame = tk.Frame(self.content, bg="#ECF0F1")
+        back_frame.pack(anchor="w", padx=20)
+        self.create_back_button(back_frame, self.load_dashboard, None)
+
+        # ===== ACTIVE SESSION INFO =====
+        active_frame = tk.Frame(self.content, bg="#ECF0F1")
+        active_frame.pack(pady=10)
+
+        self.active_session_label = tk.Label(
+        active_frame,
+        text="Active Session: Loading...",
+        font=("Arial", 14, "bold"),
+        bg="#ECF0F1",
+        fg="#27AE60"
+        )
+        self.active_session_label.pack()
+
+        # ===== TABLE FRAME =====
+        table_frame = tk.Frame(self.content, bg="#ECF0F1")
+        table_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+        cols = [
+        ("session_id", "Session ID"),
+        ("session_name", "Session Name"),
+        ("start_date", "Start Date"),
+        ("end_date", "End Date"),
+        ("is_active", "Is Active")
+        ]
+
+        # ===== SCROLLBARS =====
+        y_scroll = tk.Scrollbar(table_frame, orient="vertical")
+        y_scroll.pack(side="right", fill="y")
+
+        x_scroll = tk.Scrollbar(table_frame, orient="horizontal")
+        x_scroll.pack(side="bottom", fill="x")
+
+        column_keys = [c[0] for c in cols]
+
+        self.session_tree = ttk.Treeview(
+        table_frame,
+        columns=column_keys,
+        show="headings",
+        yscrollcommand=y_scroll.set,
+        xscrollcommand=x_scroll.set)
+        self.session_tree.pack(fill="both", expand=True)
+
+        y_scroll.config(command=self.session_tree.yview)
+        x_scroll.config(command=self.session_tree.xview)
+
+        # ===== HEADINGS =====
+        for key, label in cols:
+            self.session_tree.heading(key, text=label)
+            self.session_tree.column(key, width=180, anchor="center")
+
+        from datetime import datetime
+        def fmt(d):
+            if not d:
+                return ""
+            if isinstance(d, str):
+                return datetime.fromisoformat(d).strftime("%d-%m-%Y")
+            return d.strftime("%d-%m-%Y")    
+
+        # ===== FETCH DATA FROM BACKEND =====
+        import requests
+        try:
+            res = requests.get(
+            "http://127.0.0.1:8000/admin/master/get/academic-session"
+        )
+            data = res.json() if res.status_code == 200 else {}
+        except Exception:
+            data = {}
+
+        active_session = data.get("active_session")
+        all_sessions = data.get("all_sessions", [])
+
+        # ===== UPDATE ACTIVE SESSION LABEL =====
+        if active_session:
+            self.active_session_label.config(
+            text=f"Active Session: {active_session['session_name']} "
+                f"({fmt(active_session['start_date'])} :- {fmt(active_session['end_date'])})"
+        )
+        else:
+            self.active_session_label.config(
+            text="Active Session: None"
+        )
+            
+        from datetime import datetime
+        # ===== UPDATE TABLE =====
+        for row in self.session_tree.get_children():
+            self.session_tree.delete(row)
+
+        for s in all_sessions:
+            self.session_tree.insert(
+            "",
+            "end",
+            values=[
+                s.get("session_id"),
+                s.get("session_name"),
+                fmt(s.get("start_date")),
+                fmt(s.get("end_date")),
+                "Yes" if s.get("is_active") else "No"
+            ]
+        )
+
+        # ===== ACTION BUTTON FRAME =====
+        action_frame = tk.Frame(self.content, bg="#ECF0F1")
+        action_frame.pack(pady=15)
+
+        activate_btn = tk.Label(action_frame, text="Activate Selected Session")
+        activate_btn.config(
+        bg="#27AE60",
+        fg="white",
+        padx=25,
+        pady=8,
+        font=("Arial", 13, "bold"),
+        cursor="hand2"
+        )
+        activate_btn.pack()
+
+        activate_btn.bind("<Enter>", lambda e: activate_btn.config(bg="#219150"))
+        activate_btn.bind("<Leave>", lambda e: activate_btn.config(bg="#27AE60"))
+
+        def activate_selected_session():
+            selected = self.session_tree.focus()
+
+            if not selected:
+                messagebox.showwarning(
+                "Selection Required",
+                "Please select an academic session first")
+                return
+
+            values = self.session_tree.item(selected, "values")
+            session_id = int(values[0])
+            is_active = values[4]
+
+            if is_active == "Yes":
+                messagebox.showinfo(
+                "Already Active",
+                "This academic session is already active")
+                return
+
+            import requests
+            try:
+                res = requests.post(
+                f"http://127.0.0.1:8000/admin/master/activate/{session_id}"
+                )
+
+                if res.status_code == 200:
+                    messagebox.showinfo(
+                    "Success",
+                    "Academic session activated successfully"
+                    )
+                
+                    self.load_academic_session_table()
+
+                else:
+                    err = res.json().get("detail", "Activation failed")
+                    messagebox.showerror("Error", err)
+
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
+
+
+        activate_btn.bind("<Button-1>", lambda e: activate_selected_session())  
 
     # ===================================================================
     #----- Button to Update marks of a student -----
