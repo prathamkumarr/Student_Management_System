@@ -12,6 +12,7 @@ from Backends.Shared.models.exam_master import ExamMaster
 from Backends.Shared.models.result_models import ResultMaster
 from Backends.Shared.models.staff_master import StaffMaster
 from Backends.Shared.models.salary_master import SalaryMaster
+from Backends.Shared.models.academic_session import AcademicSession
 
 
 router = APIRouter(prefix="/admin/master", tags=["Master Tables"])
@@ -88,3 +89,59 @@ def get_students_by_class(class_id: int, db: Session = Depends(get_db)):
         }
         for s in students
     ]
+
+
+@router.get("/get/academic-session")
+def get_academic_sessions(db: Session = Depends(get_db)):
+    sessions = (
+        db.query(AcademicSession)
+        .order_by(AcademicSession.start_date.desc())
+        .all()
+    )
+
+    if not sessions:
+        raise HTTPException(404, "No academic sessions found")
+
+    return {
+        "active_session": next(
+            (s for s in sessions if s.is_active), None
+        ),
+        "all_sessions": sessions
+    }
+
+
+@router.post("/activate/{session_id}")
+def activate_academic_session(
+    session_id: int,
+    db: Session = Depends(get_db)
+):
+    new_session = db.query(AcademicSession).filter(
+        AcademicSession.session_id == session_id
+    ).with_for_update().first()
+
+    if not new_session:
+        raise HTTPException(404, "Academic session not found")
+
+    if new_session.is_active:
+        raise HTTPException(400, "This academic session is already active")
+
+    try:
+        # deactivate currently active session
+        db.query(AcademicSession).filter(
+            AcademicSession.is_active == True
+        ).update({"is_active": False})
+
+        # activate selected session
+        new_session.is_active = True
+
+        db.commit()
+
+        return {
+            "message": "Academic session activated successfully",
+            "active_session_id": new_session.session_id,
+            "session_name": new_session.session_name
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(500, str(e))

@@ -33,6 +33,13 @@ class ResultMaster(Base):
         default=ResultStatus.PASS,
         nullable=False
     )
+    # session
+    academic_session_id = mapped_column(
+        Integer,
+        ForeignKey("academic_session.session_id"),
+        nullable=False,
+        index=True
+    )
 
     is_active = mapped_column(Boolean, default=True)
 

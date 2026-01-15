@@ -17,33 +17,18 @@ router = APIRouter(prefix="/student/attendance", tags=["Attendance"])
 # endpoint to fetch student's attendance by date filter
 @router.post("/by-date", response_model=List[AttendanceOut])
 def get_by_student(filter: AttendanceFilter, db: Session = Depends(get_db)):
-
-    # ---- validate student ----
-    student = db.query(StudentMaster).filter(
-        StudentMaster.student_id == filter.student_id
-    ).first()
-
-    if not student:
-        raise HTTPException(404, "Student not found")
-
-    # ---- validate dates ----
-    if filter.date_from > filter.date_to:
-        raise HTTPException(400, "date_from cannot be after date_to")
-
     q = db.query(AttendanceRecord).filter(
         AttendanceRecord.student_id == filter.student_id,
-        AttendanceRecord.lecture_date.between(filter.date_from, filter.date_to)
+        AttendanceRecord.lecture_date.between(
+            filter.date_from, filter.date_to
+        ),
+        AttendanceRecord.is_active == True
     )
 
     if filter.subject_id:
         q = q.filter(AttendanceRecord.subject_id == filter.subject_id)
 
-    recs = q.order_by(AttendanceRecord.lecture_date.asc()).all()
-
-    if not recs:
-        raise HTTPException(404, "No attendance records found")
-
-    return recs
+    return q.order_by(AttendanceRecord.lecture_date).all()
 
 
 # endpoint to see summary of attendance of a student using filters
