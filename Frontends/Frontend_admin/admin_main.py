@@ -208,7 +208,7 @@ class AdminUI:
 
         student.add_command(label="View All Attendance", command=self.load_view_all_student_attendance)
         student.add_command(label="View by ID", command=self.load_view_attendance_by_id)
-        student.add_command(label="Filter by Student", command=self.load_filter_student_attendance_screen)
+        student.add_command(label="Filter by Date", command=self.load_filter_student_attendance_screen)
         student.add_command(label="Attendance Summary", command=self.load_attendance_summary_screen)
         student.add_command(label="Update Attendance", command=self.load_update_student_attendance_screen)
         student.add_command(label="Delete Attendance", command=self.load_delete_student_attendance_screen)
@@ -3292,7 +3292,7 @@ class AdminUI:
         # ====================== FETCH INITIAL DATA ======================
         import requests
         try:
-            res = requests.get("http://127.0.0.1:8000/admin/payment-methods/")
+            res = requests.get("http://127.0.0.1:8000/admin/payment-methods/all")
             if res.status_code == 200:
                 self.all_methods = res.json()
             else:
@@ -4096,11 +4096,56 @@ class AdminUI:
         form = tk.Frame(self.content, bg="#ECF0F1")
         form.pack(pady=10)
 
-        # ---- FORM INPUTS -----
-        subjects_data = fetch_subjects()  
-        subject_options = ["None"] + [f"{s['subject_id']} - {s['subject_name']}" for s in subjects_data]
+        subject_combo = None
 
-        labels = ["Student ID:", "Date From (YYYY-MM-DD):", "Date To (YYYY-MM-DD):", "Subject ID (optional):"]
+        # --------------------------------------
+        def fetch_subjects_for_student(student_id):
+            import requests
+
+            try:
+                res = requests.get(
+                f"http://127.0.0.1:8000/students/{student_id}/subjects"
+                )
+
+                if res.status_code != 200:
+                    return []
+
+                return res.json()
+
+            except Exception:
+                return []
+
+        def on_student_change(*args):
+            if subject_combo is None:
+                return
+            
+            sid = student_var.get().strip()
+
+            # Reset subject dropdown
+            subject_var.set("None")
+            subject_combo["values"] = ["None"]
+            subject_combo.config(state="disabled")
+
+            if not sid.isdigit() or int(sid) <= 0:
+                return
+
+            subjects = fetch_subjects_for_student(int(sid))
+
+            if not subjects:
+                return
+
+            options = ["None"] + [
+                f"{s['subject_id']} - {s['subject_name']}"
+                for s in subjects
+                ]
+
+            subject_combo["values"] = options
+            subject_combo.config(state="readonly")
+   
+        # ---- FORM INPUTS -----
+        subject_options = ["None"]
+
+        labels = ["Student ID:", "Date From (YYYY-MM-DD):", "Date To (YYYY-MM-DD):", "Subject ID:"]
         vars_list = [tk.StringVar(), tk.StringVar(), tk.StringVar(), tk.StringVar()]
 
         entries = []
@@ -4128,17 +4173,18 @@ class AdminUI:
 
             elif label.startswith("Subject"):
                 from tkinter.ttk import Combobox
-                var.set("None")
 
                 entry = Combobox(
                 form, 
                 textvariable=var, 
                 values=subject_options,
-                state="readonly",
+                state="disabled",
                 font=("Arial",14),
                 width=22
             )
                 entry.grid(row=i, column=1, padx=10, pady=8)
+
+                subject_combo = entry
 
             else:
                 entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=25)
@@ -4192,6 +4238,7 @@ class AdminUI:
         student_var.trace_add("write", validate_load)
         from_var.trace_add("write", validate_load)
         to_var.trace_add("write", validate_load)
+        student_var.trace_add("write", on_student_change)
 
         # ----------- RESULT TABLE FRAME -----------
         table_frame = tk.Frame(self.content, bg="#ECF0F1")
@@ -4351,37 +4398,37 @@ class AdminUI:
 
         for i, (label_text, var) in enumerate(fields):
 
-    # LABEL
+            # LABEL
             tk.Label(
-        form,
-        text=label_text,
-        bg="#ECF0F1",
-        font=("Arial", 14)
-    ).grid(row=i, column=0, padx=10, pady=8)
+            form,
+            text=label_text,
+            bg="#ECF0F1",
+            font=("Arial", 14)
+            ).grid(row=i, column=0, padx=10, pady=8)
 
             if label_text.startswith("Date From") or label_text.startswith("Date To"):
-        # entry box
+                # entry box
                 entry = tk.Entry(form, textvariable=var, font=("Arial", 14), width=23)
                 entry.grid(row=i, column=1, padx=5, pady=8)
 
-        # calendar button
+                # calendar button
                 tk.Button(
-            form,
-            text="Calendar",
-            font=("Arial", 12),
-            bg="white",
-            relief="flat",
-            command=lambda v=var, e=entry: self.open_calendar_popup(e, v)
-        ).grid(row=i, column=2, padx=5)
+                form,
+                text="Calendar",
+                font=("Arial", 12),
+                bg="white",
+                relief="flat",
+                command=lambda v=var, e=entry: self.open_calendar_popup(e, v)
+                ).grid(row=i, column=2, padx=5)
 
             else:
-        # NORMAL ENTRY
+               # NORMAL ENTRY
                 tk.Entry(
-            form,
-            textvariable=var,
-            font=("Arial", 14),
-            width=25
-        ).grid(row=i, column=1, padx=10, pady=8)
+                form,
+                textvariable=var,
+                font=("Arial", 14),
+                width=25
+                ).grid(row=i, column=1, padx=10, pady=8)
 
         btn_frame = tk.Frame(self.content, bg="#ECF0F1")
         btn_frame.pack(pady=25)
@@ -4563,7 +4610,7 @@ class AdminUI:
         ("Subject ID", "subject_id"),
         ("Class ID", "class_id"),
         ("Lecture Date (YYYY-MM-DD)", "lecture_date"),
-        ("Status (P/A/L)", "status"),
+        ("Status", "status"),
         ("Remarks", "remarks")
         ]
 
@@ -4587,7 +4634,7 @@ class AdminUI:
 
         subject_values = list(self.subject_map.keys())
         class_values = list(self.class_map.keys())
-        status_values = ["P", "A", "L"]
+        status_values = ["P", "A", "L", "LE"]
 
         row_index = 1
         for text, key in labels:
@@ -4684,7 +4731,7 @@ class AdminUI:
         # ===== VALIDATE EVERY CHANGE =====
         def validate_entries(*args):
             status = self.update_vars["status"].get().strip().upper()
-            if status not in ("P", "A", "L"):
+            if status not in ("P", "A", "L", "LE"):
                 disable_update()
                 return
             
@@ -4714,11 +4761,13 @@ class AdminUI:
 
                 data = res.json()
 
-                # Enable fields
-                for entry in self.update_entries.values():
-                    entry.config(state="normal")
+                for key in ["student_id", "subject_id", "class_id", "lecture_date"]:
+                    self.update_entries[key].config(state="disabled")
 
-                # Fill data
+                # Enable ONLY editable fields
+                self.update_entries["status"].config(state="readonly")
+                self.update_entries["remarks"].config(state="normal")
+
                 self.update_vars["student_id"].set(data["student_id"])
 
                 # Subject
@@ -5485,7 +5534,7 @@ class AdminUI:
                 ent = Combobox(
                 form,
                 textvariable=var,
-                values=["P", "A", "L"],
+                values=["P", "A", "L", "LE"],
                 font=("Arial", 14),
                 width=22,
                 state="disabled"   
@@ -5568,17 +5617,19 @@ class AdminUI:
                     return
                 data = res.json()
 
-                # Enable all input fields
-                for ent in entries.values():
-                    ent.config(state="normal")
-
-                entries["Status"].config(state="readonly")
-
                 # Fill values
                 fields["Teacher ID"].set(data["teacher_id"])
                 fields["Date"].set(data["date"])
                 fields["Status"].set(data["status"])
                 fields["Remarks"].set(data.get("remarks", ""))
+
+                # Lock non-editable fields
+                entries["Teacher ID"].config(state="disabled")
+                entries["Date"].config(state="disabled")
+
+                # Enable ONLY editable fields
+                entries["Status"].config(state="readonly")
+                entries["Remarks"].config(state="normal")
 
                 enable_update_validation()
 
@@ -5594,7 +5645,7 @@ class AdminUI:
             def validate_all(*args):
                 status = fields["Status"].get().strip().upper()
 
-                if status in ("P", "A", "L"):
+                if status in ("P", "A", "L", "LE"):
                     update_btn.config(bg="#000000", fg="white", cursor="hand2")
                     update_btn.bind("<Enter>", lambda e: update_btn.config(bg="#222222"))
                     update_btn.bind("<Leave>", lambda e: update_btn.config(bg="#000000"))
@@ -5622,8 +5673,8 @@ class AdminUI:
 
             # Status
             status_val = fields["Status"].get().strip().upper()
-            if status_val not in ["P", "A", "L"]:
-                self.show_popup("Invalid Status", "Status must be P, A, or L only!", "warning")
+            if status_val not in ["P", "A", "L", "LE"]:
+                self.show_popup("Invalid Status", "Status must be P, A, L or LE only!", "warning")
                 return
             
             remarks_val = fields["Remarks"].get().strip()
@@ -13666,7 +13717,7 @@ class AdminUI:
                 ent = Combobox(
                 form,
                 textvariable=var,
-                values=["P", "A", "L"],
+                values=["P", "A", "L", "LE"],
                 font=("Arial", 14),
                 width=22,
                 state="disabled"   
@@ -13750,17 +13801,19 @@ class AdminUI:
                     return
                 data = res.json()
 
-                # Enable all input fields
-                for ent in entries.values():
-                    ent.config(state="normal")
-
-                entries["Status"].config(state="readonly")
-
                 # Fill values
                 fields["Staff ID"].set(data["staff_id"])
                 fields["Date"].set(data["date"])
                 fields["Status"].set(data["status"])
                 fields["Remarks"].set(data.get("remarks", ""))
+
+                # Lock non-editable fields
+                entries["Staff ID"].config(state="disabled")
+                entries["Date"].config(state="disabled")
+
+                # Enable ONLY editable fields
+                entries["Status"].config(state="readonly")
+                entries["Remarks"].config(state="normal")
 
                 enable_update_validation()
 
@@ -13776,7 +13829,7 @@ class AdminUI:
             def validate_all(*args):
                 status = fields["Status"].get().strip().upper()
 
-                if status in ("P", "A", "L"):
+                if status in ("P", "A", "L", "LE"):
                     update_btn.config(bg="#000000", fg="white", cursor="hand2")
                     update_btn.bind("<Enter>", lambda e: update_btn.config(bg="#222222"))
                     update_btn.bind("<Leave>", lambda e: update_btn.config(bg="#000000"))
@@ -13804,8 +13857,8 @@ class AdminUI:
 
             # Status
             status_val = fields["Status"].get().strip().upper()
-            if status_val not in ["P", "A", "L"]:
-                self.show_popup("Invalid Status", "Status must be P, A, or L only!", "warning")
+            if status_val not in ["P", "A", "L", "LE"]:
+                self.show_popup("Invalid Status", "Status must be P, A, L or LE only!", "warning")
                 return
             
             remarks_val = fields["Remarks"].get().strip()
