@@ -37,6 +37,13 @@ def create_payment_method(payload: PaymentMethodCreate, db: Session = Depends(ge
     db.refresh(method)
     return method
 
+# endpoint to view all payment methods
+@router.get("/all", response_model=list[PaymentMethodResponse])
+def get_all_payment_methods(db: Session = Depends(get_db)):
+    return db.query(PaymentMethod).filter(
+        PaymentMethod.is_active == True
+        ).order_by(PaymentMethod.method_id).all()
+
 # endpoint to get single payment method using method id
 @router.get("/{method_id}", response_model=PaymentMethodResponse)
 def get_payment_method(method_id: int, db: Session = Depends(get_db)):
@@ -48,13 +55,6 @@ def get_payment_method(method_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Payment method not found")
     
     return method
-
-# endpoint to view all payment methods
-@router.get("/all", response_model=list[PaymentMethodResponse])
-def get_all_payment_methods(db: Session = Depends(get_db)):
-    return db.query(PaymentMethod).filter(
-        PaymentMethod.is_active == True
-        ).order_by(PaymentMethod.method_id).all()
 
 # endpoint to update a payment method
 @router.put("/update/{method_id}", response_model=PaymentMethodResponse)
