@@ -29,10 +29,22 @@ router = APIRouter(
 # endpoint to create new admission
 @router.post("/create", response_model=AdmissionResponse)
 def create_admission(payload: AdmissionCreate, db: Session = Depends(get_db)):
+
+    active_session = db.query(AcademicSession).filter(
+        AcademicSession.is_active == True
+    ).first()
+
+    if not active_session:
+        raise HTTPException(400, "No active academic session found")
+
+    data = payload.model_dump()
+    data["academic_session_id"] = active_session.session_id 
+
     new_entry = StudentAdmission(
-        **payload.model_dump(),
+        **data,
         status=AdmissionStatus.DRAFT
-        )
+    )
+
     db.add(new_entry)
     db.commit()
     db.refresh(new_entry)
@@ -138,7 +150,7 @@ def generate_roll_number(db, class_id):
     if not last_roll or not last_roll[0]:
         return 1
 
-    return last_roll[0] + 1
+    return int(last_roll[0]) + 1
 
 # endpoint to Approve Admission
 @router.post("/{admission_id}/approve")
@@ -233,7 +245,15 @@ def approve_admission(
                     amount_due=Decimal(f.amount),
                     amount_paid=Decimal("0.00"),
                     status=StudentFeeStatus.PENDING,
-                    due_date=f.effective_to or date.today()
+                    due_date=f.effective_to or date.today(),
+                    billing_type=f.billing_type,
+                    frequency=f.frequency,
+                    charge_trigger=f.charge_trigger,
+                    academic_session_id=session.session_id,
+                    billing_period_start=f.effective_from,
+                    billing_period_end=f.effective_to,
+                    is_active=True,
+                    generated_by="SYSTEM"
                 )
             )
 
@@ -256,7 +276,15 @@ def approve_admission(
                         amount_due=Decimal(exam_fee.amount),
                         amount_paid=Decimal("0.00"),
                         status=StudentFeeStatus.PENDING, 
-                        due_date=exam_fee.effective_to or date.today()
+                        due_date=exam_fee.effective_to or date.today(),
+                        billing_type=exam_fee.billing_type,
+                        frequency=exam_fee.frequency,
+                        charge_trigger=exam_fee.charge_trigger,
+                        academic_session_id=session.session_id,
+                        billing_period_start=exam_fee.effective_from,
+                        billing_period_end=exam_fee.effective_to,
+                        is_active=True,
+                        generated_by="SYSTEM"
                     )
                 )
         
@@ -289,7 +317,15 @@ def approve_admission(
                     amount_due=Decimal(f.amount),
                     amount_paid=Decimal("0.00"),
                     due_date=f.effective_to or date.today(),
-                    status=StudentFeeStatus.PENDING
+                    status=StudentFeeStatus.PENDING,
+                    billing_type=f.billing_type,
+                    frequency=f.frequency,
+                    charge_trigger=f.charge_trigger,
+                    academic_session_id=session.session_id,
+                    billing_period_start=f.effective_from,
+                    billing_period_end=f.effective_to,
+                    is_active=True,
+                    generated_by="SYSTEM"
                 )
             )
         
