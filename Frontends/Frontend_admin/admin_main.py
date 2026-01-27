@@ -7025,7 +7025,11 @@ class AdminUI:
 
                 if res.status_code == 200:
                     disable_approve()
-                    self.show_popup("Admission Approved Successfully, Student data added in Database successfully!", "success")
+                    self.show_popup(
+                    "Success",
+                    "Admission approved successfully.\nStudent data added in database.",
+                    "success"
+                    )
                     
                     adm_id_var.set("")
                     for v in vars_dict.values():
